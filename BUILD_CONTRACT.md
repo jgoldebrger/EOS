@@ -39,7 +39,14 @@ Stubs: `lib/permissions/checks.ts`
 | done | 001 | foundation |
 | done | 002 | RLS |
 | done | 003 | SSO |
-| **Next available** | **004** | Scorecard |
+| done | 004 | Scorecard |
+| done | 005 | Rocks |
+| done | 006 | Issues |
+| done | 007 | Todos |
+| done | 008 | Meetings |
+| done | 009 | Accountability |
+| done | 010 | V/TO |
+| **Next available** | **011** | AI suggestions |
 
 Migrations live in `supabase/migrations/`.
 

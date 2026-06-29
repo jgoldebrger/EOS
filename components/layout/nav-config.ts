@@ -1,6 +1,7 @@
 import {
   BarChart3,
   CheckSquare,
+  Compass,
   LayoutDashboard,
   ListTodo,
   Mountain,
@@ -39,6 +40,12 @@ export function getOrgNavItems(orgSlug: string): OrgNavItem[] {
       href: `${base}/rocks`,
       segment: "rocks",
       icon: Mountain,
+    },
+    {
+      label: "V/TO",
+      href: `${base}/vto`,
+      segment: "vto",
+      icon: Compass,
     },
     {
       label: "Issues",

@@ -17,6 +17,8 @@ export type AuditEntityType =
   | "meetings"
   | "meeting_notes"
   | "accountability_charts"
+  | "vto_sections"
+  | "vto_snapshots"
   | "sso_connections"
   | "users";
 
