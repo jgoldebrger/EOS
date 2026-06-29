@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
   archiveIssueSchema,
@@ -411,14 +412,119 @@ export async function updatePriority(input: unknown): Promise<IssueActionResult>
 }
 
 /**
- * Wave 3c: create a todo from a solved issue once the todos table exists (migration 007).
+ * Create a todo from an issue (Wave 3c).
  */
+const convertToTodoSchema = z.object({
+  organizationId: z.string().uuid("Invalid organization"),
+  issueId: z.string().uuid("Invalid issue"),
+  dueDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid due date")
+    .nullable()
+    .optional(),
+  markDiscussing: z.boolean().optional(),
+});
+
 export async function convertToTodo(
-  _input: unknown,
+  input: unknown,
 ): Promise<ConvertToTodoResult> {
-  return {
-    success: false,
-    error: "Convert to todo is not available yet — coming in Wave 3c (Todos).",
-    notImplemented: true,
-  };
+  const parsed = convertToTodoSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid convert request",
+    };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  if (!canEditResource(actor.orgRole, "issues")) {
+    return {
+      success: false,
+      error: "You do not have permission to convert issues to todos",
+    };
+  }
+
+  const { data: issue } = await actor.supabase
+    .from("issues")
+    .select("id, title, owner_id, team_id, status")
+    .eq("id", parsed.data.issueId)
+    .eq("organization_id", parsed.data.organizationId)
+    .maybeSingle();
+
+  if (!issue) {
+    return { success: false, error: "Issue not found" };
+  }
+
+  const ownerId = issue.owner_id ?? actor.user.id;
+
+  const { data: todo, error: todoError } = await actor.supabase
+    .from("todos")
+    .insert({
+      organization_id: parsed.data.organizationId,
+      team_id: issue.team_id,
+      title: issue.title,
+      owner_id: ownerId,
+      due_date: parsed.data.dueDate ?? null,
+      status: "open",
+      source_type: "issue",
+      source_id: issue.id,
+      created_by: actor.user.id,
+    })
+    .select("id")
+    .single();
+
+  if (todoError || !todo) {
+    return {
+      success: false,
+      error: "Unable to create todo from issue. Please try again.",
+    };
+  }
+
+  await actor.supabase.from("audit_logs").insert({
+    organization_id: parsed.data.organizationId,
+    actor_id: actor.user.id,
+    action: AUDIT_ACTIONS.CREATE,
+    entity_type: "todos",
+    entity_id: todo.id,
+    metadata: {
+      source_type: "issue",
+      source_id: issue.id,
+      title: issue.title,
+    } as Json,
+  });
+
+  if (parsed.data.markDiscussing && issue.status === "open") {
+    await actor.supabase
+      .from("issues")
+      .update({ status: "discussing" })
+      .eq("id", issue.id)
+      .eq("organization_id", parsed.data.organizationId);
+
+    await writeAudit(
+      actor.supabase,
+      parsed.data.organizationId,
+      actor.user.id,
+      AUDIT_ACTIONS.UPDATE,
+      issue.id,
+      { status: "discussing", converted_to_todo: todo.id } as Json,
+    );
+  }
+
+  const { data: orgRow } = await actor.supabase
+    .from("organizations")
+    .select("slug")
+    .eq("id", parsed.data.organizationId)
+    .single();
+
+  if (orgRow?.slug) {
+    revalidatePath(`/org/${orgRow.slug}/issues`);
+    revalidatePath(`/org/${orgRow.slug}/todos`);
+  }
+
+  return { success: true, todoId: todo.id };
 }

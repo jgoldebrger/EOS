@@ -1,4 +1,4 @@
-/** Hand-written Supabase Database types — matches migrations 001–006. */
+/** Hand-written Supabase Database types — matches migrations 001–007. */
 
 export type Json =
   | string
@@ -22,6 +22,8 @@ export type ScorecardStatusDb = "green" | "yellow" | "red" | "na";
 export type RockStatusDb = "on_track" | "off_track" | "done" | "dropped";
 export type RockTypeDb = "company" | "team" | "individual";
 export type IssueStatusDb = "open" | "discussing" | "solved" | "archived";
+export type TodoStatusDb = "open" | "done" | "cancelled";
+export type TodoSourceTypeDb = "issue" | "rock" | "meeting" | "manual";
 
 export interface Database {
   public: {
@@ -718,6 +720,72 @@ export interface Database {
           },
         ];
       };
+      todos: {
+        Row: {
+          id: string;
+          organization_id: string;
+          team_id: string | null;
+          title: string;
+          owner_id: string;
+          due_date: string | null;
+          status: TodoStatusDb;
+          source_type: TodoSourceTypeDb | null;
+          source_id: string | null;
+          completed_at: string | null;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          team_id?: string | null;
+          title: string;
+          owner_id: string;
+          due_date?: string | null;
+          status?: TodoStatusDb;
+          source_type?: TodoSourceTypeDb | null;
+          source_id?: string | null;
+          completed_at?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          team_id?: string | null;
+          title?: string;
+          owner_id?: string;
+          due_date?: string | null;
+          status?: TodoStatusDb;
+          source_type?: TodoSourceTypeDb | null;
+          source_id?: string | null;
+          completed_at?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "todos_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "todos_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -786,3 +854,4 @@ export type ScorecardMetric = Tables<"scorecard_metrics">;
 export type ScorecardValue = Tables<"scorecard_values">;
 export type Rock = Tables<"rocks">;
 export type Issue = Tables<"issues">;
+export type Todo = Tables<"todos">;
