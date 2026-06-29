@@ -1,17 +1,15 @@
 import { expect, test } from "@playwright/test";
+import { signInAsAdmin, signInAsViewer } from "./helpers/auth";
 
 test.describe("SSO discovery UI", () => {
-  test("SSO login option renders on auth page when exported component is wired", async ({
-    page,
-  }) => {
+  test("SSO login option renders on auth page", async ({ page }) => {
     await page.goto("/auth");
 
     await expect(page.getByRole("textbox", { name: "Email", exact: true })).toBeVisible();
 
     const ssoOption = page.getByTestId("sso-login-option");
-    if ((await ssoOption.count()) > 0) {
-      await expect(ssoOption.getByRole("button", { name: /continue with sso/i })).toBeVisible();
-    }
+    await expect(ssoOption).toBeVisible();
+    await expect(ssoOption.getByRole("button", { name: /continue with sso/i })).toBeVisible();
   });
 
   test("unknown domain shows safe error in SSO discovery preview", async ({ page }) => {
@@ -26,11 +24,6 @@ test.describe("SSO discovery UI", () => {
     await page.goto("/auth");
 
     const ssoOption = page.getByTestId("sso-login-option");
-    if ((await ssoOption.count()) === 0) {
-      test.skip(true, "SSO login option not wired on auth page yet");
-      return;
-    }
-
     await ssoOption.getByLabel("Work email for SSO").fill("user@unknown-corp.com");
     await ssoOption.getByRole("button", { name: /continue with sso/i }).click();
 
@@ -38,14 +31,23 @@ test.describe("SSO discovery UI", () => {
   });
 });
 
-test.describe("SSO settings permissions", () => {
-  test("viewer role cannot access SSO settings mutations", async ({ page }) => {
+test.describe("SSO settings without Supabase", () => {
+  test("unauthenticated users are redirected from SSO settings", async ({ page }) => {
     await page.goto("/org/demo/settings/security/sso");
+    await expect(page).toHaveURL(/\/auth/);
+  });
+});
 
-    if (/\/auth/.test(page.url())) {
-      await expect(page).toHaveURL(/\/auth/);
-      return;
-    }
+test.describe("SSO settings authenticated", () => {
+  test.skip(
+    !process.env.E2E_SUPABASE_ENABLED,
+    "Requires E2E_SUPABASE_ENABLED and authenticated session fixtures",
+  );
+
+  test("viewer role cannot access SSO settings mutations", async ({ page }) => {
+    await signInAsViewer(page);
+    const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
+    await page.goto(`/org/${orgSlug}/settings/security/sso`);
 
     const restricted = page.getByText(/access restricted|view only|owner permissions/i);
     const saveButton = page.getByRole("button", { name: /^save settings$/i });
@@ -75,15 +77,11 @@ test.describe("SSO settings permissions", () => {
   test("SSO settings page structure includes provider and role mapping sections", async ({
     page,
   }) => {
-    await page.goto("/org/demo/settings/security/sso");
+    await signInAsAdmin(page);
+    const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
+    await page.goto(`/org/${orgSlug}/settings/security/sso`);
 
-    const heading = page.getByRole("heading", { name: /single sign-on/i });
-    if ((await heading.count()) === 0) {
-      test.skip(true, "SSO settings page requires authenticated org access");
-      return;
-    }
-
-    await expect(heading).toBeVisible();
+    await expect(page.getByRole("heading", { name: /single sign-on/i })).toBeVisible();
     await expect(page.getByText(/identity provider|setup steps/i).first()).toBeVisible();
     await expect(page.getByText(/role mappings/i).first()).toBeVisible();
     await expect(page.getByText(/test sso discovery/i)).toBeVisible();
