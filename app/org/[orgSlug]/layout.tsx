@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
 import { getOrganizationBySlug } from "@/features/organizations/queries";
 import { OrgProvider } from "@/features/organizations/components/org-context";
-import { OrgHeader } from "@/components/layout/org-header";
+import { AppShell } from "@/components/layout/app-shell";
 
 export default async function OrgLayout({
   children,
@@ -28,10 +28,7 @@ export default async function OrgLayout({
         orgName: org.name,
       }}
     >
-      <div className="flex min-h-full flex-col">
-        <OrgHeader orgName={org.name} orgSlug={orgSlug} />
-        <main className="flex-1">{children}</main>
-      </div>
+      <AppShell>{children}</AppShell>
     </OrgProvider>
   );
 }
