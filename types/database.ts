@@ -1,4 +1,4 @@
-/** Hand-written Supabase Database types — matches migrations 001–010. */
+/** Hand-written Supabase Database types — matches migrations 001–011. */
 
 export type Json =
   | string
@@ -30,6 +30,13 @@ export type MeetingStatusDb =
   | "in_progress"
   | "completed"
   | "cancelled";
+export type AiSuggestionTypeDb =
+  | "todo"
+  | "issue_merge"
+  | "meeting_summary"
+  | "scorecard_insight"
+  | "agenda_focus";
+export type AiSuggestionStatusDb = "pending" | "approved" | "dismissed";
 
 export interface Database {
   public: {
@@ -363,6 +370,57 @@ export interface Database {
             columns: ["organization_id"];
             isOneToOne: false;
             referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ai_suggestions: {
+        Row: {
+          id: string;
+          organization_id: string;
+          ai_run_id: string;
+          suggestion_type: AiSuggestionTypeDb;
+          payload: Json;
+          status: AiSuggestionStatusDb;
+          created_at: string;
+          resolved_at: string | null;
+          resolved_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          ai_run_id: string;
+          suggestion_type: AiSuggestionTypeDb;
+          payload: Json;
+          status?: AiSuggestionStatusDb;
+          created_at?: string;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          ai_run_id?: string;
+          suggestion_type?: AiSuggestionTypeDb;
+          payload?: Json;
+          status?: AiSuggestionStatusDb;
+          created_at?: string;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_suggestions_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ai_suggestions_ai_run_id_fkey";
+            columns: ["ai_run_id"];
+            isOneToOne: false;
+            referencedRelation: "ai_runs";
             referencedColumns: ["id"];
           },
         ];
@@ -1160,6 +1218,7 @@ export type Invitation = Tables<"invitations">;
 export type AuditLog = Tables<"audit_logs">;
 export type AccountabilitySeat = Tables<"accountability_seats">;
 export type AiRun = Tables<"ai_runs">;
+export type AiSuggestion = Tables<"ai_suggestions">;
 export type OrganizationSsoSettings = Tables<"organization_sso_settings">;
 export type OrganizationSsoRoleMapping = Tables<"organization_sso_role_mappings">;
 export type OrganizationVerifiedDomain = Tables<"organization_verified_domains">;

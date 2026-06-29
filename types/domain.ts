@@ -19,6 +19,7 @@ export type AuditEntityType =
   | "accountability_charts"
   | "vto_sections"
   | "vto_snapshots"
+  | "ai_suggestions"
   | "sso_connections"
   | "users";
 

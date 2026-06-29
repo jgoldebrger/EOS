@@ -11,6 +11,7 @@ import { MeetingSectionEmbed } from "@/components/meetings/meeting-section-embed
 import { MeetingNotesEditor } from "@/components/meetings/meeting-notes-editor";
 import { DecisionsList } from "@/components/meetings/decisions-list";
 import { EndMeetingDialog } from "@/components/meetings/end-meeting-dialog";
+import { AiSummaryPanel } from "@/components/ai/ai-summary-panel";
 import {
   startMeeting,
   updateActiveSection,
@@ -121,6 +122,10 @@ export function LiveMeetingShell({
   const noteForSection = meeting.notes.find(
     (note) => note.section_key === activeSectionKey,
   );
+
+  const combinedNotes = meeting.notes
+    .map((note) => `[${note.section_key}]\n${note.content}`)
+    .join("\n\n");
 
   const handleSelectSection = useCallback(
     (sectionKey: string) => {
@@ -306,6 +311,13 @@ export function LiveMeetingShell({
               canEdit={canEdit}
             />
           ) : null}
+
+          <AiSummaryPanel
+            organizationId={organizationId}
+            meetingId={meeting.id}
+            notes={combinedNotes}
+            canUseAi={canEdit}
+          />
 
           <DecisionsList
             organizationId={organizationId}

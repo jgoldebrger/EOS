@@ -15,6 +15,7 @@ import type {
 } from "@/features/scorecard/types";
 import { OwnerAvatar } from "@/components/shared/owner-avatar";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ScorecardAnalyzeButton } from "@/components/scorecard/scorecard-analyze-button";
 import { showErrorToast } from "@/components/feedback/toast";
 import { Input } from "@/components/ui/input";
 import {
@@ -224,10 +225,17 @@ export function ScorecardMetricTable({
   }
 
   return (
-    <div
-      className="overflow-x-auto rounded-md border"
-      data-testid="scorecard-metric-table"
-    >
+    <div className="space-y-4">
+      <ScorecardAnalyzeButton
+        organizationId={organizationId}
+        metrics={metrics}
+        weeks={weeks}
+        valuesByMetric={valuesByMetric}
+      />
+      <div
+        className="overflow-x-auto rounded-md border"
+        data-testid="scorecard-metric-table"
+      >
       <Table>
         <TableHeader>
           <TableRow>
@@ -299,6 +307,7 @@ export function ScorecardMetricTable({
           ))}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

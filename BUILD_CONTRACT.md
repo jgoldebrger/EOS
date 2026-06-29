@@ -46,7 +46,8 @@ Stubs: `lib/permissions/checks.ts`
 | done | 008 | Meetings |
 | done | 009 | Accountability |
 | done | 010 | V/TO |
-| **Next available** | **011** | AI suggestions |
+| done | 011 | AI suggestions |
+| **Next available** | **012** | — |
 
 Migrations live in `supabase/migrations/`.
 
