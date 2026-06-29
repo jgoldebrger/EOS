@@ -1,0 +1,52 @@
+import { expect, test } from "@playwright/test";
+
+/**
+ * Meetings page structure tests.
+ * Full viewer/edit flows require E2E_SUPABASE_ENABLED with seeded org data.
+ */
+test.describe("meetings page structure (no Supabase)", () => {
+  test("unauthenticated users are redirected from org meetings", async ({
+    page,
+  }) => {
+    await page.goto("/org/demo/meetings");
+    await expect(page).toHaveURL(/\/auth/);
+  });
+});
+
+test.describe("meetings page (authenticated)", () => {
+  test.skip(
+    !process.env.E2E_SUPABASE_ENABLED,
+    "Requires E2E_SUPABASE_ENABLED and authenticated session fixtures",
+  );
+
+  test("meetings list page renders structure", async ({ page }) => {
+    const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
+    await page.goto(`/org/${orgSlug}/meetings`);
+
+    await expect(page.getByRole("heading", { name: "Meetings" })).toBeVisible();
+    await expect(page.getByTestId("meetings-list")).toBeVisible();
+    await expect(page.getByTestId("create-l10-meeting-button")).toBeVisible();
+  });
+
+  test("create L10 meeting dialog opens", async ({ page }) => {
+    const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
+    await page.goto(`/org/${orgSlug}/meetings`);
+
+    await page.getByTestId("create-l10-meeting-button").click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(page.getByTestId("create-meeting-submit")).toBeVisible();
+  });
+
+  test("live meeting shows agenda panel", async ({ page }) => {
+    const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
+    const meetingId = process.env.E2E_MEETING_ID;
+
+    test.skip(!meetingId, "Set E2E_MEETING_ID to an in-progress meeting");
+
+    await page.goto(`/org/${orgSlug}/meetings/${meetingId}`);
+
+    await expect(page.getByTestId("live-meeting-shell")).toBeVisible();
+    await expect(page.getByTestId("meeting-agenda-panel")).toBeVisible();
+    await expect(page.getByTestId("agenda-section-issues")).toBeVisible();
+  });
+});

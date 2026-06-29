@@ -1,4 +1,4 @@
-/** Hand-written Supabase Database types — matches migrations 001–007. */
+/** Hand-written Supabase Database types — matches migrations 001–008. */
 
 export type Json =
   | string
@@ -24,6 +24,12 @@ export type RockTypeDb = "company" | "team" | "individual";
 export type IssueStatusDb = "open" | "discussing" | "solved" | "archived";
 export type TodoStatusDb = "open" | "done" | "cancelled";
 export type TodoSourceTypeDb = "issue" | "rock" | "meeting" | "manual";
+export type MeetingTypeDb = "l10" | "other";
+export type MeetingStatusDb =
+  | "scheduled"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
 
 export interface Database {
   public: {
@@ -718,6 +724,179 @@ export interface Database {
             referencedRelation: "rocks";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "issues_linked_rock_id_fkey";
+            columns: ["linked_rock_id"];
+            isOneToOne: false;
+            referencedRelation: "rocks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "issues_linked_meeting_id_fkey";
+            columns: ["linked_meeting_id"];
+            isOneToOne: false;
+            referencedRelation: "meetings";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      meetings: {
+        Row: {
+          id: string;
+          organization_id: string;
+          team_id: string | null;
+          title: string;
+          meeting_type: MeetingTypeDb;
+          status: MeetingStatusDb;
+          started_at: string | null;
+          ended_at: string | null;
+          agenda_template: Json;
+          active_section_key: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          team_id?: string | null;
+          title?: string;
+          meeting_type?: MeetingTypeDb;
+          status?: MeetingStatusDb;
+          started_at?: string | null;
+          ended_at?: string | null;
+          agenda_template?: Json;
+          active_section_key?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          team_id?: string | null;
+          title?: string;
+          meeting_type?: MeetingTypeDb;
+          status?: MeetingStatusDb;
+          started_at?: string | null;
+          ended_at?: string | null;
+          agenda_template?: Json;
+          active_section_key?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "meetings_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "meetings_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      meeting_notes: {
+        Row: {
+          id: string;
+          organization_id: string;
+          meeting_id: string;
+          section_key: string;
+          content: string;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          meeting_id: string;
+          section_key: string;
+          content?: string;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          meeting_id?: string;
+          section_key?: string;
+          content?: string;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "meeting_notes_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "meeting_notes_meeting_id_fkey";
+            columns: ["meeting_id"];
+            isOneToOne: false;
+            referencedRelation: "meetings";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      decisions: {
+        Row: {
+          id: string;
+          organization_id: string;
+          meeting_id: string;
+          title: string;
+          description: string | null;
+          decided_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          meeting_id: string;
+          title: string;
+          description?: string | null;
+          decided_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          meeting_id?: string;
+          title?: string;
+          description?: string | null;
+          decided_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "decisions_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "decisions_meeting_id_fkey";
+            columns: ["meeting_id"];
+            isOneToOne: false;
+            referencedRelation: "meetings";
+            referencedColumns: ["id"];
+          },
         ];
       };
       todos: {
@@ -855,3 +1034,6 @@ export type ScorecardValue = Tables<"scorecard_values">;
 export type Rock = Tables<"rocks">;
 export type Issue = Tables<"issues">;
 export type Todo = Tables<"todos">;
+export type Meeting = Tables<"meetings">;
+export type MeetingNote = Tables<"meeting_notes">;
+export type Decision = Tables<"decisions">;
