@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
 import { getOrganizationBySlug } from "@/features/organizations/queries";
+import { getTeamsForOrg } from "@/features/teams/queries";
 import { OrgProvider } from "@/features/organizations/components/org-context";
+import { TeamProvider } from "@/features/teams/components/team-context";
 import { AppShell } from "@/components/layout/app-shell";
 
 export default async function OrgLayout({
@@ -13,7 +15,10 @@ export default async function OrgLayout({
 }) {
   const { orgSlug } = await params;
   const access = await requireOrgAccess(orgSlug);
-  const org = await getOrganizationBySlug(orgSlug);
+  const [org, teams] = await Promise.all([
+    getOrganizationBySlug(orgSlug),
+    getTeamsForOrg(access.orgId),
+  ]);
 
   if (!org) {
     notFound();
@@ -28,7 +33,9 @@ export default async function OrgLayout({
         orgName: org.name,
       }}
     >
-      <AppShell>{children}</AppShell>
+      <TeamProvider teams={teams}>
+        <AppShell>{children}</AppShell>
+      </TeamProvider>
     </OrgProvider>
   );
 }

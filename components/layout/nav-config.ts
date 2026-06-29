@@ -73,7 +73,7 @@ export function getOrgNavItems(orgSlug: string): OrgNavItem[] {
     },
     {
       label: "Settings",
-      href: `${base}/settings/security`,
+      href: `${base}/settings`,
       segment: "settings",
       icon: Settings,
     },

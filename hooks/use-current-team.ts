@@ -1,14 +1,14 @@
 "use client";
 
-import type { TeamRole } from "@/types/domain";
+import type { TeamContext } from "@/hooks/use-current-team.types";
+import { useSelectedTeam } from "@/features/teams/components/team-context";
 
-export interface TeamContext {
-  teamId: string;
-  teamSlug: string;
-  role: TeamRole;
-}
+export type { TeamContext } from "@/hooks/use-current-team.types";
 
-/** Team context wiring arrives in a later wave. */
 export function useCurrentTeam(): TeamContext | null {
-  return null;
+  try {
+    return useSelectedTeam();
+  } catch {
+    return null;
+  }
 }
