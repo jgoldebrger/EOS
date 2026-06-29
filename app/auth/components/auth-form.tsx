@@ -27,6 +27,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { SsoLoginOption } from "@/components/sso/sso-login-option";
 
 const authSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -152,11 +153,29 @@ export function AuthForm() {
             <div className="relative">
               <Separator />
               <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-                or continue with email
+                or continue with SSO
               </span>
             </div>
           </>
         )}
+
+        {!oauthEnabled && (
+          <div className="relative">
+            <Separator />
+            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+              enterprise SSO
+            </span>
+          </div>
+        )}
+
+        <SsoLoginOption />
+
+        <div className="relative">
+          <Separator />
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+            or continue with email
+          </span>
+        </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

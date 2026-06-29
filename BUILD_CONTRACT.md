@@ -36,9 +36,12 @@ Stubs: `lib/permissions/checks.ts`
 
 | Status | ID | Description |
 |--------|-----|-------------|
-| **Next available** | **001** | — |
+| done | 001 | foundation |
+| done | 002 | RLS |
+| done | 003 | SSO |
+| **Next available** | **004** | Scorecard |
 
-Migrations live in `supabase/migrations/`. Do not create `001` until Wave 1a.
+Migrations live in `supabase/migrations/`.
 
 ## Import paths
 
