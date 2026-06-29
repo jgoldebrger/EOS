@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signInAsAdmin, signInAsViewer } from "./helpers/auth";
 
 /**
  * Issues page structure tests.
@@ -18,6 +19,7 @@ test.describe("issues page (authenticated)", () => {
   );
 
   test("issues page renders table structure", async ({ page }) => {
+    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/issues`);
 
@@ -29,6 +31,7 @@ test.describe("issues page (authenticated)", () => {
   });
 
   test("viewer cannot see add issue control", async ({ page }) => {
+    await signInAsViewer(page);
     const orgSlug = process.env.E2E_VIEWER_ORG_SLUG ?? "demo-viewer";
     await page.goto(`/org/${orgSlug}/issues`);
 
@@ -37,6 +40,7 @@ test.describe("issues page (authenticated)", () => {
   });
 
   test("admin can open issue creation dialog", async ({ page }) => {
+    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/issues`);
 

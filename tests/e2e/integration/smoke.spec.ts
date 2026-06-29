@@ -13,8 +13,7 @@ test.describe("integration smoke (no Supabase)", () => {
     await expect(page).toHaveURL(/\/auth/);
     await expect(page.getByText(/welcome back/i)).toBeVisible();
 
-    await page.goto("/");
-    await page.getByRole("link", { name: /create organization/i }).click();
+    await page.goto("/onboarding");
     await expect(page).toHaveURL(/\/auth/);
   });
 
@@ -30,6 +29,7 @@ test.describe("integration smoke (no Supabase)", () => {
       "/org/demo/meetings",
       "/org/demo/accountability",
       "/org/demo/vto",
+      "/org/demo/settings",
       "/org/demo/settings/security",
       "/org/demo/settings/security/sso",
     ];

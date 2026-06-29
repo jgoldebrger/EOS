@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signInAsAdmin, signInAsViewer } from "./helpers/auth";
 
 /**
  * V/TO page structure tests.
@@ -18,6 +19,7 @@ test.describe("vto page (authenticated)", () => {
   );
 
   test("vto page renders editor structure", async ({ page }) => {
+    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/vto`);
 
@@ -30,6 +32,7 @@ test.describe("vto page (authenticated)", () => {
   });
 
   test("viewer cannot see save snapshot control", async ({ page }) => {
+    await signInAsViewer(page);
     const orgSlug = process.env.E2E_VIEWER_ORG_SLUG ?? "demo-viewer";
     await page.goto(`/org/${orgSlug}/vto`);
 
@@ -37,6 +40,7 @@ test.describe("vto page (authenticated)", () => {
   });
 
   test("admin can save a snapshot", async ({ page }) => {
+    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/vto`);
 

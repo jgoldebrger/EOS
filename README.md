@@ -24,7 +24,7 @@ cp .env.local.example .env.local
 supabase start
 # Copy the anon key and service role key printed by `supabase start` into .env.local
 
-# 4. Apply migrations (first run or after schema changes)
+# 4. Apply migrations and seed E2E fixtures (first run or after schema changes)
 supabase db reset
 
 # 5. Deploy edge functions (AI + SSO helpers)
@@ -60,11 +60,19 @@ Configure Google/Microsoft providers in the [Supabase Auth dashboard](https://su
 
 ### E2E testing (optional)
 
+Requires Docker + `supabase db reset` so `supabase/seed.sql` creates test users and orgs.
+
 | Variable | Description |
 |----------|-------------|
 | `E2E_SUPABASE_ENABLED` | Set to `1` to run authenticated Playwright flows |
 | `E2E_ORG_SLUG` | Seeded org slug for admin/owner tests (default: `demo`) |
 | `E2E_VIEWER_ORG_SLUG` | Seeded viewer-only org (default: `demo-viewer`) |
+| `E2E_ADMIN_EMAIL` | Seeded admin user (default: `admin@demo.local`) |
+| `E2E_ADMIN_PASSWORD` | Seeded admin password (default: `E2eTestPassword1!`) |
+| `E2E_VIEWER_EMAIL` | Seeded viewer user (default: `viewer@demo.local`) |
+| `E2E_VIEWER_PASSWORD` | Seeded viewer password (default: `E2eTestPassword1!`) |
+| `E2E_MEETING_ID` | In-progress meeting UUID (default from seed: `55555555-5555-5555-5555-555555555555`) |
+| `E2E_OPENAI_ENABLED` | Set to `1` for live AI approve-flow E2E (needs OpenAI key on edge functions) |
 
 ## Scripts
 
@@ -92,6 +100,7 @@ All org features live under `/org/[orgSlug]/`:
 - `meetings` — L10 and meeting runner
 - `accountability` — accountability chart
 - `vto` — Vision/Traction Organizer
+- `settings` — organization profile and security
 - `settings/security` — security overview
 - `settings/security/sso` — SSO configuration (owner only)
 

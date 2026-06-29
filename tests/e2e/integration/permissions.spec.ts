@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signInAsViewer } from "../helpers/auth";
 
 /**
  * Viewer read-only permission structure across EOS modules.
@@ -60,6 +61,10 @@ test.describe("viewer read-only structure (requires Supabase)", () => {
     !process.env.E2E_SUPABASE_ENABLED,
     "Requires E2E_SUPABASE_ENABLED and E2E_VIEWER_ORG_SLUG fixtures",
   );
+
+  test.beforeEach(async ({ page }) => {
+    await signInAsViewer(page);
+  });
 
   for (const mod of viewerReadOnlyModules) {
     test(`viewer cannot mutate ${mod.name}`, async ({ page }) => {

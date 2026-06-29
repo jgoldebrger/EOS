@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signInAsAdmin, signInAsViewer } from "./helpers/auth";
 
 /**
  * Scorecard page structure tests.
@@ -18,6 +19,7 @@ test.describe("scorecard page (authenticated)", () => {
   );
 
   test("scorecard page renders table structure", async ({ page }) => {
+    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/scorecard`);
 
@@ -28,6 +30,7 @@ test.describe("scorecard page (authenticated)", () => {
   });
 
   test("viewer cannot see add metric control", async ({ page }) => {
+    await signInAsViewer(page);
     const orgSlug = process.env.E2E_VIEWER_ORG_SLUG ?? "demo-viewer";
     await page.goto(`/org/${orgSlug}/scorecard`);
 
@@ -36,6 +39,7 @@ test.describe("scorecard page (authenticated)", () => {
   });
 
   test("admin can open metric creation dialog", async ({ page }) => {
+    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/scorecard`);
 

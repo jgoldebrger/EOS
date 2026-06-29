@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signInAsAdmin } from "./helpers/auth";
 
 /**
  * AI suggestion UI structure tests.
@@ -20,10 +21,10 @@ test.describe("ai suggestion UI (authenticated)", () => {
   );
 
   test("meeting page exposes AI summary panel hooks", async ({ page }) => {
+    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
-    const meetingId = process.env.E2E_MEETING_ID;
-
-    test.skip(!meetingId, "Set E2E_MEETING_ID to an in-progress meeting");
+    const meetingId =
+      process.env.E2E_MEETING_ID ?? "55555555-5555-5555-5555-555555555555";
 
     await page.goto(`/org/${orgSlug}/meetings/${meetingId}`);
 
@@ -33,6 +34,7 @@ test.describe("ai suggestion UI (authenticated)", () => {
   });
 
   test("scorecard page exposes analyze button", async ({ page }) => {
+    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/scorecard`);
 
@@ -42,15 +44,15 @@ test.describe("ai suggestion UI (authenticated)", () => {
   test("approve flow renders suggestion cards when AI returns data", async ({
     page,
   }) => {
+    await signInAsAdmin(page);
     test.skip(
       !process.env.E2E_OPENAI_ENABLED,
       "Requires E2E_OPENAI_ENABLED for live AI suggestion generation",
     );
 
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
-    const meetingId = process.env.E2E_MEETING_ID;
-
-    test.skip(!meetingId, "Set E2E_MEETING_ID to an in-progress meeting");
+    const meetingId =
+      process.env.E2E_MEETING_ID ?? "55555555-5555-5555-5555-555555555555";
 
     await page.goto(`/org/${orgSlug}/meetings/${meetingId}`);
     await page.getByTestId("ai-summarize-meeting-button").click();

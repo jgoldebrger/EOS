@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signInAsAdmin, signInAsViewer } from "./helpers/auth";
 
 /**
  * Todos page structure tests.
@@ -18,6 +19,7 @@ test.describe("todos page (authenticated)", () => {
   );
 
   test("todos page renders list structure", async ({ page }) => {
+    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/todos`);
 
@@ -30,6 +32,7 @@ test.describe("todos page (authenticated)", () => {
   });
 
   test("viewer cannot see add todo control", async ({ page }) => {
+    await signInAsViewer(page);
     const orgSlug = process.env.E2E_VIEWER_ORG_SLUG ?? "demo-viewer";
     await page.goto(`/org/${orgSlug}/todos`);
 
@@ -38,6 +41,7 @@ test.describe("todos page (authenticated)", () => {
   });
 
   test("admin can open todo creation dialog", async ({ page }) => {
+    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/todos`);
 

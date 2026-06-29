@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signInAsAdmin } from "./helpers/auth";
 
 /**
  * Meetings page structure tests.
@@ -20,6 +21,7 @@ test.describe("meetings page (authenticated)", () => {
   );
 
   test("meetings list page renders structure", async ({ page }) => {
+    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/meetings`);
 
@@ -29,6 +31,7 @@ test.describe("meetings page (authenticated)", () => {
   });
 
   test("create L10 meeting dialog opens", async ({ page }) => {
+    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/meetings`);
 
@@ -38,10 +41,9 @@ test.describe("meetings page (authenticated)", () => {
   });
 
   test("live meeting shows agenda panel", async ({ page }) => {
+    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
-    const meetingId = process.env.E2E_MEETING_ID;
-
-    test.skip(!meetingId, "Set E2E_MEETING_ID to an in-progress meeting");
+    const meetingId = process.env.E2E_MEETING_ID ?? "55555555-5555-5555-5555-555555555555";
 
     await page.goto(`/org/${orgSlug}/meetings/${meetingId}`);
 
