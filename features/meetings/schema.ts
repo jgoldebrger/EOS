@@ -8,7 +8,7 @@ const meetingStatusSchema = z.enum([
   "cancelled",
 ]);
 
-const agendaStepSchema = z.object({
+export const agendaStepSchema = z.object({
   key: z.string().min(1).max(50),
   label: z.string().min(1).max(100),
   durationMinutes: z.number().int().min(1).max(480),

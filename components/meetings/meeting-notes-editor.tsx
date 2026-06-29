@@ -27,10 +27,6 @@ export function MeetingNotesEditor({
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setContent(initialContent);
-  }, [initialContent, sectionKey]);
-
-  useEffect(() => {
     return () => {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);

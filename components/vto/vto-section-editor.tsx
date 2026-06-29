@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -27,11 +27,6 @@ export function VtoSectionEditor({
   const [content, setContent] = useState(section.content);
   const [isDirty, setIsDirty] = useState(false);
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setContent(section.content);
-    setIsDirty(false);
-  }, [section.content, section.id]);
 
   function handleSave() {
     startTransition(async () => {

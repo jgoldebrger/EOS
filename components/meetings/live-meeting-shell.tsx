@@ -34,7 +34,7 @@ export function LiveMeetingShell({
   canEdit,
 }: LiveMeetingShellProps) {
   const router = useRouter();
-  const [meeting, setMeeting] = useState(initialMeeting);
+  const meeting = initialMeeting;
   const [activeSectionKey, setActiveSectionKey] = useState<string | null>(
     initialMeeting.active_section_key ?? initialMeeting.agenda[0]?.key ?? null,
   );
@@ -45,16 +45,6 @@ export function LiveMeetingShell({
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [isPending, startTransition] = useTransition();
   const prevSectionRef = useRef(activeSectionKey);
-
-  useEffect(() => {
-    setMeeting(initialMeeting);
-    setActiveSectionKey(
-      initialMeeting.active_section_key ?? initialMeeting.agenda[0]?.key ?? null,
-    );
-    if (initialMeeting.started_at) {
-      setSectionStartedAt(new Date(initialMeeting.started_at));
-    }
-  }, [initialMeeting]);
 
   useEffect(() => {
     if (meeting.status !== "in_progress") {
@@ -104,7 +94,7 @@ export function LiveMeetingShell({
           setRealtimeConnected(status === "SUBSCRIBED");
         });
     } catch {
-      setRealtimeConnected(false);
+      // Realtime unavailable — leave realtimeConnected at its initial false value.
     }
 
     return () => {
@@ -303,6 +293,7 @@ export function LiveMeetingShell({
 
           {activeSectionKey ? (
             <MeetingNotesEditor
+              key={activeSectionKey}
               organizationId={organizationId}
               meetingId={meeting.id}
               sectionKey={activeSectionKey}

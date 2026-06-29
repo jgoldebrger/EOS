@@ -23,6 +23,7 @@ export default async function MeetingDetailPage({
   return (
     <div className="mx-auto max-w-[1400px] p-8">
       <LiveMeetingShell
+        key={`${meeting.id}-${meeting.status}-${meeting.active_section_key ?? ""}`}
         organizationId={access.orgId}
         orgSlug={orgSlug}
         meeting={meeting}

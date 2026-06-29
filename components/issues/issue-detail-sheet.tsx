@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Archive, CheckCircle2, Link2 } from "lucide-react";
 import { archiveIssue, solveIssue, updateIssue } from "@/features/issues/actions";
@@ -42,10 +42,6 @@ function IssueDetailContent({
   const [solveOpen, setSolveOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setIdsNotes(issue.ids_notes ?? "");
-  }, [issue.id, issue.ids_notes]);
 
   function handleSaveNotes() {
     startTransition(async () => {
@@ -244,6 +240,7 @@ export function IssueDetailSheet({
       <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
         {issue ? (
           <IssueDetailContent
+            key={issue.id}
             issue={issue}
             orgSlug={orgSlug}
             canEdit={canEdit}

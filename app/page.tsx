@@ -30,7 +30,7 @@ export default function Home() {
           <CardHeader>
             <CardTitle>Get started</CardTitle>
             <CardDescription>
-              Authentication and organization onboarding arrive in Wave 1b.
+              Sign in or create an organization to access your EOS workspace.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 sm:flex-row">

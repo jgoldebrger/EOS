@@ -34,6 +34,10 @@ export const AUDIT_ACTIONS = {
   ROLE_CHANGE: "role_change",
   LOGIN: "login",
   LOGOUT: "logout",
+  /** AI suggestion approved or applied */
+  APPROVE: "approve",
+  /** AI suggestion dismissed */
+  DISMISS: "dismiss",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

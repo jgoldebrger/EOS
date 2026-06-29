@@ -76,17 +76,17 @@ import type { OrgRole } from "@/types/domain";
 
 ## Wave assignment matrix
 
-| Wave | Scope |
-|------|--------|
-| **0** | Scaffold, tooling, contracts, stubs (this commit) |
-| **1a** | Supabase migrations `001+`, RLS, `types/database.ts` codegen |
-| **1b** | Auth flows, `require-user`, `require-org-access`, org context hooks |
-| **2** | Organizations, teams, onboarding |
-| **3** | Scorecard, rocks |
-| **4** | Issues, todos |
-| **5** | Meetings, accountability |
-| **6** | AI features |
-| **7** | SSO / enterprise security settings |
+| Wave | Scope | Status |
+|------|--------|--------|
+| **0** | Scaffold, tooling, contracts, stubs | **complete** |
+| **1a** | Supabase migrations `001+`, RLS, `types/database.ts` codegen | **complete** |
+| **1b** | Auth flows, `require-user`, `require-org-access`, org context hooks | **complete** |
+| **2** | Organizations, teams, onboarding | **complete** |
+| **3** | Scorecard, rocks | **complete** |
+| **4** | Issues, todos | **complete** |
+| **5** | Meetings, accountability | **complete** |
+| **6** | AI features | **complete** |
+| **7** | SSO / enterprise security settings, integration hardening | **complete** |
 
 ## Audit contract
 

@@ -106,6 +106,7 @@ export function VtoEditor({
                   {isOpen ? (
                     <div className="border-t px-5 py-5">
                       <VtoSectionEditor
+                        key={section.id}
                         organizationId={organizationId}
                         section={section}
                         canManage={canManage}
