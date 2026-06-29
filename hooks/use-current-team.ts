@@ -8,6 +8,7 @@ export interface TeamContext {
   role: TeamRole;
 }
 
+/** Team context wiring arrives in a later wave. */
 export function useCurrentTeam(): TeamContext | null {
-  throw new Error("useCurrentTeam: not implemented (Wave 1b)");
+  return null;
 }

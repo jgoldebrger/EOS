@@ -1,6 +1,12 @@
 "use client";
 
 import type { OrgRole } from "@/types/domain";
+import {
+  canEditResource,
+  canManageOrg,
+  canViewResource,
+} from "@/lib/permissions/checks";
+import { useCurrentOrg } from "@/hooks/use-current-org";
 
 export interface PermissionsContext {
   orgRole: OrgRole;
@@ -10,5 +16,13 @@ export interface PermissionsContext {
 }
 
 export function usePermissions(): PermissionsContext {
-  throw new Error("usePermissions: not implemented (Wave 1b)");
+  const org = useCurrentOrg();
+  const orgRole: OrgRole = org?.role ?? "viewer";
+
+  return {
+    orgRole,
+    canManageOrg: canManageOrg(orgRole),
+    canEdit: (resource: string) => canEditResource(orgRole, resource),
+    canView: (resource: string) => canViewResource(orgRole, resource),
+  };
 }
