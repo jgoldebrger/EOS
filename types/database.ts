@@ -1,4 +1,4 @@
-/** Hand-written Supabase Database types — matches migrations 001–003. */
+/** Hand-written Supabase Database types — matches migrations 001–004. */
 
 export type Json =
   | string
@@ -12,6 +12,13 @@ export type OrgRoleDb = "owner" | "admin" | "member" | "viewer";
 export type TeamRoleDb = "leader" | "member" | "viewer";
 export type SsoProviderTypeDb = "oauth" | "saml";
 export type SsoMappableRoleDb = "admin" | "member" | "viewer";
+export type ScorecardTargetRuleDb =
+  | "higher_is_better"
+  | "lower_is_better"
+  | "range"
+  | "exact"
+  | "boolean";
+export type ScorecardStatusDb = "green" | "yellow" | "red" | "na";
 
 export interface Database {
   public: {
@@ -418,6 +425,138 @@ export interface Database {
           },
         ];
       };
+      scorecard_metrics: {
+        Row: {
+          id: string;
+          organization_id: string;
+          team_id: string | null;
+          owner_id: string;
+          name: string;
+          unit: string | null;
+          description: string | null;
+          target_rule: ScorecardTargetRuleDb;
+          target_value: number | null;
+          target_min: number | null;
+          target_max: number | null;
+          tolerance_percent: number;
+          display_order: number;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          team_id?: string | null;
+          owner_id: string;
+          name: string;
+          unit?: string | null;
+          description?: string | null;
+          target_rule: ScorecardTargetRuleDb;
+          target_value?: number | null;
+          target_min?: number | null;
+          target_max?: number | null;
+          tolerance_percent?: number;
+          display_order?: number;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          team_id?: string | null;
+          owner_id?: string;
+          name?: string;
+          unit?: string | null;
+          description?: string | null;
+          target_rule?: ScorecardTargetRuleDb;
+          target_value?: number | null;
+          target_min?: number | null;
+          target_max?: number | null;
+          tolerance_percent?: number;
+          display_order?: number;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "scorecard_metrics_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "scorecard_metrics_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      scorecard_values: {
+        Row: {
+          id: string;
+          organization_id: string;
+          metric_id: string;
+          period_start: string;
+          actual: number | null;
+          target_snapshot: number | null;
+          status_override: ScorecardStatusDb | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          metric_id: string;
+          period_start: string;
+          actual?: number | null;
+          target_snapshot?: number | null;
+          status_override?: ScorecardStatusDb | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          metric_id?: string;
+          period_start?: string;
+          actual?: number | null;
+          target_snapshot?: number | null;
+          status_override?: ScorecardStatusDb | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "scorecard_values_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "scorecard_values_metric_id_fkey";
+            columns: ["metric_id"];
+            isOneToOne: false;
+            referencedRelation: "scorecard_metrics";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -482,3 +621,5 @@ export type AiRun = Tables<"ai_runs">;
 export type OrganizationSsoSettings = Tables<"organization_sso_settings">;
 export type OrganizationSsoRoleMapping = Tables<"organization_sso_role_mappings">;
 export type OrganizationVerifiedDomain = Tables<"organization_verified_domains">;
+export type ScorecardMetric = Tables<"scorecard_metrics">;
+export type ScorecardValue = Tables<"scorecard_values">;
