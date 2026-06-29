@@ -1,4 +1,4 @@
-/** Hand-written Supabase Database types — matches migrations 001–008. */
+/** Hand-written Supabase Database types — matches migrations 001–009. */
 
 export type Json =
   | string
@@ -265,6 +265,60 @@ export interface Database {
             columns: ["organization_id"];
             isOneToOne: false;
             referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      accountability_seats: {
+        Row: {
+          id: string;
+          organization_id: string;
+          title: string;
+          parent_id: string | null;
+          responsibilities: string | null;
+          assigned_user_id: string | null;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          title: string;
+          parent_id?: string | null;
+          responsibilities?: string | null;
+          assigned_user_id?: string | null;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          title?: string;
+          parent_id?: string | null;
+          responsibilities?: string | null;
+          assigned_user_id?: string | null;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "accountability_seats_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "accountability_seats_parent_id_fkey";
+            columns: ["parent_id"];
+            isOneToOne: false;
+            referencedRelation: "accountability_seats";
             referencedColumns: ["id"];
           },
         ];
@@ -1025,6 +1079,7 @@ export type Team = Tables<"teams">;
 export type TeamMember = Tables<"team_members">;
 export type Invitation = Tables<"invitations">;
 export type AuditLog = Tables<"audit_logs">;
+export type AccountabilitySeat = Tables<"accountability_seats">;
 export type AiRun = Tables<"ai_runs">;
 export type OrganizationSsoSettings = Tables<"organization_sso_settings">;
 export type OrganizationSsoRoleMapping = Tables<"organization_sso_role_mappings">;
