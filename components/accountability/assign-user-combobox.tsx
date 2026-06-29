@@ -44,6 +44,7 @@ export function AssignUserCombobox({
         id={id}
         type="text"
         role="combobox"
+        aria-controls="assign-user-listbox"
         aria-expanded={open}
         aria-autocomplete="list"
         data-testid="assign-user-combobox"
@@ -62,10 +63,11 @@ export function AssignUserCombobox({
       />
       {open && !disabled && (
         <ul
+          id="assign-user-listbox"
           role="listbox"
           className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover py-1 text-sm shadow-md"
         >
-          <li role="option">
+          <li role="option" aria-selected={value === null}>
             <button
               type="button"
               className="w-full px-3 py-2 text-left hover:bg-muted"
