@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createOrgSchema } from "@/features/organizations/schema";
 import type { CreateOrganizationResult } from "@/features/organizations/types";
 import { AUDIT_ACTIONS } from "@/types/domain";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function createOrganization(
   input: unknown,
@@ -66,18 +67,14 @@ export async function createOrganization(
     };
   }
 
-  const { error: auditError } = await supabase.from("audit_logs").insert({
-    organization_id: org.id,
-    actor_id: user.id,
+  await logAuditEvent(supabase, {
+    organizationId: org.id,
+    actorId: user.id,
     action: AUDIT_ACTIONS.CREATE,
-    entity_type: "organizations",
-    entity_id: org.id,
+    entityType: "organizations",
+    entityId: org.id,
     metadata: { name, slug },
   });
-
-  if (auditError) {
-    console.error("audit_logs insert failed:", auditError.message);
-  }
 
   revalidatePath("/onboarding");
   revalidatePath(`/org/${org.slug}`);

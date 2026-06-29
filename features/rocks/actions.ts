@@ -13,6 +13,7 @@ import { canEditResource, canManageOrg, canManageTeam } from "@/lib/permissions/
 import { AUDIT_ACTIONS } from "@/types/domain";
 import type { OrgRole, TeamRole } from "@/types/domain";
 import type { Json, TablesUpdate } from "@/types/database";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getActorContext(organizationId: string) {
   const supabase = await createClient();
@@ -87,18 +88,14 @@ async function writeAudit(
   entityId: string,
   metadata: Json,
 ) {
-  const { error } = await supabase.from("audit_logs").insert({
-    organization_id: organizationId,
-    actor_id: actorId,
+  await logAuditEvent(supabase, {
+    organizationId,
+    actorId,
     action,
-    entity_type: "rocks",
-    entity_id: entityId,
+    entityType: "rocks",
+    entityId,
     metadata,
   });
-
-  if (error) {
-    console.error("rocks audit_logs insert failed:", error.message);
-  }
 }
 
 async function revalidateRocks(orgSlug: string) {

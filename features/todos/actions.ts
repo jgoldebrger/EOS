@@ -12,6 +12,7 @@ import type { CreateTodoResult, TodoActionResult } from "@/features/todos/types"
 import { canEditResource, canManageOrg, canManageTeam } from "@/lib/permissions/checks";
 import { AUDIT_ACTIONS } from "@/types/domain";
 import type { OrgRole, TeamRole } from "@/types/domain";
+import { logAuditEvent } from "@/lib/audit";
 import type { Json, TablesUpdate } from "@/types/database";
 
 async function getActorContext(organizationId: string) {
@@ -87,18 +88,14 @@ async function writeAudit(
   entityId: string,
   metadata: Json,
 ) {
-  const { error } = await supabase.from("audit_logs").insert({
-    organization_id: organizationId,
-    actor_id: actorId,
+  await logAuditEvent(supabase, {
+    organizationId,
+    actorId,
     action,
-    entity_type: "todos",
-    entity_id: entityId,
+    entityType: "todos",
+    entityId,
     metadata,
   });
-
-  if (error) {
-    console.error("todos audit_logs insert failed:", error.message);
-  }
 }
 
 async function revalidateTodos(orgSlug: string) {

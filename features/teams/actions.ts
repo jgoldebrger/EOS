@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createTeamSchema, teamSlugFromName } from "@/features/teams/schema";
 import type { CreateTeamResult } from "@/features/teams/types";
 import { AUDIT_ACTIONS } from "@/types/domain";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function createTeam(input: unknown): Promise<CreateTeamResult> {
   const parsed = createTeamSchema.safeParse(input);
@@ -66,18 +67,14 @@ export async function createTeam(input: unknown): Promise<CreateTeamResult> {
     };
   }
 
-  const { error: auditError } = await supabase.from("audit_logs").insert({
-    organization_id: team.organization_id,
-    actor_id: user.id,
+  await logAuditEvent(supabase, {
+    organizationId: team.organization_id,
+    actorId: user.id,
     action: AUDIT_ACTIONS.CREATE,
-    entity_type: "teams",
-    entity_id: team.id,
+    entityType: "teams",
+    entityId: team.id,
     metadata: { name, slug },
   });
-
-  if (auditError) {
-    console.error("audit_logs insert failed:", auditError.message);
-  }
 
   const { data: org } = await supabase
     .from("organizations")

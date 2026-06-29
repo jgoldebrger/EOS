@@ -19,6 +19,7 @@ import { canEditResource } from "@/lib/permissions/checks";
 import { AUDIT_ACTIONS } from "@/types/domain";
 import type { OrgRole } from "@/types/domain";
 import type { Json, TablesUpdate } from "@/types/database";
+import { logAuditEvent } from "@/lib/audit";
 
 async function getActorContext(organizationId: string) {
   const supabase = await createClient();
@@ -56,18 +57,14 @@ async function writeAudit(
   entityId: string,
   metadata: Json,
 ) {
-  const { error } = await supabase.from("audit_logs").insert({
-    organization_id: organizationId,
-    actor_id: actorId,
+  await logAuditEvent(supabase, {
+    organizationId,
+    actorId,
     action,
-    entity_type: "issues",
-    entity_id: entityId,
+    entityType: "issues",
+    entityId,
     metadata,
   });
-
-  if (error) {
-    console.error("issues audit_logs insert failed:", error.message);
-  }
 }
 
 async function revalidateIssues(orgSlug: string) {
@@ -485,12 +482,12 @@ export async function convertToTodo(
     };
   }
 
-  await actor.supabase.from("audit_logs").insert({
-    organization_id: parsed.data.organizationId,
-    actor_id: actor.user.id,
+  await logAuditEvent(actor.supabase, {
+    organizationId: parsed.data.organizationId,
+    actorId: actor.user.id,
     action: AUDIT_ACTIONS.CREATE,
-    entity_type: "todos",
-    entity_id: todo.id,
+    entityType: "todos",
+    entityId: todo.id,
     metadata: {
       source_type: "issue",
       source_id: issue.id,

@@ -14,6 +14,7 @@ import type { SsoActionResult } from "@/features/sso/types";
 import { isPublicEmailDomain, normalizeDomain } from "@/features/sso/utils";
 import { AUDIT_ACTIONS } from "@/types/domain";
 import type { Json } from "@/types/database";
+import { logAuditEvent } from "@/lib/audit";
 
 async function requireOwner(orgSlug: string) {
   const org = await getOrganizationBySlug(orgSlug);
@@ -38,18 +39,14 @@ async function writeSsoAudit(
 ) {
   const supabase = await createClient();
 
-  const { error } = await supabase.from("audit_logs").insert({
-    organization_id: organizationId,
-    actor_id: actorId,
+  await logAuditEvent(supabase, {
+    organizationId,
+    actorId,
     action,
-    entity_type: "sso_connections",
-    entity_id: entityId,
+    entityType: "sso_connections",
+    entityId: entityId ?? organizationId,
     metadata,
   });
-
-  if (error) {
-    console.error("SSO audit_logs insert failed:", error.message);
-  }
 }
 
 export async function updateSsoSettings(input: unknown): Promise<SsoActionResult> {
