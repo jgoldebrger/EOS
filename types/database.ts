@@ -1,4 +1,4 @@
-/** Hand-written Supabase Database types — matches migrations 001–004. */
+/** Hand-written Supabase Database types — matches migrations 001–005. */
 
 export type Json =
   | string
@@ -19,6 +19,8 @@ export type ScorecardTargetRuleDb =
   | "exact"
   | "boolean";
 export type ScorecardStatusDb = "green" | "yellow" | "red" | "na";
+export type RockStatusDb = "on_track" | "off_track" | "done" | "dropped";
+export type RockTypeDb = "company" | "team" | "individual";
 
 export interface Database {
   public: {
@@ -557,6 +559,78 @@ export interface Database {
           },
         ];
       };
+      rocks: {
+        Row: {
+          id: string;
+          organization_id: string;
+          team_id: string | null;
+          title: string;
+          owner_id: string;
+          quarter: string;
+          status: RockStatusDb;
+          confidence: number | null;
+          due_date: string | null;
+          success_definition: string | null;
+          progress: number;
+          rock_type: RockTypeDb;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          team_id?: string | null;
+          title: string;
+          owner_id: string;
+          quarter: string;
+          status?: RockStatusDb;
+          confidence?: number | null;
+          due_date?: string | null;
+          success_definition?: string | null;
+          progress?: number;
+          rock_type?: RockTypeDb;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          team_id?: string | null;
+          title?: string;
+          owner_id?: string;
+          quarter?: string;
+          status?: RockStatusDb;
+          confidence?: number | null;
+          due_date?: string | null;
+          success_definition?: string | null;
+          progress?: number;
+          rock_type?: RockTypeDb;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "rocks_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "rocks_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -623,3 +697,4 @@ export type OrganizationSsoRoleMapping = Tables<"organization_sso_role_mappings"
 export type OrganizationVerifiedDomain = Tables<"organization_verified_domains">;
 export type ScorecardMetric = Tables<"scorecard_metrics">;
 export type ScorecardValue = Tables<"scorecard_values">;
+export type Rock = Tables<"rocks">;
