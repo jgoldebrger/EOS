@@ -1,4 +1,4 @@
-/** Hand-written Supabase Database types — matches migrations 001–005. */
+/** Hand-written Supabase Database types — matches migrations 001–006. */
 
 export type Json =
   | string
@@ -21,6 +21,7 @@ export type ScorecardTargetRuleDb =
 export type ScorecardStatusDb = "green" | "yellow" | "red" | "na";
 export type RockStatusDb = "on_track" | "off_track" | "done" | "dropped";
 export type RockTypeDb = "company" | "team" | "individual";
+export type IssueStatusDb = "open" | "discussing" | "solved" | "archived";
 
 export interface Database {
   public: {
@@ -631,6 +632,92 @@ export interface Database {
           },
         ];
       };
+      issues: {
+        Row: {
+          id: string;
+          organization_id: string;
+          team_id: string | null;
+          title: string;
+          description: string | null;
+          owner_id: string | null;
+          priority: number;
+          status: IssueStatusDb;
+          ids_notes: string | null;
+          linked_metric_id: string | null;
+          linked_rock_id: string | null;
+          linked_meeting_id: string | null;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          team_id?: string | null;
+          title: string;
+          description?: string | null;
+          owner_id?: string | null;
+          priority?: number;
+          status?: IssueStatusDb;
+          ids_notes?: string | null;
+          linked_metric_id?: string | null;
+          linked_rock_id?: string | null;
+          linked_meeting_id?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          team_id?: string | null;
+          title?: string;
+          description?: string | null;
+          owner_id?: string | null;
+          priority?: number;
+          status?: IssueStatusDb;
+          ids_notes?: string | null;
+          linked_metric_id?: string | null;
+          linked_rock_id?: string | null;
+          linked_meeting_id?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "issues_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "issues_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "issues_linked_metric_id_fkey";
+            columns: ["linked_metric_id"];
+            isOneToOne: false;
+            referencedRelation: "scorecard_metrics";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "issues_linked_rock_id_fkey";
+            columns: ["linked_rock_id"];
+            isOneToOne: false;
+            referencedRelation: "rocks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -698,3 +785,4 @@ export type OrganizationVerifiedDomain = Tables<"organization_verified_domains">
 export type ScorecardMetric = Tables<"scorecard_metrics">;
 export type ScorecardValue = Tables<"scorecard_values">;
 export type Rock = Tables<"rocks">;
+export type Issue = Tables<"issues">;
