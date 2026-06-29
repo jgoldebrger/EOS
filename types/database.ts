@@ -1,4 +1,4 @@
-/** Hand-written Supabase Database types — matches migrations 001–009. */
+/** Hand-written Supabase Database types — matches migrations 001–010. */
 
 export type Json =
   | string
@@ -1019,6 +1019,85 @@ export interface Database {
           },
         ];
       };
+      vto_sections: {
+        Row: {
+          id: string;
+          organization_id: string;
+          section_key: string;
+          title: string;
+          content: string;
+          display_order: number;
+          visible: boolean;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          section_key: string;
+          title: string;
+          content?: string;
+          display_order?: number;
+          visible?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          section_key?: string;
+          title?: string;
+          content?: string;
+          display_order?: number;
+          visible?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "vto_sections_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      vto_snapshots: {
+        Row: {
+          id: string;
+          organization_id: string;
+          snapshot_data: Json;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          snapshot_data: Json;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          snapshot_data?: Json;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "vto_snapshots_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -1092,3 +1171,5 @@ export type Todo = Tables<"todos">;
 export type Meeting = Tables<"meetings">;
 export type MeetingNote = Tables<"meeting_notes">;
 export type Decision = Tables<"decisions">;
+export type VtoSection = Tables<"vto_sections">;
+export type VtoSnapshot = Tables<"vto_snapshots">;
