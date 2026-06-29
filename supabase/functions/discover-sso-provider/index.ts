@@ -1,0 +1,123 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { z } from "https://esm.sh/zod@3.24.2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+const PUBLIC_DOMAINS = new Set([
+  "gmail.com",
+  "yahoo.com",
+  "outlook.com",
+  "hotmail.com",
+  "icloud.com",
+  "proton.me",
+  "protonmail.com",
+]);
+
+const discoverInputSchema = z
+  .object({
+    email: z.string().email().optional(),
+    domain: z.string().min(1).optional(),
+  })
+  .refine((value) => value.email || value.domain, {
+    message: "Email or domain is required",
+  });
+
+function normalizeDomain(input: string): string {
+  const trimmed = input.trim().toLowerCase();
+
+  if (trimmed.includes("@")) {
+    const parts = trimmed.split("@");
+    return parts[parts.length - 1] ?? trimmed;
+  }
+
+  return trimmed.replace(/^\.+|\.+$/g, "");
+}
+
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return jsonResponse({ error: "invalid_input" }, 405);
+  }
+
+  let payload: unknown;
+  try {
+    payload = await req.json();
+  } catch {
+    return jsonResponse({ error: "invalid_input" }, 400);
+  }
+
+  const parsed = discoverInputSchema.safeParse(payload);
+  if (!parsed.success) {
+    return jsonResponse({ error: "invalid_input" }, 400);
+  }
+
+  const domain = parsed.data.domain
+    ? normalizeDomain(parsed.data.domain)
+    : normalizeDomain(parsed.data.email ?? "");
+
+  if (!domain || PUBLIC_DOMAINS.has(domain)) {
+    return jsonResponse({ error: "public_domain" }, 400);
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return jsonResponse({ error: "configuration_error" }, 500);
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  const { data: verifiedMatch } = await supabase
+    .from("organization_verified_domains")
+    .select("organization_id")
+    .eq("domain", domain)
+    .maybeSingle();
+
+  let organizationId = verifiedMatch?.organization_id ?? null;
+
+  if (!organizationId) {
+    const { data: settingsMatch } = await supabase
+      .from("organization_sso_settings")
+      .select("organization_id")
+      .eq("domain", domain)
+      .maybeSingle();
+
+    organizationId = settingsMatch?.organization_id ?? null;
+  }
+
+  if (!organizationId) {
+    return jsonResponse({ error: "not_found" }, 404);
+  }
+
+  const { data: settings } = await supabase
+    .from("organization_sso_settings")
+    .select("provider_name, provider_type, organization_id")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (!settings) {
+    return jsonResponse({ error: "not_found" }, 404);
+  }
+
+  return jsonResponse({
+    providerName: settings.provider_name,
+    providerType: settings.provider_type,
+    organizationId: settings.organization_id,
+  });
+});

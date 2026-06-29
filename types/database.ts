@@ -1,4 +1,4 @@
-/** Hand-written Supabase Database types — matches migrations 001–002. */
+/** Hand-written Supabase Database types — matches migrations 001–003. */
 
 export type Json =
   | string
@@ -10,6 +10,8 @@ export type Json =
 
 export type OrgRoleDb = "owner" | "admin" | "member" | "viewer";
 export type TeamRoleDb = "leader" | "member" | "viewer";
+export type SsoProviderTypeDb = "oauth" | "saml";
+export type SsoMappableRoleDb = "admin" | "member" | "viewer";
 
 export interface Database {
   public: {
@@ -293,6 +295,129 @@ export interface Database {
           },
         ];
       };
+      organization_sso_settings: {
+        Row: {
+          id: string;
+          organization_id: string;
+          provider_type: SsoProviderTypeDb;
+          provider_name: string;
+          domain: string;
+          enforced: boolean;
+          allow_email_password_login: boolean;
+          auto_join_enabled: boolean;
+          default_org_role: SsoMappableRoleDb;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          provider_type: SsoProviderTypeDb;
+          provider_name: string;
+          domain: string;
+          enforced?: boolean;
+          allow_email_password_login?: boolean;
+          auto_join_enabled?: boolean;
+          default_org_role?: SsoMappableRoleDb;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          provider_type?: SsoProviderTypeDb;
+          provider_name?: string;
+          domain?: string;
+          enforced?: boolean;
+          allow_email_password_login?: boolean;
+          auto_join_enabled?: boolean;
+          default_org_role?: SsoMappableRoleDb;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "organization_sso_settings_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      organization_sso_role_mappings: {
+        Row: {
+          id: string;
+          organization_id: string;
+          provider_group: string;
+          org_role: SsoMappableRoleDb;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          provider_group: string;
+          org_role: SsoMappableRoleDb;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          provider_group?: string;
+          org_role?: SsoMappableRoleDb;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "organization_sso_role_mappings_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      organization_verified_domains: {
+        Row: {
+          id: string;
+          organization_id: string;
+          domain: string;
+          verified_at: string;
+          verification_method: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          domain: string;
+          verified_at?: string;
+          verification_method: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          domain?: string;
+          verified_at?: string;
+          verification_method?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "organization_verified_domains_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -354,3 +479,6 @@ export type TeamMember = Tables<"team_members">;
 export type Invitation = Tables<"invitations">;
 export type AuditLog = Tables<"audit_logs">;
 export type AiRun = Tables<"ai_runs">;
+export type OrganizationSsoSettings = Tables<"organization_sso_settings">;
+export type OrganizationSsoRoleMapping = Tables<"organization_sso_role_mappings">;
+export type OrganizationVerifiedDomain = Tables<"organization_verified_domains">;
