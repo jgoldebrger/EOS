@@ -16,6 +16,7 @@ import type {
   ScorecardFilters,
   ScorecardMemberOption,
   ScorecardMetricWithOwner,
+  ScorecardTag,
   ScorecardTeamOption,
   ScorecardValue,
   ScorecardValueCell,
@@ -107,6 +108,8 @@ const getMetricsForOrgCached = cache(
       return [];
     }
 
+    const metricTags = await getTagsForMetrics(metrics.map((row) => row.id));
+
     const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
     const currentEmail = user?.email ?? null;
 
@@ -121,6 +124,7 @@ const getMetricsForOrgCached = cache(
         ...metric,
         teamName: team?.name ?? null,
         categoryName: metricCategoryId ? (categoryMap.get(metricCategoryId) ?? null) : null,
+        tags: metricTags[metric.id] ?? [],
         owner: {
           userId: metricOwnerId,
           label: formatOwnerLabel(metricOwnerId, ownerEmail),
@@ -171,6 +175,72 @@ const getCategoriesForOrgCached = cache(
     return rows;
   },
 );
+
+export async function getTagsForOrg(organizationId: string): Promise<ScorecardTag[]> {
+  return getTagsForOrgCached(organizationId);
+}
+
+const getTagsForOrgCached = cache(
+  async (organizationId: string): Promise<ScorecardTag[]> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("tags")
+      .select("id, name, color")
+      .eq("organization_id", organizationId)
+      .order("name", { ascending: true });
+
+    if (error || !data) {
+      return [];
+    }
+
+    return data as ScorecardTag[];
+  },
+);
+
+export async function getTagsForMetrics(
+  metricIds: string[],
+): Promise<Record<string, ScorecardTag[]>> {
+  if (metricIds.length === 0) {
+    return {};
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("scorecard_metric_tags")
+    .select("metric_id, tags(id, name, color)")
+    .in("metric_id", metricIds);
+
+  if (error || !data) {
+    return {};
+  }
+
+  const result: Record<string, ScorecardTag[]> = {};
+
+  for (const row of data) {
+    const tagJoin = row.tags as { id: string; name: string; color: string | null } | null;
+    if (!tagJoin) {
+      continue;
+    }
+    const metricId = row.metric_id as string;
+    const existing = result[metricId] ?? [];
+    existing.push({
+      id: tagJoin.id,
+      name: tagJoin.name,
+      color: tagJoin.color,
+    });
+    result[metricId] = existing;
+  }
+
+  for (const metricId of metricIds) {
+    if (!result[metricId]) {
+      result[metricId] = [];
+    } else {
+      result[metricId]!.sort((a, b) => a.name.localeCompare(b.name));
+    }
+  }
+
+  return result;
+}
 
 export async function getValuesForMetrics(
   metricIds: string[],

@@ -10,6 +10,7 @@ import {
   getMetricsForOrg,
   getOrgMembersForScorecard,
   getOrgTeamsForScorecard,
+  getTagsForOrg,
 } from "@/features/scorecard/queries";
 import { getPeriodColumns, type PeriodType } from "@/features/scorecard/utils";
 import { canManageOrg } from "@/lib/permissions/checks";
@@ -48,11 +49,12 @@ async function TeamScorecardContent({
         : undefined,
   };
 
-  const [metrics, teams, members, categories] = await Promise.all([
+  const [metrics, teams, members, categories, tags] = await Promise.all([
     getMetricsForOrg(access.orgId, filters),
     getOrgTeamsForScorecard(access.orgId),
     getOrgMembersForScorecard(access.orgId),
     getCategoriesForOrg(access.orgId, access.teamId),
+    getTagsForOrg(access.orgId),
   ]);
 
   const isTeamLeader = access.teamRole === "leader";
@@ -61,9 +63,12 @@ async function TeamScorecardContent({
   return (
     <div className="space-y-6 p-8">
       <ScorecardToolbar
+        organizationId={access.orgId}
         orgSlug={orgSlug}
         teamSlug={teamSlug}
+        teamId={access.teamId}
         categories={categories}
+        canManageMetrics={canManageMetrics}
       />
       <ScorecardPageHeader
         organizationId={access.orgId}
@@ -73,6 +78,7 @@ async function TeamScorecardContent({
         teams={teams}
         members={members}
         categories={categories}
+        tags={tags}
         defaultOwnerId={user.id}
         defaultTeamId={access.teamId}
       />
@@ -96,6 +102,7 @@ async function TeamScorecardContent({
           teams={teams}
           members={members}
           categories={categories}
+          tags={tags}
           weeks={periods}
           groupBy={groupBy}
           periodType={periodType}

@@ -3,6 +3,7 @@ import { CreateMetricDialog } from "@/components/scorecard/create-metric-dialog"
 import type {
   ScorecardCategory,
   ScorecardMemberOption,
+  ScorecardTag,
   ScorecardTeamOption,
 } from "@/features/scorecard/types";
 
@@ -14,6 +15,7 @@ interface ScorecardPageHeaderProps {
   teams: ScorecardTeamOption[];
   members: ScorecardMemberOption[];
   categories?: ScorecardCategory[];
+  tags?: ScorecardTag[];
   defaultOwnerId: string;
   defaultTeamId?: string;
 }
@@ -26,6 +28,7 @@ export function ScorecardPageHeader({
   teams,
   members,
   categories = [],
+  tags = [],
   defaultOwnerId,
   defaultTeamId,
 }: ScorecardPageHeaderProps) {
@@ -42,6 +45,7 @@ export function ScorecardPageHeader({
             teams={teams}
             members={members}
             categories={categories}
+            tags={tags}
             defaultOwnerId={defaultOwnerId}
             defaultTeamId={defaultTeamId}
           />

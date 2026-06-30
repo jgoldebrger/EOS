@@ -7,13 +7,21 @@ import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import {
   createMetricActionSchema,
   createMetricSchema,
+  createScorecardCategorySchema,
+  createTagSchema,
   normalizeMetricInput,
   reorderMetricsSchema,
+  setMetricTagsSchema,
   updateMetricActionSchema,
   updateMetricSchema,
   upsertValueSchema,
 } from "@/features/scorecard/schema";
-import type { CreateMetricResult, ScorecardActionResult } from "@/features/scorecard/types";
+import type {
+  CreateCategoryResult,
+  CreateMetricResult,
+  CreateTagResult,
+  ScorecardActionResult,
+} from "@/features/scorecard/types";
 import {
   buildFormulaTokens,
   detectFormulaCycle,
@@ -687,6 +695,288 @@ function scheduleScorecardRevalidation(orgSlug: string, teamSlug?: string | null
   });
 }
 
+export async function createScorecardCategory(
+  input: unknown,
+): Promise<CreateCategoryResult> {
+  const parsed = createScorecardCategorySchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid category details",
+    };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  const teamId = parsed.data.teamId ?? null;
+  const allowed = teamId
+    ? await canManageMetric(actor.supabase, actor.orgRole, actor.user.id, teamId)
+    : canManageOrg(actor.orgRole);
+
+  if (!allowed) {
+    return {
+      success: false,
+      error: "You do not have permission to create categories",
+    };
+  }
+
+  const { data: existing } = await (
+    actor.supabase as unknown as {
+      from: (table: string) => {
+        select: (cols: string) => {
+          eq: (col: string, val: string) => {
+            order: (
+              col: string,
+              opts: { ascending: boolean },
+            ) => Promise<{ data: Array<{ display_order: number }> | null }>;
+          };
+        };
+      };
+    }
+  )
+    .from("scorecard_categories")
+    .select("display_order")
+    .eq("organization_id", parsed.data.organizationId)
+    .order("display_order", { ascending: false });
+
+  const nextOrder =
+    existing && existing.length > 0 ? (existing[0]?.display_order ?? 0) + 1 : 0;
+
+  const { data: category, error } = await (
+    actor.supabase as unknown as {
+      from: (table: string) => {
+        insert: (row: Record<string, unknown>) => {
+          select: (cols: string) => {
+            single: () => Promise<{
+              data: { id: string; name: string; color: string } | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      };
+    }
+  )
+    .from("scorecard_categories")
+    .insert({
+      organization_id: parsed.data.organizationId,
+      team_id: teamId,
+      name: parsed.data.name,
+      color: parsed.data.color,
+      display_order: nextOrder,
+      created_by: actor.user.id,
+    })
+    .select("id, name, color")
+    .single();
+
+  if (error || !category) {
+    const detail = error?.message ?? "";
+    if (process.env.NODE_ENV === "development") {
+      console.error("[createScorecardCategory] insert failed:", error);
+    }
+    return {
+      success: false,
+      error: detail.includes("scorecard_categories")
+        ? "Database schema is out of date. Run .\\scripts\\push-cloud-db.ps1 to apply pending migrations."
+        : detail
+          ? `Unable to create category: ${detail}`
+          : "Unable to create category. Please try again.",
+    };
+  }
+
+  if (parsed.data.orgSlug) {
+    scheduleScorecardRevalidation(parsed.data.orgSlug, parsed.data.teamSlug);
+  }
+
+  return {
+    success: true,
+    category: {
+      id: category.id,
+      name: category.name,
+      color: category.color,
+    },
+  };
+}
+
+export async function createTag(input: unknown): Promise<CreateTagResult> {
+  const parsed = createTagSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid tag details",
+    };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  const teamId = parsed.data.teamId ?? null;
+  const allowed = teamId
+    ? await canManageMetric(actor.supabase, actor.orgRole, actor.user.id, teamId)
+    : canManageOrg(actor.orgRole);
+
+  if (!allowed) {
+    return {
+      success: false,
+      error: "You do not have permission to create tags",
+    };
+  }
+
+  const { data: tag, error } = await actor.supabase
+    .from("tags")
+    .insert({
+      organization_id: parsed.data.organizationId,
+      name: parsed.data.name,
+      color: parsed.data.color ?? null,
+    })
+    .select("id, name, color")
+    .single();
+
+  if (error || !tag) {
+    const detail = error?.message ?? "";
+    if (process.env.NODE_ENV === "development") {
+      console.error("[createTag] insert failed:", error);
+    }
+    return {
+      success: false,
+      error: detail.includes("tags_organization_name_unique")
+        ? "A tag with this name already exists"
+        : detail.includes("tags")
+          ? "Database schema is out of date. Run .\\scripts\\push-cloud-db.ps1 to apply pending migrations."
+          : detail
+            ? `Unable to create tag: ${detail}`
+            : "Unable to create tag. Please try again.",
+    };
+  }
+
+  if (parsed.data.orgSlug) {
+    scheduleScorecardRevalidation(parsed.data.orgSlug, parsed.data.teamSlug);
+  }
+
+  return {
+    success: true,
+    tag: {
+      id: tag.id,
+      name: tag.name,
+      color: tag.color,
+    },
+  };
+}
+
+async function replaceMetricTags(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  metricId: string,
+  tagIds: string[],
+): Promise<{ error?: string }> {
+  if (tagIds.length > 0) {
+    const { data: validTags, error: tagError } = await supabase
+      .from("tags")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .in("id", tagIds);
+
+    if (tagError) {
+      return { error: "Unable to validate tags" };
+    }
+
+    if ((validTags ?? []).length !== tagIds.length) {
+      return { error: "One or more tags are invalid" };
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from("scorecard_metric_tags")
+    .delete()
+    .eq("metric_id", metricId);
+
+  if (deleteError) {
+    return { error: "Unable to update metric tags" };
+  }
+
+  if (tagIds.length === 0) {
+    return {};
+  }
+
+  const { error: insertError } = await supabase.from("scorecard_metric_tags").insert(
+    tagIds.map((tagId) => ({
+      metric_id: metricId,
+      tag_id: tagId,
+    })),
+  );
+
+  if (insertError) {
+    return { error: "Unable to update metric tags" };
+  }
+
+  return {};
+}
+
+export async function setMetricTags(input: unknown): Promise<ScorecardActionResult> {
+  const parsed = setMetricTagsSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid tag assignment",
+    };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  const { data: metric } = await actor.supabase
+    .from("scorecard_metrics")
+    .select("team_id")
+    .eq("id", parsed.data.metricId)
+    .eq("organization_id", parsed.data.organizationId)
+    .maybeSingle();
+
+  if (!metric) {
+    return { success: false, error: "Metric not found" };
+  }
+
+  const allowed = await canManageMetric(
+    actor.supabase,
+    actor.orgRole,
+    actor.user.id,
+    metric.team_id,
+  );
+
+  if (!allowed) {
+    return {
+      success: false,
+      error: "You do not have permission to update tags on this metric",
+    };
+  }
+
+  const uniqueTagIds = [...new Set(parsed.data.tagIds)];
+  const tagResult = await replaceMetricTags(
+    actor.supabase,
+    parsed.data.organizationId,
+    parsed.data.metricId,
+    uniqueTagIds,
+  );
+
+  if (tagResult.error) {
+    return { success: false, error: tagResult.error };
+  }
+
+  if (parsed.data.orgSlug) {
+    scheduleScorecardRevalidation(parsed.data.orgSlug, parsed.data.teamSlug);
+  }
+
+  return { success: true };
+}
+
 export async function createMetric(input: unknown): Promise<CreateMetricResult> {
   const startedAt = Date.now();
   const mark = (step: string) => {
@@ -820,6 +1110,19 @@ export async function createMetric(input: unknown): Promise<CreateMetricResult> 
     { name: normalized.name, targetRule: normalized.targetRule } as Json,
   );
   mark("audit (async)");
+
+  const tagIds = parsed.data.tagIds ?? [];
+  if (tagIds.length > 0) {
+    const tagResult = await replaceMetricTags(
+      actor.supabase,
+      parsed.data.organizationId,
+      metric.id,
+      [...new Set(tagIds)],
+    );
+    if (tagResult.error) {
+      return { success: false, error: tagResult.error };
+    }
+  }
 
   const orgSlug = parsed.data.orgSlug;
   mark("org slug");

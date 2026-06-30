@@ -25,6 +25,9 @@ import {
 } from "@/features/scorecard/utils";
 import {
   createMetricSchema,
+  createScorecardCategorySchema,
+  createTagSchema,
+  setMetricTagsSchema,
   updateMetricSchema,
   upsertValueSchema,
 } from "@/features/scorecard/schema";
@@ -305,6 +308,100 @@ describe("createMetricSchema", () => {
     if (result.success) {
       expect(result.data.targetValue).toBe(99);
     }
+  });
+});
+
+describe("createScorecardCategorySchema", () => {
+  const orgId = "550e8400-e29b-41d4-a716-446655440001";
+
+  it("accepts a valid category name and default color", () => {
+    const result = createScorecardCategorySchema.safeParse({
+      organizationId: orgId,
+      name: "Sales",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.color).toBe("#6366f1");
+    }
+  });
+
+  it("rejects empty category names", () => {
+    const result = createScorecardCategorySchema.safeParse({
+      organizationId: orgId,
+      name: "   ",
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("createTagSchema", () => {
+  const orgId = "550e8400-e29b-41d4-a716-446655440001";
+
+  it("accepts a valid tag name without color", () => {
+    const result = createTagSchema.safeParse({
+      organizationId: orgId,
+      name: "Priority",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts an optional hex color", () => {
+    const result = createTagSchema.safeParse({
+      organizationId: orgId,
+      name: "Priority",
+      color: "#ff0000",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid colors", () => {
+    const result = createTagSchema.safeParse({
+      organizationId: orgId,
+      name: "Priority",
+      color: "red",
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("setMetricTagsSchema", () => {
+  const orgId = "550e8400-e29b-41d4-a716-446655440001";
+  const metricId = "550e8400-e29b-41d4-a716-446655440003";
+  const tagId = "550e8400-e29b-41d4-a716-446655440004";
+
+  it("accepts an empty tag list", () => {
+    const result = setMetricTagsSchema.safeParse({
+      organizationId: orgId,
+      metricId,
+      tagIds: [],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid tag ids", () => {
+    const result = setMetricTagsSchema.safeParse({
+      organizationId: orgId,
+      metricId,
+      tagIds: [tagId],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid tag ids", () => {
+    const result = setMetricTagsSchema.safeParse({
+      organizationId: orgId,
+      metricId,
+      tagIds: ["not-a-uuid"],
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 

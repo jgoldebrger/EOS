@@ -3,7 +3,9 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Download, Bookmark } from "lucide-react";
 import type { PeriodType } from "@/features/scorecard/utils";
-import type { ScorecardCategory } from "@/features/scorecard/types";
+import type { ScorecardCategory, ScorecardTag } from "@/features/scorecard/types";
+import { CreateCategoryDialog } from "@/components/scorecard/create-category-dialog";
+import { CreateTagDialog } from "@/components/scorecard/create-tag-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -20,12 +22,22 @@ const selectClass =
   "h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs";
 
 interface ScorecardToolbarProps {
+  organizationId: string;
   orgSlug: string;
   teamSlug: string;
+  teamId?: string;
   categories: ScorecardCategory[];
+  canManageMetrics?: boolean;
 }
 
-export function ScorecardToolbar({ orgSlug, teamSlug, categories }: ScorecardToolbarProps) {
+export function ScorecardToolbar({
+  organizationId,
+  orgSlug,
+  teamSlug,
+  teamId,
+  categories,
+  canManageMetrics = false,
+}: ScorecardToolbarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const periodType = (searchParams.get("period") ?? "weekly") as PeriodType;
@@ -134,6 +146,23 @@ export function ScorecardToolbar({ orgSlug, teamSlug, categories }: ScorecardToo
             </option>
           ))}
         </select>
+
+        {canManageMetrics ? (
+          <>
+            <CreateCategoryDialog
+              organizationId={organizationId}
+              orgSlug={orgSlug}
+              teamId={teamId}
+              teamSlug={teamSlug}
+            />
+            <CreateTagDialog
+              organizationId={organizationId}
+              orgSlug={orgSlug}
+              teamId={teamId}
+              teamSlug={teamSlug}
+            />
+          </>
+        ) : null}
 
         <select
           className={selectClass}

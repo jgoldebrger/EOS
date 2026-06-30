@@ -10,6 +10,7 @@ import type {
   ScorecardCategory,
   ScorecardMemberOption,
   ScorecardMetricWithOwner,
+  ScorecardTag,
   ScorecardTeamOption,
 } from "@/features/scorecard/types";
 import type { PeriodType } from "@/features/scorecard/utils";
@@ -27,6 +28,7 @@ interface ScorecardMetricTableSectionProps {
   teams: ScorecardTeamOption[];
   members: ScorecardMemberOption[];
   categories: ScorecardCategory[];
+  tags: ScorecardTag[];
   weeks: string[];
   groupBy: "owner" | "team" | "none";
   periodType: PeriodType;

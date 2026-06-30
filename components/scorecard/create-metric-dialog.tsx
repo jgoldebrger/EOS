@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type Resolver } from "react-hook-form";
@@ -10,12 +10,15 @@ import { createMetricSchema, type CreateMetricInput } from "@/features/scorecard
 import type {
   ScorecardCategory,
   ScorecardMemberOption,
+  ScorecardTag,
   ScorecardTeamOption,
 } from "@/features/scorecard/types";
 import type { RollupMethod, TargetOperator, TimeKind, ValueType } from "@/features/scorecard/utils";
 import { TimeValueInput } from "@/components/scorecard/time-value-input";
 import { FormulaMetricInput } from "@/components/scorecard/formula-metric-input";
 import { FormulaHelpCheatSheet } from "@/components/scorecard/formula-help-cheat-sheet";
+import { CreateCategoryDialog } from "@/components/scorecard/create-category-dialog";
+import { TagPicker } from "@/components/scorecard/tag-picker";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +48,7 @@ interface CreateMetricDialogProps {
   teams: ScorecardTeamOption[];
   members: ScorecardMemberOption[];
   categories?: ScorecardCategory[];
+  tags?: ScorecardTag[];
   defaultOwnerId: string;
   defaultTeamId?: string;
 }
@@ -124,12 +128,24 @@ export function CreateMetricDialog({
   teams,
   members,
   categories = [],
+  tags = [],
   defaultOwnerId,
   defaultTeamId,
 }: CreateMetricDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localCategories, setLocalCategories] = useState(categories);
+  const [localTags, setLocalTags] = useState(tags);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    setLocalCategories(categories);
+  }, [categories]);
+
+  useEffect(() => {
+    setLocalTags(tags);
+  }, [tags]);
 
   const form = useForm<CreateMetricInput>({
     resolver: zodResolver(createMetricSchema) as Resolver<CreateMetricInput>,
@@ -162,6 +178,7 @@ export function CreateMetricDialog({
       description: values.description || null,
       teamId: values.teamId || null,
       categoryId: values.categoryId || null,
+      tagIds: selectedTagIds,
       weeklyRollupMethod:
         values.entryCadence === "daily" ? values.weeklyRollupMethod ?? "sum" : null,
     });
@@ -174,6 +191,7 @@ export function CreateMetricDialog({
 
     showSuccessToast("Measurable created");
     form.reset(getDefaultValues(organizationId, defaultOwnerId, defaultTeamId));
+    setSelectedTagIds([]);
     setOpen(false);
     startTransition(() => {
       router.refresh();
@@ -622,15 +640,15 @@ export function CreateMetricDialog({
                   />
                 ) : null}
 
-                {categories.length > 0 && (
-                  <FormField
-                    control={form.control}
-                    name="categoryId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs uppercase text-muted-foreground">
-                          Category
-                        </FormLabel>
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs uppercase text-muted-foreground">
+                        Category
+                      </FormLabel>
+                      <div className="flex items-center gap-2">
                         <FormControl>
                           <select
                             className={selectClassName}
@@ -639,19 +657,50 @@ export function CreateMetricDialog({
                               field.onChange(event.target.value || null)
                             }
                           >
-                            <option value="">Add category</option>
-                            {categories.map((category) => (
+                            <option value="">No category</option>
+                            {localCategories.map((category) => (
                               <option key={category.id} value={category.id}>
                                 {category.name}
                               </option>
                             ))}
                           </select>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                        <CreateCategoryDialog
+                          organizationId={organizationId}
+                          orgSlug={orgSlug}
+                          teamId={teamId ?? defaultTeamId}
+                          teamSlug={teamSlug}
+                          onCreated={(category) => {
+                            setLocalCategories((prev) => [...prev, category]);
+                            field.onChange(category.id);
+                          }}
+                          trigger={
+                            <Button type="button" variant="outline" size="sm">
+                              Add
+                            </Button>
+                          }
+                        />
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="space-y-2">
+                  <FormLabel className="text-xs uppercase text-muted-foreground">
+                    Tags
+                  </FormLabel>
+                  <TagPicker
+                    organizationId={organizationId}
+                    orgSlug={orgSlug}
+                    teamId={teamId ?? defaultTeamId}
+                    teamSlug={teamSlug}
+                    tags={localTags}
+                    selectedTagIds={selectedTagIds}
+                    onChange={setSelectedTagIds}
+                    onTagsChange={setLocalTags}
                   />
-                )}
+                </div>
 
                 {!defaultTeamId && (
                   <FormField

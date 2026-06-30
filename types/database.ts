@@ -743,6 +743,68 @@ export interface Database {
           },
         ];
       };
+      scorecard_metric_tags: {
+        Row: {
+          metric_id: string;
+          tag_id: string;
+        };
+        Insert: {
+          metric_id: string;
+          tag_id: string;
+        };
+        Update: {
+          metric_id?: string;
+          tag_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "scorecard_metric_tags_metric_id_fkey";
+            columns: ["metric_id"];
+            isOneToOne: false;
+            referencedRelation: "scorecard_metrics";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "scorecard_metric_tags_tag_id_fkey";
+            columns: ["tag_id"];
+            isOneToOne: false;
+            referencedRelation: "tags";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      tags: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          color: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          name: string;
+          color?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          name?: string;
+          color?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tags_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       rocks: {
         Row: {
           id: string;
@@ -1287,6 +1349,8 @@ export type OrganizationSsoRoleMapping = Tables<"organization_sso_role_mappings"
 export type OrganizationVerifiedDomain = Tables<"organization_verified_domains">;
 export type ScorecardMetric = Tables<"scorecard_metrics">;
 export type ScorecardValue = Tables<"scorecard_values">;
+export type Tag = Tables<"tags">;
+export type ScorecardMetricTag = Tables<"scorecard_metric_tags">;
 export type Rock = Tables<"rocks">;
 export type Issue = Tables<"issues">;
 export type Todo = Tables<"todos">;

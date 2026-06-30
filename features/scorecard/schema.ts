@@ -273,10 +273,54 @@ export const createMetricSchema = metricBaseSchema
   .superRefine(validateTargetFields)
   .superRefine(validateFormulaFields);
 
-export const createMetricActionSchema = createMetricSchema.extend({
+export const createScorecardCategorySchema = z.object({
+  organizationId: z.string().uuid("Invalid organization"),
+  teamId: z.string().uuid("Invalid team").nullable().optional(),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(80, "Name must be at most 80 characters"),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Color must be a hex value like #6366f1")
+    .default("#6366f1"),
   orgSlug: z.string().trim().min(1).optional(),
   teamSlug: z.string().trim().min(1).optional(),
 });
+
+export const createTagSchema = z.object({
+  organizationId: z.string().uuid("Invalid organization"),
+  teamId: z.string().uuid("Invalid team").nullable().optional(),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(80, "Name must be at most 80 characters"),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Color must be a hex value like #6366f1")
+    .optional(),
+  orgSlug: z.string().trim().min(1).optional(),
+  teamSlug: z.string().trim().min(1).optional(),
+});
+
+export const setMetricTagsSchema = z.object({
+  organizationId: z.string().uuid("Invalid organization"),
+  metricId: z.string().uuid("Invalid metric"),
+  tagIds: z.array(z.string().uuid("Invalid tag id")),
+  orgSlug: z.string().trim().min(1).optional(),
+  teamSlug: z.string().trim().min(1).optional(),
+});
+
+const tagIdsSchema = z.array(z.string().uuid("Invalid tag id")).optional();
+
+export const createMetricActionSchema = createMetricSchema
+  .extend({
+    orgSlug: z.string().trim().min(1).optional(),
+    teamSlug: z.string().trim().min(1).optional(),
+    tagIds: tagIdsSchema,
+  });
 
 const metricUpdateFieldsSchema = z.object({
   teamId: z.string().uuid("Invalid team").nullable().optional(),
@@ -406,3 +450,6 @@ export type CreateMetricInput = z.infer<typeof createMetricSchema>;
 export type UpdateMetricInput = z.infer<typeof updateMetricSchema>;
 export type UpsertValueInput = z.infer<typeof upsertValueSchema>;
 export type ReorderMetricsInput = z.infer<typeof reorderMetricsSchema>;
+export type CreateScorecardCategoryInput = z.infer<typeof createScorecardCategorySchema>;
+export type CreateTagInput = z.infer<typeof createTagSchema>;
+export type SetMetricTagsInput = z.infer<typeof setMetricTagsSchema>;

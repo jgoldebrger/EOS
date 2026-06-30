@@ -23,9 +23,11 @@ import type {
   ScorecardGridRow,
   ScorecardMemberOption,
   ScorecardMetricWithOwner,
+  ScorecardTag,
   ScorecardTeamOption,
   ScorecardValueCell,
 } from "@/features/scorecard/types";
+import { TagBadges } from "@/components/scorecard/tag-picker";
 import { DailyValuesSheet } from "@/components/scorecard/daily-values-sheet";
 import { MetricDetailSheet } from "@/components/scorecard/metric-detail-sheet";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -63,6 +65,7 @@ interface ScorecardMetricTableProps {
   teams: ScorecardTeamOption[];
   members: ScorecardMemberOption[];
   categories?: ScorecardCategory[];
+  tags?: ScorecardTag[];
   weeks: string[];
   valuesByMetric: Record<string, ScorecardValueCell[]>;
   groupBy?: "owner" | "team" | "none";
@@ -430,6 +433,7 @@ export function ScorecardMetricTable({
   teams,
   members,
   categories = [],
+  tags = [],
   weeks,
   valuesByMetric,
   groupBy = "owner",
@@ -493,6 +497,7 @@ export function ScorecardMetricTable({
         teams={teams}
         members={members}
         categories={categories}
+        tags={tags}
         periodType={periodType}
       />
       {dailySheet ? (
@@ -557,21 +562,24 @@ export function ScorecardMetricTable({
                       setDetailOpen(true);
                     }}
                   >
-                    <span className="inline-flex items-center gap-1.5">
-                      {row.metric.name}
-                      {row.metric.datasource === "formula" &&
-                      parseErrorsByMetricId[row.metric.id] ? (
-                        <FormulaParseErrorBadge
-                          error={parseErrorsByMetricId[row.metric.id]!}
-                        />
-                      ) : null}
-                      {row.metric.datasource === "formula" &&
-                      !parseErrorsByMetricId[row.metric.id] &&
-                      (brokenRefsByMetricId[row.metric.id]?.length ?? 0) > 0 ? (
-                        <FormulaBrokenRefsBadge
-                          refs={brokenRefsByMetricId[row.metric.id]!}
-                        />
-                      ) : null}
+                    <span className="inline-flex flex-col gap-1">
+                      <span className="inline-flex items-center gap-1.5">
+                        {row.metric.name}
+                        {row.metric.datasource === "formula" &&
+                        parseErrorsByMetricId[row.metric.id] ? (
+                          <FormulaParseErrorBadge
+                            error={parseErrorsByMetricId[row.metric.id]!}
+                          />
+                        ) : null}
+                        {row.metric.datasource === "formula" &&
+                        !parseErrorsByMetricId[row.metric.id] &&
+                        (brokenRefsByMetricId[row.metric.id]?.length ?? 0) > 0 ? (
+                          <FormulaBrokenRefsBadge
+                            refs={brokenRefsByMetricId[row.metric.id]!}
+                          />
+                        ) : null}
+                      </span>
+                      <TagBadges tags={row.metric.tags} />
                     </span>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">

@@ -25,10 +25,17 @@ export interface ScorecardCategory {
   color: string;
 }
 
+export interface ScorecardTag {
+  id: string;
+  name: string;
+  color: string | null;
+}
+
 export interface ScorecardMetricWithOwner extends ScorecardMetric {
   owner: ScorecardMetricOwner;
   teamName: string | null;
   categoryName: string | null;
+  tags: ScorecardTag[];
 }
 
 export type PeriodType = import("@/features/scorecard/utils").PeriodType;
@@ -77,6 +84,14 @@ export type ScorecardActionResult =
 
 export type CreateMetricResult =
   | { success: true; metricId: string }
+  | { success: false; error: string };
+
+export type CreateCategoryResult =
+  | { success: true; category: ScorecardCategory }
+  | { success: false; error: string };
+
+export type CreateTagResult =
+  | { success: true; tag: ScorecardTag }
   | { success: false; error: string };
 
 export interface ScorecardPageData {

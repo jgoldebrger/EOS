@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Archive, Pencil } from "lucide-react";
 import {
   findBrokenFormulaReferences,
+  setMetricTags,
   updateMetric,
   type FormulaBrokenRef,
 } from "@/features/scorecard/actions";
@@ -12,6 +13,7 @@ import type {
   ScorecardCategory,
   ScorecardGridRow,
   ScorecardMemberOption,
+  ScorecardTag,
   ScorecardTeamOption,
 } from "@/features/scorecard/types";
 import {
@@ -28,6 +30,8 @@ import {
   type TimeKind,
   type ValueType,
 } from "@/features/scorecard/utils";
+import { CreateCategoryDialog } from "@/components/scorecard/create-category-dialog";
+import { TagBadges, TagPicker } from "@/components/scorecard/tag-picker";
 import { MetricTrendChart } from "@/components/scorecard/metric-trend-chart";
 import { FormulaMetricInput } from "@/components/scorecard/formula-metric-input";
 import { FormulaHelpCheatSheet } from "@/components/scorecard/formula-help-cheat-sheet";
@@ -59,6 +63,7 @@ interface MetricDetailSheetProps {
   teams: ScorecardTeamOption[];
   members: ScorecardMemberOption[];
   categories?: ScorecardCategory[];
+  tags?: ScorecardTag[];
   periodType?: PeriodType;
 }
 
@@ -109,6 +114,7 @@ interface MetricDetailContentProps {
   teams: ScorecardTeamOption[];
   members: ScorecardMemberOption[];
   categories: ScorecardCategory[];
+  tags: ScorecardTag[];
   periodType: PeriodType;
   onClose: () => void;
 }
@@ -122,11 +128,27 @@ function MetricDetailContent({
   teams,
   members,
   categories,
+  tags,
   periodType,
   onClose,
 }: MetricDetailContentProps) {
   const router = useRouter();
   const { metric, weeks } = row;
+  const [localCategories, setLocalCategories] = useState(categories);
+  const [localTags, setLocalTags] = useState(tags);
+  const [draftTagIds, setDraftTagIds] = useState(metric.tags.map((tag) => tag.id));
+
+  useEffect(() => {
+    setLocalCategories(categories);
+  }, [categories]);
+
+  useEffect(() => {
+    setLocalTags(tags);
+  }, [tags]);
+
+  useEffect(() => {
+    setDraftTagIds(metric.tags.map((tag) => tag.id));
+  }, [metric.id, metric.tags]);
   const valueType = (metric.value_type ?? "number") as ValueType;
   const timeKind = getTimeKind(metric);
   const isTime = valueType === "time";
@@ -225,6 +247,27 @@ function MetricDetailContent({
       showSuccessToast("Measurable saved");
       setEditingTarget(false);
       setEditingDescription(false);
+      router.refresh();
+    });
+  }
+
+  function handleSaveTags(nextTagIds: string[]) {
+    setDraftTagIds(nextTagIds);
+    startTransition(async () => {
+      const result = await setMetricTags({
+        organizationId,
+        metricId: metric.id,
+        tagIds: nextTagIds,
+        orgSlug,
+        teamSlug,
+      });
+
+      if (!result.success) {
+        showErrorToast("Could not save tags", result.error);
+        return;
+      }
+
+      showSuccessToast("Tags updated");
       router.refresh();
     });
   }
@@ -785,21 +828,67 @@ function MetricDetailContent({
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Category</p>
             {canManage ? (
-              <select
-                className={selectClassName}
-                value={draftCategoryId}
-                onChange={(event) => setDraftCategoryId(event.target.value)}
-                onBlur={handleSaveSettings}
-              >
-                <option value="">No category</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2">
+                <select
+                  className={selectClassName}
+                  value={draftCategoryId}
+                  onChange={(event) => setDraftCategoryId(event.target.value)}
+                  onBlur={handleSaveSettings}
+                >
+                  <option value="">No category</option>
+                  {localCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                <CreateCategoryDialog
+                  organizationId={organizationId}
+                  orgSlug={orgSlug}
+                  teamId={metric.team_id ?? undefined}
+                  teamSlug={teamSlug}
+                  onCreated={(category) => {
+                    setLocalCategories((prev) => [...prev, category]);
+                    setDraftCategoryId(category.id);
+                    saveMetric({
+                      organizationId,
+                      metricId: metric.id,
+                      ownerId: draftOwnerId,
+                      categoryId: category.id,
+                      entryCadence: draftCadence as "daily" | "weekly",
+                      weeklyRollupMethod:
+                        draftCadence === "daily" ? draftRollup ?? "sum" : null,
+                      datasource: draftDatasource,
+                      formula: draftDatasource === "formula" ? draftFormula : null,
+                    });
+                  }}
+                  trigger={
+                    <Button type="button" variant="outline" size="sm">
+                      Add
+                    </Button>
+                  }
+                />
+              </div>
             ) : (
               <p className="text-sm">{metric.categoryName ?? "—"}</p>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Tags</p>
+            {canManage ? (
+              <TagPicker
+                organizationId={organizationId}
+                orgSlug={orgSlug}
+                teamId={metric.team_id ?? undefined}
+                teamSlug={teamSlug}
+                tags={localTags}
+                selectedTagIds={draftTagIds}
+                onChange={handleSaveTags}
+                onTagsChange={setLocalTags}
+              />
+            ) : (
+              <TagBadges tags={metric.tags} />
             )}
           </div>
 
@@ -867,6 +956,7 @@ export function MetricDetailSheet({
   teams,
   members,
   categories = [],
+  tags = [],
   periodType = "weekly",
 }: MetricDetailSheetProps) {
   return (
@@ -883,6 +973,7 @@ export function MetricDetailSheet({
             teams={teams}
             members={members}
             categories={categories}
+            tags={tags}
             periodType={periodType}
             onClose={() => onOpenChange(false)}
           />
