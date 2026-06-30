@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
+import { signInWithEmail, signUpWithEmail } from "@/app/auth/actions";
 import { toSafeAuthError } from "@/lib/auth/errors";
 import { oauthProviders } from "@/app/auth/oauth-config";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,6 @@ type AuthFormValues = z.infer<typeof authSchema>;
 type AuthMode = "sign-in" | "sign-up";
 
 export function AuthForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackError = searchParams.get("error");
 
@@ -63,36 +63,41 @@ export function AuthForm() {
     setFormError(null);
     setIsSubmitting(true);
 
-    const supabase = createClient();
+    const nextPath = searchParams.get("next") ?? undefined;
 
-    const result =
-      mode === "sign-in"
-        ? await supabase.auth.signInWithPassword({
-            email: values.email,
-            password: values.password,
-          })
-        : await supabase.auth.signUp({
-            email: values.email,
-            password: values.password,
-          });
+    if (mode === "sign-in") {
+      const result = await signInWithEmail({
+        email: values.email,
+        password: values.password,
+        nextPath,
+      });
 
-    setIsSubmitting(false);
+      setIsSubmitting(false);
 
-    if (result.error) {
-      setFormError(toSafeAuthError(result.error));
+      if (result?.success === false) {
+        setFormError(result.error);
+      }
       return;
     }
 
-    if (mode === "sign-up" && !result.data.session) {
+    const result = await signUpWithEmail({
+      email: values.email,
+      password: values.password,
+    });
+
+    setIsSubmitting(false);
+
+    if (result?.success === false) {
+      setFormError(result.error);
+      return;
+    }
+
+    if (result?.success === true && "needsConfirmation" in result && result.needsConfirmation) {
       setFormError(
         "Check your email to confirm your account, then sign in.",
       );
       setMode("sign-in");
-      return;
     }
-
-    router.push("/onboarding");
-    router.refresh();
   }
 
   async function signInWithOAuth(provider: "google" | "azure") {

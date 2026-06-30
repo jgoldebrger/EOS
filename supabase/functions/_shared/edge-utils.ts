@@ -1,51 +1,11 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
-export const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 export function jsonResponse(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
-export async function authenticateRequest(req: Request) {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return { error: jsonResponse({ error: "unauthorized", success: false }, 401) };
-  }
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-
-  if (!supabaseUrl || !anonKey) {
-    return {
-      error: jsonResponse({ error: "configuration_error", success: false }, 500),
-    };
-  }
-
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-
-  const {
-    data: { user },
-    error: userError,
-  } = await userClient.auth.getUser();
-
-  if (userError || !user) {
-    return { error: jsonResponse({ error: "unauthorized", success: false }, 401) };
-  }
-
-  return { user, userClient, authHeader };
+  return Response.json(body, { status });
 }
 
 export async function verifyOrgAccess(
-  userClient: ReturnType<typeof createClient>,
+  userClient: SupabaseClient,
   organizationId: string,
   userId: string,
 ) {
@@ -116,7 +76,7 @@ export async function callOpenAI(
 }
 
 export async function logAiRun(
-  userClient: ReturnType<typeof createClient>,
+  userClient: SupabaseClient,
   params: {
     organizationId: string;
     actorId: string;
@@ -147,7 +107,7 @@ export async function logAiRun(
 }
 
 export async function persistSuggestions(
-  userClient: ReturnType<typeof createClient>,
+  userClient: SupabaseClient,
   organizationId: string,
   aiRunId: string,
   suggestions: Array<{ suggestion_type: string; payload: Record<string, unknown> }>,
@@ -174,4 +134,11 @@ export async function persistSuggestions(
   }
 
   return data;
+}
+
+export function requireUserId(userId: string | undefined | null) {
+  if (!userId) {
+    return jsonResponse({ error: "unauthorized", success: false }, 401);
+  }
+  return null;
 }

@@ -47,7 +47,14 @@ Stubs: `lib/permissions/checks.ts`
 | done | 009 | Accountability |
 | done | 010 | V/TO |
 | done | 011 | AI suggestions |
-| **Next available** | **012** | — |
+| done | 012 | Scorecard Strety enhancements |
+| done | 013 | Headlines + Process |
+| done | 014 | Inbox + Projects |
+| **Next available** | **015** | — |
+
+Team workspace routes: `/org/[orgSlug]/teams/[teamSlug]/{overview,agendas,rocks,scorecard,todos,headlines,issues,process}`
+
+Global nav routes: `/org/[orgSlug]/{home,inbox,activity,reports,teams,people,company,projects}`
 
 Migrations live in `supabase/migrations/`.
 

@@ -47,3 +47,63 @@ export function flattenTree(tree: SeatNode[]): SeatWithAssignee[] {
   walk(tree);
   return result;
 }
+
+export function getChildSeatAssigneeUserIds(
+  seats: Array<{
+    id: string;
+    parent_id: string | null;
+    assigned_user_id: string | null;
+  }>,
+  userId: string,
+): Set<string> {
+  const childrenByParent = new Map<string, Array<(typeof seats)[number]>>();
+  for (const seat of seats) {
+    if (!seat.parent_id) {
+      continue;
+    }
+    const siblings = childrenByParent.get(seat.parent_id) ?? [];
+    siblings.push(seat);
+    childrenByParent.set(seat.parent_id, siblings);
+  }
+
+  const userSeats = seats.filter((seat) => seat.assigned_user_id === userId);
+  const assigneeIds = new Set<string>();
+
+  function collectDescendantAssignees(parentId: string) {
+    for (const child of childrenByParent.get(parentId) ?? []) {
+      if (child.assigned_user_id) {
+        assigneeIds.add(child.assigned_user_id);
+      }
+      collectDescendantAssignees(child.id);
+    }
+  }
+
+  for (const seat of userSeats) {
+    collectDescendantAssignees(seat.id);
+  }
+
+  return assigneeIds;
+}
+
+/** Assignee user ids on seats that are direct children of seats assigned to `userId`. */
+export function getDirectReportAssigneeUserIds(
+  seats: Array<{
+    id: string;
+    parent_id: string | null;
+    assigned_user_id: string | null;
+  }>,
+  userId: string,
+): Set<string> {
+  const userSeatIds = new Set(
+    seats.filter((seat) => seat.assigned_user_id === userId).map((seat) => seat.id),
+  );
+  const assigneeIds = new Set<string>();
+
+  for (const seat of seats) {
+    if (seat.parent_id && userSeatIds.has(seat.parent_id) && seat.assigned_user_id) {
+      assigneeIds.add(seat.assigned_user_id);
+    }
+  }
+
+  return assigneeIds;
+}

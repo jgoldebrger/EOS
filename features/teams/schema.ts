@@ -20,6 +20,19 @@ export const createTeamSchema = z.object({
     .optional(),
 });
 
+export const addTeamMemberSchema = z.object({
+  teamId: z.string().uuid("Invalid team"),
+  organizationId: z.string().uuid("Invalid organization"),
+  userId: z.string().uuid("Invalid user"),
+  teamRole: z.enum(["leader", "member", "viewer"]).default("member"),
+});
+
+export const removeTeamMemberSchema = z.object({
+  teamId: z.string().uuid("Invalid team"),
+  organizationId: z.string().uuid("Invalid organization"),
+  memberId: z.string().uuid("Invalid member"),
+});
+
 export type CreateTeamInput = z.infer<typeof createTeamSchema>;
 
 export function teamSlugFromName(name: string): string {

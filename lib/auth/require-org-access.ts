@@ -1,6 +1,7 @@
+import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import type { OrgRole } from "@/types/domain";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/require-user";
 
 export interface OrgAccessContext {
@@ -9,7 +10,7 @@ export interface OrgAccessContext {
   role: OrgRole;
 }
 
-export async function requireOrgAccess(orgSlug: string): Promise<OrgAccessContext> {
+export const requireOrgAccess = cache(async (orgSlug: string): Promise<OrgAccessContext> => {
   await requireUser();
 
   const supabase = await createClient();
@@ -24,9 +25,7 @@ export async function requireOrgAccess(orgSlug: string): Promise<OrgAccessContex
     notFound();
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (!user) {
     redirect("/auth");
@@ -48,4 +47,4 @@ export async function requireOrgAccess(orgSlug: string): Promise<OrgAccessContex
     orgSlug: org.slug,
     role: membership.org_role as OrgRole,
   };
-}
+});

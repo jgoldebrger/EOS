@@ -33,6 +33,9 @@ export function toSafeAuthError(error: { message?: string; code?: string } | nul
   if (message.includes("rate limit")) {
     return AUTH_ERROR_MESSAGES.over_request_rate_limit;
   }
+  if (message.includes("fetch failed")) {
+    return "Cannot reach the authentication service. Check your network connection and try again.";
+  }
 
   return "Something went wrong. Please try again.";
 }

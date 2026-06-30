@@ -8,6 +8,7 @@ import {
 import {
   buildTree,
   flattenTree,
+  getDirectReportAssigneeUserIds,
   sortSeatNodes,
 } from "@/features/accountability/utils";
 import type { SeatWithAssignee } from "@/features/accountability/types";
@@ -191,5 +192,23 @@ describe("reorderSeatsSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("getDirectReportAssigneeUserIds", () => {
+  const managerId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+  const directReportId = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+  const grandchildId = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+
+  it("returns only depth-1 assignees under the user seats", () => {
+    const seats = [
+      { id: "seat-1", parent_id: null, assigned_user_id: managerId },
+      { id: "seat-2", parent_id: "seat-1", assigned_user_id: directReportId },
+      { id: "seat-3", parent_id: "seat-2", assigned_user_id: grandchildId },
+    ];
+
+    const directReports = getDirectReportAssigneeUserIds(seats, managerId);
+    expect(directReports.has(directReportId)).toBe(true);
+    expect(directReports.has(grandchildId)).toBe(false);
   });
 });

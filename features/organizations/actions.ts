@@ -47,9 +47,15 @@ export async function createOrganization(
         error: "This URL slug is already taken. Please choose another.",
       };
     }
+    if (process.env.NODE_ENV === "development") {
+      console.error("[createOrganization]", orgError);
+    }
     return {
       success: false,
-      error: "Unable to create organization. Please try again.",
+      error:
+        process.env.NODE_ENV === "development"
+          ? `Unable to create organization: ${orgError.message}`
+          : "Unable to create organization. Please try again.",
     };
   }
 

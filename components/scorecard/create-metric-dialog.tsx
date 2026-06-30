@@ -1,21 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { startTransition, useState } from "react";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type Resolver } from "react-hook-form";
 import { Plus } from "lucide-react";
 import { createMetric } from "@/features/scorecard/actions";
 import { createMetricSchema, type CreateMetricInput } from "@/features/scorecard/schema";
 import type {
+  ScorecardCategory,
   ScorecardMemberOption,
   ScorecardTeamOption,
 } from "@/features/scorecard/types";
+import type { RollupMethod, TargetOperator, TimeKind, ValueType } from "@/features/scorecard/utils";
+import { TimeValueInput } from "@/components/scorecard/time-value-input";
+import { FormulaMetricInput } from "@/components/scorecard/formula-metric-input";
+import { FormulaHelpCheatSheet } from "@/components/scorecard/formula-help-cheat-sheet";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -31,80 +36,148 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface CreateMetricDialogProps {
   organizationId: string;
+  orgSlug: string;
+  teamSlug: string;
   teams: ScorecardTeamOption[];
   members: ScorecardMemberOption[];
+  categories?: ScorecardCategory[];
   defaultOwnerId: string;
+  defaultTeamId?: string;
 }
 
-const TARGET_RULE_OPTIONS = [
-  { value: "higher_is_better", label: "Higher is better" },
-  { value: "lower_is_better", label: "Lower is better" },
-  { value: "range", label: "Within range" },
-  { value: "exact", label: "Exact target" },
-  { value: "boolean", label: "Boolean (0/1)" },
-] as const;
+const VALUE_TYPE_OPTIONS: { value: ValueType; label: string }[] = [
+  { value: "number", label: "Number" },
+  { value: "currency", label: "Currency" },
+  { value: "percentage", label: "Percentage" },
+  { value: "boolean", label: "Boolean" },
+  { value: "time", label: "Time" },
+];
+
+const TIME_KIND_OPTIONS: { value: TimeKind; label: string; description: string }[] = [
+  {
+    value: "clock",
+    label: "Time of day",
+    description: "e.g. all orders shipped by 2:00 PM — enter the actual time daily, averaged on L10",
+  },
+  {
+    value: "duration",
+    label: "Duration",
+    description: "e.g. 1 hour 30 minutes elapsed",
+  },
+];
+
+const OPERATOR_OPTIONS: { value: TargetOperator; label: string }[] = [
+  { value: ">=", label: ">=" },
+  { value: "<=", label: "<=" },
+  { value: "=", label: "=" },
+  { value: ">", label: ">" },
+  { value: "<", label: "<" },
+  { value: "between", label: "Between" },
+];
+
+const ROLLUP_OPTIONS: { value: RollupMethod; label: string }[] = [
+  { value: "sum", label: "Sum" },
+  { value: "average", label: "Average" },
+  { value: "last", label: "Last (most recent day)" },
+  { value: "min", label: "Min" },
+  { value: "max", label: "Max" },
+  { value: "count", label: "Count" },
+];
+
+const selectClassName =
+  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
+
+function getDefaultValues(
+  organizationId: string,
+  defaultOwnerId: string,
+  defaultTeamId?: string,
+): CreateMetricInput {
+  return {
+    organizationId,
+    ownerId: defaultOwnerId,
+    teamId: defaultTeamId ?? null,
+    name: "",
+    description: "",
+    valueType: "number",
+    timeKind: "duration",
+    targetOperator: ">=",
+    targetValue: undefined,
+    targetMin: undefined,
+    targetMax: undefined,
+    entryCadence: "weekly",
+    weeklyRollupMethod: null,
+    tolerancePercent: 10,
+    categoryId: null,
+    datasource: "manual",
+    formula: null,
+  };
+}
 
 export function CreateMetricDialog({
   organizationId,
+  orgSlug,
+  teamSlug,
   teams,
   members,
+  categories = [],
   defaultOwnerId,
+  defaultTeamId,
 }: CreateMetricDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<CreateMetricInput>({
     resolver: zodResolver(createMetricSchema) as Resolver<CreateMetricInput>,
-    defaultValues: {
-      organizationId,
-      ownerId: defaultOwnerId,
-      name: "",
-      unit: "",
-      description: "",
-      targetRule: "higher_is_better",
-      targetValue: undefined,
-      targetMin: undefined,
-      targetMax: undefined,
-      tolerancePercent: 10,
-      teamId: null,
-    },
+    defaultValues: getDefaultValues(organizationId, defaultOwnerId, defaultTeamId),
   });
 
-  const targetRule = form.watch("targetRule");
+  const valueType = form.watch("valueType");
+  const timeKind = form.watch("timeKind");
+  const targetOperator = form.watch("targetOperator");
+  const entryCadence = form.watch("entryCadence");
+  const datasource = form.watch("datasource");
+  const teamId = form.watch("teamId");
+
+  function applyClockTimeDefaults() {
+    form.setValue("targetOperator", "<=");
+    form.setValue("entryCadence", "daily");
+    form.setValue("weeklyRollupMethod", "average");
+  }
+
+  const teamName =
+    teams.find((team) => team.id === (form.watch("teamId") ?? defaultTeamId))?.name ??
+    "Organization-wide";
 
   async function onSubmit(values: CreateMetricInput) {
     setIsSubmitting(true);
     const result = await createMetric({
       ...values,
-      unit: values.unit || null,
+      orgSlug,
+      teamSlug,
       description: values.description || null,
       teamId: values.teamId || null,
+      categoryId: values.categoryId || null,
+      weeklyRollupMethod:
+        values.entryCadence === "daily" ? values.weeklyRollupMethod ?? "sum" : null,
     });
     setIsSubmitting(false);
 
     if (!result.success) {
-      showErrorToast("Could not create metric", result.error);
+      showErrorToast("Could not create measurable", result.error);
       return;
     }
 
-    showSuccessToast("Metric created");
-    form.reset({
-      organizationId,
-      ownerId: defaultOwnerId,
-      name: "",
-      unit: "",
-      description: "",
-      targetRule: "higher_is_better",
-      targetValue: undefined,
-      targetMin: undefined,
-      targetMax: undefined,
-      tolerancePercent: 10,
-      teamId: null,
-    });
+    showSuccessToast("Measurable created");
+    form.reset(getDefaultValues(organizationId, defaultOwnerId, defaultTeamId));
     setOpen(false);
+    startTransition(() => {
+      router.refresh();
+    });
   }
 
   return (
@@ -112,217 +185,517 @@ export function CreateMetricDialog({
       <DialogTrigger asChild>
         <Button type="button" data-testid="add-metric-button">
           <Plus className="mr-2 h-4 w-4" aria-hidden />
-          Add metric
+          Create measurable
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Add scorecard metric</DialogTitle>
-          <DialogDescription>
-            Define a measurable with a target rule and weekly tracking.
-          </DialogDescription>
+          <DialogTitle>Create measurable</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Weekly revenue" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="unit"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unit (optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="$, %, count" {...field} value={field.value ?? ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="tolerancePercent"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tolerance %</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={0} max={100} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="targetRule"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Target rule</FormLabel>
-                  <FormControl>
-                    <select
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                      value={field.value}
-                      onChange={field.onChange}
-                    >
-                      {TARGET_RULE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {targetRule === "range" ? (
-              <div className="grid gap-4 sm:grid-cols-2">
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <div className="grid gap-6 md:grid-cols-[1fr_220px]">
+              <div className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="targetMin"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Minimum</FormLabel>
+                      <FormLabel>Title</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} value={field.value ?? ""} />
+                        <Input placeholder="Metric name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                <div className="space-y-2">
+                  <FormLabel>Target</FormLabel>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="valueType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs text-muted-foreground">Type</FormLabel>
+                          <FormControl>
+                            <select
+                              className={selectClassName}
+                              value={field.value}
+                              onChange={(event) => {
+                                const next = event.target.value as ValueType;
+                                field.onChange(next);
+                                if (next === "boolean") {
+                                  form.setValue("targetOperator", "=");
+                                  form.setValue("targetValue", 1);
+                                }
+                                if (next === "time") {
+                                  form.setValue("timeKind", "clock");
+                                  applyClockTimeDefaults();
+                                }
+                              }}
+                            >
+                              {VALUE_TYPE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {valueType !== "boolean" && (
+                      <FormField
+                        control={form.control}
+                        name="targetOperator"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs text-muted-foreground">
+                              Operator
+                            </FormLabel>
+                            <FormControl>
+                              <select
+                                className={selectClassName}
+                                value={field.value}
+                                onChange={field.onChange}
+                              >
+                                {OPERATOR_OPTIONS.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                  </div>
+
+                  {valueType === "time" && (
+                    <FormField
+                      control={form.control}
+                      name="timeKind"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs text-muted-foreground">
+                            Time format
+                          </FormLabel>
+                          <FormControl>
+                            <select
+                              className={selectClassName}
+                              value={field.value}
+                              onChange={(event) => {
+                                const next = event.target.value as TimeKind;
+                                field.onChange(next);
+                                if (next === "clock") {
+                                  applyClockTimeDefaults();
+                                }
+                              }}
+                            >
+                              {TIME_KIND_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </FormControl>
+                          <FormDescription>
+                            {
+                              TIME_KIND_OPTIONS.find((option) => option.value === timeKind)
+                                ?.description
+                            }
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {targetOperator === "between" ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="targetMin"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs text-muted-foreground">
+                              Minimum
+                            </FormLabel>
+                            <FormControl>
+                              {valueType === "time" ? (
+                                <TimeValueInput
+                                  timeKind={timeKind}
+                                  value={field.value ?? null}
+                                  onChange={(minutes) => field.onChange(minutes)}
+                                  onInvalid={() =>
+                                    showErrorToast(
+                                      "Invalid time",
+                                      timeKind === "clock"
+                                        ? "Use a time like 2 or 2:00 PM."
+                                        : "Use hours:minutes (e.g. 1:30).",
+                                    )
+                                  }
+                                />
+                              ) : (
+                                <Input type="number" {...field} value={field.value ?? ""} />
+                              )}
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="targetMax"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs text-muted-foreground">
+                              Maximum
+                            </FormLabel>
+                            <FormControl>
+                              {valueType === "time" ? (
+                                <TimeValueInput
+                                  timeKind={timeKind}
+                                  value={field.value ?? null}
+                                  onChange={(minutes) => field.onChange(minutes)}
+                                  onInvalid={() =>
+                                    showErrorToast(
+                                      "Invalid time",
+                                      timeKind === "clock"
+                                        ? "Use a time like 2 or 2:00 PM."
+                                        : "Use hours:minutes (e.g. 1:30).",
+                                    )
+                                  }
+                                />
+                              ) : (
+                                <Input type="number" {...field} value={field.value ?? ""} />
+                              )}
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="targetValue"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs text-muted-foreground">Value</FormLabel>
+                          <FormControl>
+                            {valueType === "boolean" ? (
+                              <select
+                                className={selectClassName}
+                                value={field.value ?? 1}
+                                onChange={(event) =>
+                                  field.onChange(Number(event.target.value))
+                                }
+                              >
+                                <option value={1}>Yes (1)</option>
+                                <option value={0}>No (0)</option>
+                              </select>
+                            ) : valueType === "time" ? (
+                              <TimeValueInput
+                                timeKind={timeKind}
+                                value={field.value ?? null}
+                                onChange={(minutes) => field.onChange(minutes)}
+                                onInvalid={() =>
+                                  showErrorToast(
+                                    "Invalid time",
+                                    timeKind === "clock"
+                                      ? "Use a time like 2 or 2:00 PM."
+                                      : "Use hours:minutes (e.g. 1:30).",
+                                  )
+                                }
+                              />
+                            ) : (
+                              <Input
+                                type="number"
+                                placeholder={
+                                  valueType === "percentage" ? "0–100" : "Target value"
+                                }
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            )}
+                          </FormControl>
+                          {valueType === "time" && timeKind === "clock" && (
+                            <FormDescription>
+                              Deadline time — enter <strong>2</strong> or <strong>2:00 PM</strong> for
+                              ship-by 2 PM. Use daily entry + average rollup for L10.
+                            </FormDescription>
+                          )}
+                          {valueType === "time" && timeKind === "duration" && (
+                            <FormDescription>
+                              Enter duration as hours:minutes (e.g. 1:30).
+                            </FormDescription>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+
                 <FormField
                   control={form.control}
-                  name="targetMax"
+                  name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Maximum</FormLabel>
+                      <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} value={field.value ?? ""} />
+                        <textarea
+                          className={cn(
+                            "flex min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                          )}
+                          placeholder="We suggest being as detailed as possible."
+                          {...field}
+                          value={field.value ?? ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-            ) : (
-              <FormField
-                control={form.control}
-                name="targetValue"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {targetRule === "boolean" ? "Target (0 or 1)" : "Target value"}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {targetRule === "boolean"
-                        ? "Use 1 for yes/on and 0 for no/off."
-                        : "Used to evaluate green, yellow, and red status."}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="ownerId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Owner</FormLabel>
-                    <FormControl>
-                      <select
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                        value={field.value}
-                        onChange={field.onChange}
-                      >
-                        {members.map((member) => (
-                          <option key={member.userId} value={member.userId}>
-                            {member.label}
-                          </option>
-                        ))}
-                      </select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <aside className="space-y-4 rounded-lg border bg-muted/30 p-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium uppercase text-muted-foreground">Space</p>
+                  <p className="text-sm">{teamName}</p>
+                </div>
 
-              <FormField
-                control={form.control}
-                name="teamId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Team (optional)</FormLabel>
-                    <FormControl>
-                      <select
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                        value={field.value ?? ""}
-                        onChange={(event) =>
-                          field.onChange(event.target.value || null)
-                        }
-                      >
-                        <option value="">Organization-wide</option>
-                        {teams.map((team) => (
-                          <option key={team.id} value={team.id}>
-                            {team.name}
-                          </option>
-                        ))}
-                      </select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                <FormField
+                  control={form.control}
+                  name="ownerId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs uppercase text-muted-foreground">
+                        Assignee
+                      </FormLabel>
+                      <FormControl>
+                        <select
+                          className={selectClassName}
+                          value={field.value}
+                          onChange={field.onChange}
+                        >
+                          {members.map((member) => (
+                            <option key={member.userId} value={member.userId}>
+                              {member.label}
+                            </option>
+                          ))}
+                        </select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="entryCadence"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs uppercase text-muted-foreground">
+                        Cadence
+                      </FormLabel>
+                      <FormControl>
+                        <select
+                          className={selectClassName}
+                          value={field.value}
+                          onChange={(event) => {
+                            const next = event.target.value as "daily" | "weekly";
+                            field.onChange(next);
+                            if (next === "daily") {
+                              form.setValue("weeklyRollupMethod", "sum");
+                            } else {
+                              form.setValue("weeklyRollupMethod", null);
+                            }
+                          }}
+                        >
+                          <option value="weekly">Weekly</option>
+                          <option value="daily">Daily</option>
+                        </select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {entryCadence === "daily" && (
+                  <FormField
+                    control={form.control}
+                    name="weeklyRollupMethod"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs uppercase text-muted-foreground">
+                          Weekly rollup (L10)
+                        </FormLabel>
+                        <FormControl>
+                          <select
+                            className={selectClassName}
+                            value={field.value ?? "sum"}
+                            onChange={(event) =>
+                              field.onChange(event.target.value as RollupMethod)
+                            }
+                          >
+                            {ROLLUP_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </FormControl>
+                        <FormDescription>
+                          How daily values combine for the weekly scorecard.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 )}
-              />
+
+                <FormField
+                  control={form.control}
+                  name="datasource"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs uppercase text-muted-foreground">
+                        Datasource
+                      </FormLabel>
+                      <FormControl>
+                        <select
+                          className={selectClassName}
+                          value={field.value ?? "manual"}
+                          onChange={(event) => {
+                            const next = event.target.value as "manual" | "formula";
+                            field.onChange(next);
+                            if (next === "manual") {
+                              form.setValue("formula", null);
+                            }
+                          }}
+                        >
+                          <option value="manual">Manual entry</option>
+                          <option value="formula">From a formula</option>
+                        </select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {datasource === "formula" ? (
+                  <FormField
+                    control={form.control}
+                    name="formula"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs uppercase text-muted-foreground">
+                          Formula
+                        </FormLabel>
+                        <FormControl>
+                          <FormulaMetricInput
+                            organizationId={organizationId}
+                            teamId={teamId}
+                            value={field.value ?? ""}
+                            onChange={field.onChange}
+                            valueType={valueType}
+                            timeKind={timeKind}
+                          />
+                        </FormControl>
+                        <FormulaHelpCheatSheet />
+                        <FormDescription>
+                          Search measurables to insert references. Use arithmetic or
+                          SUM, AVG, MIN, MAX, IF, ROUND, ABS, COUNT.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : null}
+
+                {categories.length > 0 && (
+                  <FormField
+                    control={form.control}
+                    name="categoryId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs uppercase text-muted-foreground">
+                          Category
+                        </FormLabel>
+                        <FormControl>
+                          <select
+                            className={selectClassName}
+                            value={field.value ?? ""}
+                            onChange={(event) =>
+                              field.onChange(event.target.value || null)
+                            }
+                          >
+                            <option value="">Add category</option>
+                            {categories.map((category) => (
+                              <option key={category.id} value={category.id}>
+                                {category.name}
+                              </option>
+                            ))}
+                          </select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {!defaultTeamId && (
+                  <FormField
+                    control={form.control}
+                    name="teamId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs uppercase text-muted-foreground">
+                          Team
+                        </FormLabel>
+                        <FormControl>
+                          <select
+                            className={selectClassName}
+                            value={field.value ?? ""}
+                            onChange={(event) =>
+                              field.onChange(event.target.value || null)
+                            }
+                          >
+                            <option value="">Organization-wide</option>
+                            {teams.map((team) => (
+                              <option key={team.id} value={team.id}>
+                                {team.name}
+                              </option>
+                            ))}
+                          </select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </aside>
             </div>
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description (optional)</FormLabel>
-                  <FormControl>
-                    <textarea
-                      className="flex min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <DialogFooter>
+            <DialogFooter className="mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
               <Button type="submit" disabled={isSubmitting} data-testid="create-metric-submit">
-                {isSubmitting ? "Creating…" : "Create metric"}
+                {isSubmitting ? "Creating…" : "Create"}
               </Button>
             </DialogFooter>
           </form>

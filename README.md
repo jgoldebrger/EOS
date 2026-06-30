@@ -1,6 +1,13 @@
 # EOS Platform
 
-Business Operating System for EOS practitioners — scorecards, rocks, issues, todos, L10 meetings, accountability charts, V/TO, AI suggestions, and enterprise SSO.
+Business Operating System for EOS practitioners — Strety-style team workspaces, scorecards, rocks, issues, todos, L10 meetings, headlines, process docs, accountability charts, V/TO, AI suggestions, and enterprise SSO.
+
+## Navigation (Strety-style)
+
+- **Global top nav:** Home, Inbox, Activity, Reports, Teams, People, Company, Projects
+- **Team workspace:** `/org/[slug]/teams/[teamSlug]/` with Overview, Agendas, Rocks, Scorecards, To-Dos, Headlines, Issues, Process
+- **Global search:** `Ctrl+K` / `Cmd+K`
+- Legacy routes (`/scorecard`, `/rocks`, etc.) redirect to your first team workspace
 
 ## Prerequisites
 
@@ -46,15 +53,20 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Environment variables
 
-Copy `.env.local.example` to `.env.local` and fill in values from `supabase start`.
+Copy `.env.local.example` to `.env.local` and fill in values from the Supabase Dashboard **Connect** dialog (or `supabase start` for local).
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase API URL (local: `http://127.0.0.1:54321`) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Public anon key — safe in browser with RLS |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server only | Service role key — never expose to client |
+| `SUPABASE_URL` | Yes (server) | Supabase API URL |
+| `SUPABASE_PUBLISHABLE_KEY` | Yes (server) | Publishable key (`sb_publishable_...`) |
+| `SUPABASE_SECRET_KEY` | Server only | Secret key (`sb_secret_...`) — never expose to client |
+| `SUPABASE_JWKS_URL` | Yes (user JWT) | JWKS endpoint for `@supabase/server` JWT verification |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes (browser) | Same URL as `SUPABASE_URL` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes (browser) | Same publishable key for `@supabase/ssr` |
 | `NEXT_PUBLIC_AUTH_GOOGLE_ENABLED` | No | Set `true` to show Google OAuth on `/auth` |
 | `NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED` | No | Set `true` to show Microsoft OAuth on `/auth` |
+
+Edge Functions use `@supabase/server` with `withSupabase` — env vars are injected automatically on deploy. See [`lib/supabase/server-sdk.ts`](lib/supabase/server-sdk.ts) for Next.js route handler helpers.
 
 Configure Google/Microsoft providers in the [Supabase Auth dashboard](https://supabase.com/docs/guides/auth/social-login) when enabling OAuth.
 

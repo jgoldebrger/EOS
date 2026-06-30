@@ -19,6 +19,30 @@ export type ScorecardTargetRuleDb =
   | "exact"
   | "boolean";
 export type ScorecardStatusDb = "green" | "yellow" | "red" | "na";
+export type ScorecardPeriodTypeDb = "weekly" | "monthly" | "quarterly" | "annual";
+export type ScorecardValuePeriodTypeDb =
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "quarterly"
+  | "annual";
+export type ScorecardValueTypeDb =
+  | "number"
+  | "currency"
+  | "percentage"
+  | "boolean"
+  | "time";
+export type ScorecardTimeKindDb = "duration" | "clock";
+export type ScorecardTargetOperatorDb = ">=" | "<=" | "=" | ">" | "<" | "between";
+export type ScorecardEntryCadenceDb = "daily" | "weekly";
+export type ScorecardRollupMethodDb =
+  | "sum"
+  | "average"
+  | "last"
+  | "min"
+  | "max"
+  | "count";
+export type ScorecardDatasourceDb = "manual" | "formula";
 export type RockStatusDb = "on_track" | "off_track" | "done" | "dropped";
 export type RockTypeDb = "company" | "team" | "individual";
 export type IssueStatusDb = "open" | "discussing" | "solved" | "archived";
@@ -77,6 +101,7 @@ export interface Database {
           organization_id: string;
           user_id: string;
           org_role: OrgRoleDb;
+          reports_to_user_id: string | null;
           created_at: string;
           updated_at: string;
           created_by: string | null;
@@ -86,6 +111,7 @@ export interface Database {
           organization_id: string;
           user_id: string;
           org_role: OrgRoleDb;
+          reports_to_user_id?: string | null;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
@@ -95,6 +121,7 @@ export interface Database {
           organization_id?: string;
           user_id?: string;
           org_role?: OrgRoleDb;
+          reports_to_user_id?: string | null;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
@@ -563,6 +590,17 @@ export interface Database {
           target_max: number | null;
           tolerance_percent: number;
           display_order: number;
+          period_type: ScorecardPeriodTypeDb;
+          category_id: string | null;
+          display_target: string | null;
+          value_type: ScorecardValueTypeDb;
+          time_kind: ScorecardTimeKindDb;
+          target_operator: ScorecardTargetOperatorDb;
+          entry_cadence: ScorecardEntryCadenceDb;
+          weekly_rollup_method: ScorecardRollupMethodDb | null;
+          datasource: ScorecardDatasourceDb;
+          formula: string | null;
+          formula_tokens: Json | null;
           archived_at: string | null;
           created_at: string;
           updated_at: string;
@@ -582,6 +620,17 @@ export interface Database {
           target_max?: number | null;
           tolerance_percent?: number;
           display_order?: number;
+          period_type?: ScorecardPeriodTypeDb;
+          category_id?: string | null;
+          display_target?: string | null;
+          value_type?: ScorecardValueTypeDb;
+          time_kind?: ScorecardTimeKindDb;
+          target_operator?: ScorecardTargetOperatorDb;
+          entry_cadence?: ScorecardEntryCadenceDb;
+          weekly_rollup_method?: ScorecardRollupMethodDb | null;
+          datasource?: ScorecardDatasourceDb;
+          formula?: string | null;
+          formula_tokens?: Json | null;
           archived_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -601,6 +650,17 @@ export interface Database {
           target_max?: number | null;
           tolerance_percent?: number;
           display_order?: number;
+          period_type?: ScorecardPeriodTypeDb;
+          category_id?: string | null;
+          display_target?: string | null;
+          value_type?: ScorecardValueTypeDb;
+          time_kind?: ScorecardTimeKindDb;
+          target_operator?: ScorecardTargetOperatorDb;
+          entry_cadence?: ScorecardEntryCadenceDb;
+          weekly_rollup_method?: ScorecardRollupMethodDb | null;
+          datasource?: ScorecardDatasourceDb;
+          formula?: string | null;
+          formula_tokens?: Json | null;
           archived_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -633,6 +693,7 @@ export interface Database {
           target_snapshot: number | null;
           status_override: ScorecardStatusDb | null;
           notes: string | null;
+          period_type: ScorecardValuePeriodTypeDb;
           created_at: string;
           updated_at: string;
           created_by: string | null;
@@ -646,6 +707,7 @@ export interface Database {
           target_snapshot?: number | null;
           status_override?: ScorecardStatusDb | null;
           notes?: string | null;
+          period_type?: ScorecardValuePeriodTypeDb;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
@@ -659,6 +721,7 @@ export interface Database {
           target_snapshot?: number | null;
           status_override?: ScorecardStatusDb | null;
           notes?: string | null;
+          period_type?: ScorecardValuePeriodTypeDb;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;

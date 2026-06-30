@@ -1,51 +1,24 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import type { Database } from "@/types/database";
+import { hasSupabaseAuthCookie } from "@/lib/supabase/cookies";
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
-
-  const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
-          );
-        },
-      },
-    },
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Edge middleware cannot use Node TLS overrides for Supabase JWKS/API calls.
+  // Read the session cookie set by server actions (which use supabaseFetch).
+  const isAuthenticated = hasSupabaseAuthCookie(request.cookies.getAll());
 
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/org/") && !user) {
+  const isProtectedRoute =
+    pathname.startsWith("/org/") || pathname.startsWith("/onboarding");
+
+  if (isProtectedRoute && !isAuthenticated) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/auth";
     redirectUrl.search = "";
     redirectUrl.searchParams.set("next", pathname);
 
-    const redirectResponse = NextResponse.redirect(redirectUrl);
-
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie.name, cookie.value);
-    });
-
-    return redirectResponse;
+    return NextResponse.redirect(redirectUrl);
   }
 
-  return supabaseResponse;
+  return NextResponse.next({ request });
 }

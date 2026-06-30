@@ -1,14 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { withSupabase } from "npm:@supabase/server";
 import { z } from "https://esm.sh/zod@3.24.2";
 import {
-  authenticateRequest,
   callOpenAI,
-  corsHeaders,
   jsonResponse,
   logAiRun,
   persistSuggestions,
+  requireUserId,
   verifyOrgAccess,
-} from "./lib.ts";
+} from "../_shared/edge-utils.ts";
 
 const inputSchema = z.object({
   organizationId: z.string().uuid(),
@@ -37,86 +37,84 @@ const outputSchema = {
   additionalProperties: false,
 };
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+export default {
+  fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
+    if (req.method !== "POST") {
+      return jsonResponse({ error: "invalid_input", success: false }, 405);
+    }
 
-  if (req.method !== "POST") {
-    return jsonResponse({ error: "invalid_input", success: false }, 405);
-  }
+    let payload: unknown;
+    try {
+      payload = await req.json();
+    } catch {
+      return jsonResponse({ error: "invalid_input", success: false }, 400);
+    }
 
-  let payload: unknown;
-  try {
-    payload = await req.json();
-  } catch {
-    return jsonResponse({ error: "invalid_input", success: false }, 400);
-  }
+    const parsed = inputSchema.safeParse(payload);
+    if (!parsed.success) {
+      return jsonResponse({ error: "invalid_input", success: false }, 400);
+    }
 
-  const parsed = inputSchema.safeParse(payload);
-  if (!parsed.success) {
-    return jsonResponse({ error: "invalid_input", success: false }, 400);
-  }
+    const userId = ctx.userClaims?.id;
+    const unauthorized = requireUserId(userId);
+    if (unauthorized) {
+      return unauthorized;
+    }
 
-  const auth = await authenticateRequest(req);
-  if ("error" in auth && auth.error) {
-    return auth.error;
-  }
+    const { organizationId, meetingId, notes } = parsed.data;
 
-  const { user, userClient } = auth as Exclude<typeof auth, { error: Response }>;
-  const { organizationId, meetingId, notes } = parsed.data;
+    const hasAccess = await verifyOrgAccess(ctx.supabase, organizationId, userId);
+    if (!hasAccess) {
+      return jsonResponse({ error: "access_denied", success: false }, 403);
+    }
 
-  const hasAccess = await verifyOrgAccess(userClient, organizationId, user.id);
-  if (!hasAccess) {
-    return jsonResponse({ error: "access_denied", success: false }, 403);
-  }
+    const aiResult = await callOpenAI(
+      "Extract actionable todos from EOS meeting notes. Each todo needs a clear title and rationale.",
+      notes,
+      "extracted_todos",
+      outputSchema,
+    );
 
-  const aiResult = await callOpenAI(
-    "Extract actionable todos from EOS meeting notes. Each todo needs a clear title and rationale.",
-    notes,
-    "extracted_todos",
-    outputSchema,
-  );
+    if ("error" in aiResult) {
+      return jsonResponse({ error: aiResult.error, success: false }, 503);
+    }
 
-  if ("error" in aiResult) {
-    return jsonResponse({ error: aiResult.error, success: false }, 503);
-  }
+    const todos = Array.isArray(aiResult.data.todos) ? aiResult.data.todos : [];
 
-  const todos = Array.isArray(aiResult.data.todos) ? aiResult.data.todos : [];
+    const aiRunId = await logAiRun(ctx.supabase, {
+      organizationId,
+      actorId: userId,
+      functionName: "extract-todos",
+      inputSummary: meetingId ? `meeting:${meetingId}` : "notes",
+      outputSummary: `${todos.length} todos`,
+      status: "completed",
+    });
 
-  const aiRunId = await logAiRun(userClient, {
-    organizationId,
-    actorId: user.id,
-    functionName: "extract-todos",
-    inputSummary: meetingId ? `meeting:${meetingId}` : "notes",
-    outputSummary: `${todos.length} todos`,
-    status: "completed",
-  });
+    if (!aiRunId) {
+      return jsonResponse({ error: "ai_run_failed", success: false }, 500);
+    }
 
-  if (!aiRunId) {
-    return jsonResponse({ error: "ai_run_failed", success: false }, 500);
-  }
+    const suggestionRows = todos.map((item: Record<string, unknown>) => ({
+      suggestion_type: "todo",
+      payload: {
+        title: String(item.title ?? ""),
+        rationale: String(item.rationale ?? ""),
+        dueDate: item.dueDate ? String(item.dueDate) : null,
+        sourceMeetingId: meetingId ?? null,
+      },
+    }));
 
-  const suggestionRows = todos.map((item: Record<string, unknown>) => ({
-    suggestion_type: "todo",
-    payload: {
-      title: String(item.title ?? ""),
-      rationale: String(item.rationale ?? ""),
-      dueDate: item.dueDate ? String(item.dueDate) : null,
-      sourceMeetingId: meetingId ?? null,
-    },
-  }));
+    const suggestions = await persistSuggestions(
+      ctx.supabase,
+      organizationId,
+      aiRunId,
+      suggestionRows,
+    );
 
-  const suggestions = await persistSuggestions(
-    userClient,
-    organizationId,
-    aiRunId,
-    suggestionRows,
-  );
-
-  return jsonResponse({
-    success: true,
-    aiRunId,
-    suggestions,
-  });
-});
+    return jsonResponse({
+      success: true,
+      aiRunId,
+      suggestions,
+    });
+  }),
+};

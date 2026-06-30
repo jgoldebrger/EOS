@@ -10,10 +10,28 @@ export interface ScorecardMetricOwner {
   email?: string | null;
 }
 
+export interface ScorecardFilters {
+  teamId?: string;
+  search?: string;
+  categoryId?: string;
+  state?: "active" | "archived" | "all";
+  periodType?: PeriodType;
+  ownerId?: string;
+}
+
+export interface ScorecardCategory {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface ScorecardMetricWithOwner extends ScorecardMetric {
   owner: ScorecardMetricOwner;
   teamName: string | null;
+  categoryName: string | null;
 }
+
+export type PeriodType = import("@/features/scorecard/utils").PeriodType;
 
 export interface ScorecardValueCell {
   periodStart: string;
@@ -23,6 +41,16 @@ export interface ScorecardValueCell {
   status: MetricStatus;
   valueId: string | null;
   notes: string | null;
+  isRolledUp?: boolean;
+  dailyValues?: Array<{
+    date: string;
+    actual: number | null;
+    valueId: string | null;
+  }>;
+  rollupMethod?: import("@/features/scorecard/utils").RollupMethod;
+  filledDayCount?: number;
+  isFormula?: boolean;
+  formulaHint?: string;
 }
 
 export interface ScorecardGridRow {
