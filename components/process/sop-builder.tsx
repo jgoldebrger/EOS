@@ -31,6 +31,10 @@ import {
   SOP_TEMPLATES,
 } from "@/features/process/templates";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
+import {
+  estimateSopDocumentBytes,
+  resolveSopDocumentImages,
+} from "@/features/process/sop-image";
 import { SopStepCard } from "@/components/process/sop-step-card";
 import { SopVersionPanel } from "@/components/process/sop-version-panel";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +69,7 @@ export interface SopBuilderProps {
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const AUTO_SAVE_DELAY_MS = 2500;
+const MAX_SAVE_BYTES = 900_000;
 
 const selectClassName =
   "h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50";
@@ -138,25 +143,65 @@ export function SopBuilder({
         return;
       }
 
-      const markdown = sopToMarkdown(doc);
-      const payload = {
-        ...doc,
-        lastModified: new Date().toISOString(),
-      };
-
       isSavingRef.current = true;
       setSaveState("saving");
 
-      const result = await updateProcessPage({
-        id: pageId,
-        organizationId,
-        orgSlug,
-        teamId,
-        teamSlug,
-        title: payload.title,
-        contentMarkdown: markdown,
-        sopDocument: payload,
-      });
+      let payloadDoc = doc;
+      try {
+        payloadDoc = await resolveSopDocumentImages(doc, organizationId, pageId);
+        if (payloadDoc !== doc) {
+          setDocument(payloadDoc);
+        }
+      } catch (error) {
+        isSavingRef.current = false;
+        setSaveState("error");
+        showErrorToast(
+          "Could not upload step images",
+          error instanceof Error ? error.message : "Image upload failed",
+        );
+        return;
+      }
+
+      const payloadBytes = estimateSopDocumentBytes(payloadDoc);
+      if (payloadBytes > MAX_SAVE_BYTES) {
+        isSavingRef.current = false;
+        setSaveState("error");
+        showErrorToast(
+          "SOP is too large to save",
+          "Remove large embedded images or shorten step content, then try Save now.",
+        );
+        return;
+      }
+
+      const markdown = sopToMarkdown(payloadDoc);
+      const payload = {
+        ...payloadDoc,
+        lastModified: new Date().toISOString(),
+      };
+
+      let result: Awaited<ReturnType<typeof updateProcessPage>>;
+      try {
+        result = await updateProcessPage({
+          id: pageId,
+          organizationId,
+          orgSlug,
+          teamId,
+          teamSlug,
+          title: payload.title,
+          contentMarkdown: markdown,
+          sopDocument: payload,
+        });
+      } catch (error) {
+        isSavingRef.current = false;
+        setSaveState("error");
+        showErrorToast(
+          "Could not save SOP",
+          error instanceof Error
+            ? error.message
+            : "The server rejected this save (it may be too large).",
+        );
+        return;
+      }
 
       isSavingRef.current = false;
 
@@ -166,21 +211,21 @@ export function SopBuilder({
         return;
       }
 
-      lastSavedSnapshotRef.current = snapshot;
+      lastSavedSnapshotRef.current = JSON.stringify(payloadDoc);
 
       const queued = queuedSaveRef.current;
       queuedSaveRef.current = null;
       const latest = documentRef.current;
       const latestSnapshot = JSON.stringify(latest);
 
-      if (queued && JSON.stringify(queued) !== snapshot) {
+      if (queued && JSON.stringify(queued) !== JSON.stringify(payloadDoc)) {
         setIsDirty(true);
         setSaveState("idle");
         void persistSave(queued);
         return;
       }
 
-      if (latestSnapshot !== snapshot) {
+      if (latestSnapshot !== JSON.stringify(payloadDoc)) {
         setIsDirty(true);
         setSaveState("idle");
         if (saveTimerRef.current) {
@@ -427,6 +472,8 @@ export function SopBuilder({
                 index={index}
                 totalSteps={document.steps.length}
                 allSteps={document.steps}
+                organizationId={organizationId}
+                pageId={pageId}
                 readOnly={readOnly}
                 onChange={(nextStep) =>
                   updateDocument((current) => ({

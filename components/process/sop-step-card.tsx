@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -12,6 +12,8 @@ import {
 import type { SopDocument } from "@/features/process/schema";
 import { SOP_APPROVAL_STATUSES } from "@/features/process/templates";
 import { toggleStepDependency } from "@/features/process/sop-steps";
+import { uploadSopStepImage } from "@/features/process/sop-image";
+import { showErrorToast } from "@/components/feedback/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -25,6 +27,8 @@ interface SopStepCardProps {
   index: number;
   totalSteps: number;
   allSteps: SopDocument["steps"];
+  organizationId: string;
+  pageId: string;
   readOnly: boolean;
   onChange: (step: SopStep) => void;
   onMoveUp: () => void;
@@ -44,6 +48,8 @@ export function SopStepCard({
   index,
   totalSteps,
   allSteps,
+  organizationId,
+  pageId,
   readOnly,
   onChange,
   onMoveUp,
@@ -52,20 +58,25 @@ export function SopStepCard({
   onDelete,
 }: SopStepCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   function updateField<K extends keyof SopStep>(field: K, value: SopStep[K]) {
     onChange({ ...step, [field]: value });
   }
 
-  function handleImageUpload(file: File | undefined) {
+  async function handleImageUpload(file: File | undefined) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        updateField("imageUrl", reader.result);
+    setIsUploadingImage(true);
+    try {
+      const result = await uploadSopStepImage(file, organizationId, pageId);
+      if ("error" in result) {
+        showErrorToast("Could not upload image", result.error);
+        return;
       }
-    };
-    reader.readAsDataURL(file);
+      updateField("imageUrl", result.url);
+    } finally {
+      setIsUploadingImage(false);
+    }
   }
 
   const prerequisiteOptions = allSteps
@@ -254,7 +265,7 @@ export function SopStepCard({
                 accept="image/*"
                 className="hidden"
                 onChange={(event) => {
-                  handleImageUpload(event.target.files?.[0]);
+                  void handleImageUpload(event.target.files?.[0]);
                   event.target.value = "";
                 }}
               />
@@ -262,10 +273,11 @@ export function SopStepCard({
                 type="button"
                 variant="outline"
                 size="sm"
+                disabled={isUploadingImage}
                 onClick={() => fileInputRef.current?.click()}
               >
                 <ImagePlus className="mr-2 size-4" />
-                Upload image
+                {isUploadingImage ? "Uploading…" : "Upload image"}
               </Button>
             </>
           ) : (
