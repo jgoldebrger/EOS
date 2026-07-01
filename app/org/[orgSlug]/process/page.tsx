@@ -22,8 +22,7 @@ export default async function OrgProcessPage({
         canEdit={canManageOrg(access.role)}
         scopeLabel="Organization"
         pages={pages}
-        viewHref={(id) => `${base}/${id}`}
-        editHref={(id) => `${base}/${id}/edit`}
+        processBasePath={base}
       />
     </div>
   );

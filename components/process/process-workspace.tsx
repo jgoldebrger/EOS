@@ -8,7 +8,7 @@ import {
   createProcessPage,
   deleteProcessPage,
 } from "@/features/process/actions";
-import type { ProcessPageListItem } from "@/features/process/queries";
+import type { ProcessPageListItem } from "@/features/process/types";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,8 +24,7 @@ interface ProcessWorkspaceProps {
   canEdit: boolean;
   scopeLabel: string;
   pages: ProcessPageListItem[];
-  viewHref: (pageId: string) => string;
-  editHref: (pageId: string) => string;
+  processBasePath: string;
 }
 
 function formatDate(iso: string) {
@@ -44,12 +43,19 @@ export function ProcessWorkspace({
   canEdit,
   scopeLabel,
   pages: initialPages,
-  viewHref,
-  editHref,
+  processBasePath,
 }: ProcessWorkspaceProps) {
   const router = useRouter();
   const [pages, setPages] = useState(initialPages);
   const [isPending, startTransition] = useTransition();
+
+  function pageViewHref(pageId: string) {
+    return `${processBasePath}/${pageId}`;
+  }
+
+  function pageEditHref(pageId: string) {
+    return `${processBasePath}/${pageId}/edit`;
+  }
 
   function handleCreate() {
     startTransition(async () => {
@@ -71,7 +77,7 @@ export function ProcessWorkspace({
       }
 
       showSuccessToast("SOP created");
-      router.push(editHref(result.id));
+      router.push(pageEditHref(result.id));
     });
   }
 
@@ -134,7 +140,7 @@ export function ProcessWorkspace({
               <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-2">
                 <div className="space-y-1">
                   <CardTitle className="text-base">
-                    <Link href={viewHref(page.id)} className="hover:underline">
+                    <Link href={pageViewHref(page.id)} className="hover:underline">
                       {page.title}
                     </Link>
                   </CardTitle>
@@ -147,12 +153,12 @@ export function ProcessWorkspace({
                 </div>
                 <div className="flex shrink-0 gap-2">
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={viewHref(page.id)}>View</Link>
+                    <Link href={pageViewHref(page.id)}>View</Link>
                   </Button>
                   {canEdit ? (
                     <>
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={editHref(page.id)}>
+                        <Link href={pageEditHref(page.id)}>
                           <Pencil className="mr-1 size-3.5" />
                           Edit
                         </Link>
