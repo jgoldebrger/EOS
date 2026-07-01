@@ -1,21 +1,28 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   Clock,
+  File,
   FileJson,
   FileSpreadsheet,
   FileText,
+  FileType,
+  Loader2,
   Printer,
 } from "lucide-react";
+import { showErrorToast } from "@/components/feedback/toast";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   downloadSopCsv,
+  downloadSopDocx,
   downloadSopJson,
   downloadSopMarkdown,
+  downloadSopPdf,
   printSopDocument,
   totalSopMinutes,
 } from "@/features/process/export";
@@ -33,9 +40,28 @@ export function ProcessPageViewer({
   backHref,
   editHref,
 }: ProcessPageViewerProps) {
+  const [exporting, setExporting] = useState<"pdf" | "docx" | null>(null);
   const sop = page.sop_document;
   const isSop = page.content_format === "sop" && sop;
   const totalMinutes = sop ? totalSopMinutes(sop) : 0;
+
+  async function runExport(
+    kind: "pdf" | "docx",
+    exporter: (doc: NonNullable<typeof sop>) => Promise<void>,
+  ) {
+    if (!sop) return;
+    setExporting(kind);
+    try {
+      await exporter(sop);
+    } catch {
+      showErrorToast(
+        kind === "pdf" ? "Could not export PDF" : "Could not export Word document",
+        "Please try again.",
+      );
+    } finally {
+      setExporting(null);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-8 print:p-0">
@@ -105,6 +131,32 @@ export function ProcessPageViewer({
           </Card>
 
           <div className="flex flex-wrap gap-2 print:hidden">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={exporting !== null}
+              onClick={() => void runExport("pdf", downloadSopPdf)}
+            >
+              {exporting === "pdf" ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : (
+                <File className="mr-2 size-4" />
+              )}
+              PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={exporting !== null}
+              onClick={() => void runExport("docx", downloadSopDocx)}
+            >
+              {exporting === "docx" ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : (
+                <FileType className="mr-2 size-4" />
+              )}
+              Word
+            </Button>
             <Button
               variant="outline"
               size="sm"

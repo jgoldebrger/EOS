@@ -91,3 +91,5 @@ export function totalSopMinutes(doc: SopDocument): number {
     0,
   );
 }
+
+export { downloadSopPdf, downloadSopDocx } from "@/features/process/export-pdf-docx";

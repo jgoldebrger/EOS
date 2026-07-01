@@ -13,7 +13,9 @@ import { updateProcessPage } from "@/features/process/actions";
 import {
   downloadJson,
   downloadSopCsv,
+  downloadSopDocx,
   downloadSopMarkdown,
+  downloadSopPdf,
   printSop,
   sopToMarkdown,
 } from "@/features/process/export";
@@ -108,6 +110,7 @@ export function SopBuilder({
   const [isDirty, setIsDirty] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [versionPanelOpen, setVersionPanelOpen] = useState(false);
+  const [exporting, setExporting] = useState<"pdf" | "docx" | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const documentRef = useRef(document);
   const isSavingRef = useRef(false);
@@ -304,6 +307,28 @@ export function SopBuilder({
     downloadJson(document);
   }
 
+  async function handleExportPdf() {
+    setExporting("pdf");
+    try {
+      await downloadSopPdf(document);
+    } catch {
+      showErrorToast("Could not export PDF", "Please try again.");
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  async function handleExportDocx() {
+    setExporting("docx");
+    try {
+      await downloadSopDocx(document);
+    } catch {
+      showErrorToast("Could not export Word document", "Please try again.");
+    } finally {
+      setExporting(null);
+    }
+  }
+
   const saveLabel =
     saveState === "saving"
       ? "Saving…"
@@ -423,6 +448,24 @@ export function SopBuilder({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                disabled={exporting !== null}
+                onClick={() => void handleExportPdf()}
+              >
+                PDF (.pdf)
+                {exporting === "pdf" ? (
+                  <Loader2 className="ml-auto size-4 animate-spin" />
+                ) : null}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={exporting !== null}
+                onClick={() => void handleExportDocx()}
+              >
+                Word (.docx)
+                {exporting === "docx" ? (
+                  <Loader2 className="ml-auto size-4 animate-spin" />
+                ) : null}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportMarkdown}>
                 Markdown (.md)
               </DropdownMenuItem>
