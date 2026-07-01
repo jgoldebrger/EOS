@@ -89,7 +89,13 @@ describe("evaluateMetricStatus", () => {
 });
 
 describe("formatOwnerLabel", () => {
-  it("uses email local part when available", () => {
+  it("uses metadata full name when available", () => {
+    expect(
+      formatOwnerLabel("user-id", "jane@acme.com", { full_name: "Jane Smith" }),
+    ).toBe("Jane Smith");
+  });
+
+  it("uses email local part when no metadata", () => {
     expect(formatOwnerLabel("user-id", "jane@acme.com")).toBe("jane");
   });
 

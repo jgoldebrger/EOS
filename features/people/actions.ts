@@ -8,6 +8,7 @@ import { z } from "zod";
 import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { findAuthUserByEmail } from "@/lib/users/find-by-email";
+import { buildFullName } from "@/lib/users/display-name";
 import { canManageOrg } from "@/lib/permissions/checks";
 import { logAuditEvent } from "@/lib/audit";
 import { toSafeAuthError } from "@/lib/auth/errors";
@@ -222,7 +223,8 @@ export async function createOrgUserAccount(
     };
   }
 
-  const { organizationId, orgSlug, email, password, orgRole } = parsed.data;
+  const { organizationId, orgSlug, firstName, lastName, email, password, orgRole } =
+    parsed.data;
   const access = await assertCanManageOrgMembers(organizationId);
   if (!access.ok) {
     return { success: false, error: access.error };
@@ -238,11 +240,17 @@ export async function createOrgUserAccount(
   }
 
   const admin = createAdminClient();
+  const fullName = buildFullName(firstName, lastName);
   const { data: created, error: createError } =
     await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
+      user_metadata: {
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        full_name: fullName,
+      },
     });
 
   if (createError || !created.user?.id) {

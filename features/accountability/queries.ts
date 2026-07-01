@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { formatOwnerLabel } from "@/features/scorecard/utils";
+import { getOrgMemberOptions } from "@/lib/users/org-member-options";
+import {
+  ownerLabelFromProfiles,
+  resolveOwnerProfiles,
+} from "@/lib/users/owner-labels";
 import { buildTree } from "@/features/accountability/utils";
 import type {
   SeatMemberOption,
@@ -23,23 +27,23 @@ export async function getSeatsForOrg(
     return [];
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const currentEmail = user?.email ?? null;
+  const assigneeProfiles = await resolveOwnerProfiles(
+    seats.map((seat) => seat.assigned_user_id),
+  );
 
   return seats.map((seat) => {
     const assigneeId = seat.assigned_user_id;
-    const assigneeEmail =
-      assigneeId && user?.id === assigneeId ? currentEmail : null;
+    const assigneeProfile = assigneeId
+      ? assigneeProfiles.get(assigneeId)
+      : undefined;
 
     return {
       ...seat,
       assignee: assigneeId
         ? {
             userId: assigneeId,
-            label: formatOwnerLabel(assigneeId, assigneeEmail),
-            email: assigneeEmail,
+            label: ownerLabelFromProfiles(assigneeProfiles, assigneeId),
+            email: assigneeProfile?.email ?? null,
           }
         : null,
     };
@@ -53,29 +57,5 @@ export function buildSeatTree(flat: SeatWithAssignee[]): SeatNode[] {
 export async function getOrgMembersForAccountability(
   organizationId: string,
 ): Promise<SeatMemberOption[]> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data, error } = await supabase
-    .from("organization_members")
-    .select("user_id, org_role")
-    .eq("organization_id", organizationId)
-    .in("org_role", ["owner", "admin", "member"])
-    .order("created_at", { ascending: true });
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data.map((member) => ({
-    userId: member.user_id,
-    orgRole: member.org_role,
-    label:
-      user?.id === member.user_id
-        ? formatOwnerLabel(member.user_id, user.email)
-        : formatOwnerLabel(member.user_id),
-  }));
+  return getOrgMemberOptions(organizationId);
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Plus } from "lucide-react";
+import { UserRound } from "lucide-react";
 import { signOut } from "@/app/auth/actions";
 import {
   GLOBAL_NAV_ITEMS,
@@ -12,6 +12,13 @@ import {
 import { CreateMenu } from "@/components/layout/create-menu";
 import { GlobalSearch } from "@/components/layout/global-search";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useOrgContext } from "@/features/organizations/components/org-context";
 import { useSelectedTeam } from "@/features/teams/components/team-context";
@@ -62,11 +69,33 @@ export function TopNav() {
         <div className="flex shrink-0 items-center gap-1">
           <GlobalSearch />
           <CreateMenu teamSlug={selectedTeam?.teamSlug} />
-          <form action={signOut}>
-            <Button type="submit" variant="ghost" size="sm" className="hidden sm:inline-flex">
-              Sign out
-            </Button>
-          </form>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="gap-1.5"
+                aria-label="Account menu"
+              >
+                <UserRound className="h-4 w-4" />
+                <span className="hidden sm:inline">Account</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem asChild>
+                <Link href={`/org/${orgSlug}/profile`}>Your profile</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <form action={signOut} className="w-full">
+                  <button type="submit" className="w-full text-left">
+                    Sign out
+                  </button>
+                </form>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

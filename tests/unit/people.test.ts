@@ -5,6 +5,8 @@ describe("createOrgUserAccountSchema", () => {
   const validInput = {
     organizationId: "550e8400-e29b-41d4-a716-446655440000",
     orgSlug: "acme",
+    firstName: "Jane",
+    lastName: "Smith",
     email: "User@Company.com",
     password: "securepass",
     orgRole: "member" as const,
@@ -23,6 +25,15 @@ describe("createOrgUserAccountSchema", () => {
     const result = createOrgUserAccountSchema.safeParse({
       ...validInput,
       password: "short",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing first name", () => {
+    const result = createOrgUserAccountSchema.safeParse({
+      ...validInput,
+      firstName: "",
     });
 
     expect(result.success).toBe(false);

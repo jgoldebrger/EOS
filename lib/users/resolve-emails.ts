@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatOwnerLabel } from "@/features/scorecard/utils";
+import { resolveDisplayName } from "@/lib/users/display-name";
 
 export interface ResolvedUser {
   userId: string;
@@ -23,10 +23,11 @@ export async function resolveUserEmails(
     unique.map(async (userId) => {
       const { data, error } = await admin.auth.admin.getUserById(userId);
       const email = error || !data.user ? null : (data.user.email ?? null);
+      const userMetadata = error || !data.user ? null : data.user.user_metadata;
       result.set(userId, {
         userId,
         email,
-        displayName: formatOwnerLabel(userId, email),
+        displayName: resolveDisplayName({ userId, email, userMetadata }),
       });
     }),
   );

@@ -1,5 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
-import { formatOwnerLabel } from "@/features/scorecard/utils";
+import { getOrgMemberOptions } from "@/lib/users/org-member-options";
+import {
+  ownerLabelFromProfiles,
+  resolveOwnerProfiles,
+} from "@/lib/users/owner-labels";
+import type { ResolvedUser } from "@/lib/users/resolve-emails";
 import {
   getSevenDayEndDate,
   isTodoOverdue,
@@ -13,8 +18,7 @@ import type {
 
 function mapTodoRow(
   row: Record<string, unknown>,
-  currentUserId: string | undefined,
-  currentEmail: string | null,
+  ownerProfiles: Map<string, ResolvedUser>,
 ): TodoWithOwner {
   const { teams: teamJoin, ...todo } = row as {
     teams: { name: string } | null;
@@ -25,15 +29,15 @@ function mapTodoRow(
 
   const team = teamJoin;
   const ownerId = todo.owner_id;
-  const ownerEmail = currentUserId === ownerId ? currentEmail : null;
+  const ownerProfile = ownerProfiles.get(ownerId);
 
   return {
     ...todo,
     teamName: team?.name ?? null,
     owner: {
       userId: ownerId,
-      label: formatOwnerLabel(ownerId, ownerEmail),
-      email: ownerEmail,
+      label: ownerLabelFromProfiles(ownerProfiles, ownerId),
+      email: ownerProfile?.email ?? null,
     },
     isOverdue: isTodoOverdue(todo.due_date, todo.status),
   };
@@ -77,12 +81,11 @@ export async function getTodosForOrg(
     return [];
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const currentEmail = user?.email ?? null;
+  const ownerProfiles = await resolveOwnerProfiles(
+    todos.map((row) => row.owner_id),
+  );
 
-  return todos.map((row) => mapTodoRow(row, user?.id, currentEmail));
+  return todos.map((row) => mapTodoRow(row, ownerProfiles));
 }
 
 export async function getSevenDayTodos(
@@ -112,29 +115,5 @@ export async function getOrgTeamsForTodos(
 export async function getOrgMembersForTodos(
   organizationId: string,
 ): Promise<TodoMemberOption[]> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data, error } = await supabase
-    .from("organization_members")
-    .select("user_id, org_role")
-    .eq("organization_id", organizationId)
-    .in("org_role", ["owner", "admin", "member"])
-    .order("created_at", { ascending: true });
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data.map((member) => ({
-    userId: member.user_id,
-    orgRole: member.org_role,
-    label:
-      user?.id === member.user_id
-        ? formatOwnerLabel(member.user_id, user.email)
-        : formatOwnerLabel(member.user_id),
-  }));
+  return getOrgMemberOptions(organizationId);
 }

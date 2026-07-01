@@ -1,3 +1,5 @@
+import { resolveDisplayName } from "@/lib/users/display-name";
+
 export type MetricStatus = "green" | "yellow" | "red" | "na";
 
 export type TargetRule =
@@ -778,14 +780,12 @@ export function formatWeekLabel(periodStart: string): string {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export function formatOwnerLabel(userId: string, email?: string | null): string {
-  if (email) {
-    const local = email.split("@")[0];
-    if (local) {
-      return local;
-    }
-  }
-  return `User ${userId.slice(0, 8)}`;
+export function formatOwnerLabel(
+  userId: string,
+  email?: string | null,
+  userMetadata?: Record<string, unknown> | null,
+): string {
+  return resolveDisplayName({ userId, email, userMetadata });
 }
 
 export const STATUS_CELL_CLASSES: Record<MetricStatus, string> = {

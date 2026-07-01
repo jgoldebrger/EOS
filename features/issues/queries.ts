@@ -1,5 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
-import { formatOwnerLabel } from "@/features/scorecard/utils";
+import { getOrgMemberOptions } from "@/lib/users/org-member-options";
+import {
+  ownerLabelFromProfiles,
+  resolveOwnerProfiles,
+} from "@/lib/users/owner-labels";
+import type { ResolvedUser } from "@/lib/users/resolve-emails";
 import type {
   Issue,
   IssueFilters,
@@ -14,14 +19,13 @@ function mapIssueRow(
     scorecard_metrics: { name: string } | null;
     rocks: { title: string } | null;
   } & Issue,
-  currentUserId: string | undefined,
-  currentEmail: string | null,
+  ownerProfiles: Map<string, ResolvedUser>,
   priorityRank: number,
 ): IssueWithLinks {
   const { teams: teamJoin, scorecard_metrics: metricJoin, rocks: rockJoin, ...issue } = row;
 
   const ownerId = issue.owner_id;
-  const ownerEmail = currentUserId === ownerId ? currentEmail : null;
+  const ownerProfile = ownerId ? ownerProfiles.get(ownerId) : undefined;
 
   return {
     ...issue,
@@ -30,8 +34,10 @@ function mapIssueRow(
     linkedRockTitle: rockJoin?.title ?? null,
     owner: {
       userId: ownerId,
-      label: ownerId ? formatOwnerLabel(ownerId, ownerEmail) : "Unassigned",
-      email: ownerEmail,
+      label: ownerId
+        ? ownerLabelFromProfiles(ownerProfiles, ownerId)
+        : "Unassigned",
+      email: ownerProfile?.email ?? null,
     },
     priorityRank,
   };
@@ -71,13 +77,12 @@ async function fetchIssues(
     return [];
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const currentEmail = user?.email ?? null;
+  const ownerProfiles = await resolveOwnerProfiles(
+    issues.map((row) => row.owner_id),
+  );
 
   return issues.map((row, index) =>
-    mapIssueRow(row, user?.id, currentEmail, index + 1),
+    mapIssueRow(row, ownerProfiles, index + 1),
   );
 }
 
@@ -118,13 +123,12 @@ export async function getOpenIssues(
     return [];
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const currentEmail = user?.email ?? null;
+  const ownerProfiles = await resolveOwnerProfiles(
+    issues.map((row) => row.owner_id),
+  );
 
   return issues.map((row, index) =>
-    mapIssueRow(row, user?.id, currentEmail, index + 1),
+    mapIssueRow(row, ownerProfiles, index + 1),
   );
 }
 
@@ -149,29 +153,5 @@ export async function getOrgTeamsForIssues(
 export async function getOrgMembersForIssues(
   organizationId: string,
 ): Promise<IssueMemberOption[]> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data, error } = await supabase
-    .from("organization_members")
-    .select("user_id, org_role")
-    .eq("organization_id", organizationId)
-    .in("org_role", ["owner", "admin", "member"])
-    .order("created_at", { ascending: true });
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data.map((member) => ({
-    userId: member.user_id,
-    orgRole: member.org_role,
-    label:
-      user?.id === member.user_id
-        ? formatOwnerLabel(member.user_id, user.email)
-        : formatOwnerLabel(member.user_id),
-  }));
+  return getOrgMemberOptions(organizationId);
 }

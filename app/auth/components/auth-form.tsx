@@ -36,6 +36,8 @@ const authSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters")
     .max(128, "Password is too long"),
+  firstName: z.string(),
+  lastName: z.string(),
 });
 
 type AuthFormValues = z.infer<typeof authSchema>;
@@ -56,7 +58,7 @@ export function AuthForm() {
 
   const form = useForm<AuthFormValues>({
     resolver: zodResolver(authSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "", password: "", firstName: "", lastName: "" },
   });
 
   async function onSubmit(values: AuthFormValues) {
@@ -80,9 +82,17 @@ export function AuthForm() {
       return;
     }
 
+    if (!values.firstName.trim() || !values.lastName.trim()) {
+      setFormError("First and last name are required.");
+      setIsSubmitting(false);
+      return;
+    }
+
     const result = await signUpWithEmail({
       email: values.email,
       password: values.password,
+      firstName: values.firstName?.trim() ?? "",
+      lastName: values.lastName?.trim() ?? "",
     });
 
     setIsSubmitting(false);
@@ -184,6 +194,44 @@ export function AuthForm() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {mode === "sign-up" && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First name</FormLabel>
+                      <FormControl>
+                        <Input
+                          autoComplete="given-name"
+                          placeholder="Jane"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last name</FormLabel>
+                      <FormControl>
+                        <Input
+                          autoComplete="family-name"
+                          placeholder="Smith"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
             <FormField
               control={form.control}
               name="email"

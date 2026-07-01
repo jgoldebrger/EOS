@@ -39,6 +39,8 @@ export function CreateAccountDialog({
 }: CreateAccountDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -46,6 +48,8 @@ export function CreateAccountDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function resetForm() {
+    setFirstName("");
+    setLastName("");
     setEmail("");
     setPassword("");
     setConfirmPassword("");
@@ -53,6 +57,16 @@ export function CreateAccountDialog({
   }
 
   async function handleSubmit() {
+    if (!firstName.trim()) {
+      showErrorToast("First name required", "Enter the person's first name.");
+      return;
+    }
+
+    if (!lastName.trim()) {
+      showErrorToast("Last name required", "Enter the person's last name.");
+      return;
+    }
+
     if (!email.trim()) {
       showErrorToast("Email required", "Enter the person's email address.");
       return;
@@ -75,6 +89,8 @@ export function CreateAccountDialog({
     const result = await createOrgUserAccount({
       organizationId,
       orgSlug,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
       email: email.trim(),
       password,
       orgRole,
@@ -121,6 +137,28 @@ export function CreateAccountDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="create-account-first-name">First name</Label>
+              <Input
+                id="create-account-first-name"
+                autoComplete="given-name"
+                placeholder="Jane"
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-account-last-name">Last name</Label>
+              <Input
+                id="create-account-last-name"
+                autoComplete="family-name"
+                placeholder="Smith"
+                value={lastName}
+                onChange={(event) => setLastName(event.target.value)}
+              />
+            </div>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="create-account-email">Email</Label>
             <Input
@@ -179,6 +217,8 @@ export function CreateAccountDialog({
             onClick={handleSubmit}
             disabled={
               isSubmitting ||
+              !firstName.trim() ||
+              !lastName.trim() ||
               !email.trim() ||
               !password ||
               !confirmPassword

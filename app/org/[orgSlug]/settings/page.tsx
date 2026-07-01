@@ -38,6 +38,22 @@ export default async function SettingsPage({
         </p>
       </div>
 
+      <Card data-testid="user-profile-settings-link">
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle>Your profile</CardTitle>
+            <CardDescription>
+              Update your name and how you appear across the workspace.
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline">
+            <Link href={`/org/${orgSlug}/profile`}>Edit profile</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card data-testid="org-settings-profile">
         <CardHeader>
           <CardTitle>Organization</CardTitle>

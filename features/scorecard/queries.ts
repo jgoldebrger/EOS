@@ -1,8 +1,12 @@
 import { cache } from "react";
-import { createClient, getServerSessionUser } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+import { getOrgMemberOptions } from "@/lib/users/org-member-options";
+import {
+  ownerLabelFromProfiles,
+  resolveOwnerProfiles,
+} from "@/lib/users/owner-labels";
 import {
   evaluateMetricForRow,
-  formatOwnerLabel,
   getDatesInWeek,
   getLastNWeeks,
   getPeriodColumns,
@@ -98,10 +102,9 @@ const getMetricsForOrgCached = cache(
       query = query.eq("owner_id", ownerId);
     }
 
-    const [{ data: metrics, error }, categories, user] = await Promise.all([
+    const [{ data: metrics, error }, categories] = await Promise.all([
       query,
       getCategoriesForOrg(organizationId, teamId || undefined),
-      getServerSessionUser(),
     ]);
 
     if (error || !metrics) {
@@ -111,14 +114,16 @@ const getMetricsForOrgCached = cache(
     const metricTags = await getTagsForMetrics(metrics.map((row) => row.id));
 
     const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
-    const currentEmail = user?.email ?? null;
+    const ownerProfiles = await resolveOwnerProfiles(
+      metrics.map((row) => row.owner_id),
+    );
 
     return metrics.map((row) => {
       const { teams: teamJoin, ...metric } = row;
       const team = teamJoin as { name: string } | null;
       const metricCategoryId = (metric as { category_id?: string | null }).category_id;
       const metricOwnerId = metric.owner_id;
-      const ownerEmail = user?.id === metricOwnerId ? currentEmail : null;
+      const ownerProfile = ownerProfiles.get(metricOwnerId);
 
       return {
         ...metric,
@@ -127,8 +132,8 @@ const getMetricsForOrgCached = cache(
         tags: metricTags[metric.id] ?? [],
         owner: {
           userId: metricOwnerId,
-          label: formatOwnerLabel(metricOwnerId, ownerEmail),
-          email: ownerEmail,
+          label: ownerLabelFromProfiles(ownerProfiles, metricOwnerId),
+          email: ownerProfile?.email ?? null,
         },
       };
     });
@@ -1212,27 +1217,6 @@ export async function getOrgMembersForScorecard(
 
 const getOrgMembersForScorecardCached = cache(
   async (organizationId: string): Promise<ScorecardMemberOption[]> => {
-    const supabase = await createClient();
-    const user = await getServerSessionUser();
-
-    const { data, error } = await supabase
-      .from("organization_members")
-      .select("user_id, org_role")
-      .eq("organization_id", organizationId)
-      .in("org_role", ["owner", "admin", "member"])
-      .order("created_at", { ascending: true });
-
-    if (error || !data) {
-      return [];
-    }
-
-    return data.map((member) => ({
-      userId: member.user_id,
-      orgRole: member.org_role,
-      label:
-        user?.id === member.user_id
-          ? formatOwnerLabel(member.user_id, user.email)
-          : formatOwnerLabel(member.user_id),
-    }));
+    return getOrgMemberOptions(organizationId);
   },
 );

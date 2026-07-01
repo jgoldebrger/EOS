@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { formatOwnerLabel } from "@/features/scorecard/utils";
+import { getOrgMemberOptions } from "@/lib/users/org-member-options";
+import {
+  ownerLabelFromProfiles,
+  resolveOwnerProfiles,
+} from "@/lib/users/owner-labels";
 import type {
   RockFilters,
   RockMemberOption,
@@ -39,24 +43,21 @@ export async function getRocksForOrg(
     return [];
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const currentEmail = user?.email ?? null;
+  const ownerProfiles = await resolveOwnerProfiles(rocks.map((row) => row.owner_id));
 
   return rocks.map((row) => {
     const { teams: teamJoin, ...rock } = row;
     const team = teamJoin as { name: string } | null;
     const ownerId = rock.owner_id;
-    const ownerEmail = user?.id === ownerId ? currentEmail : null;
+    const ownerProfile = ownerProfiles.get(ownerId);
 
     return {
       ...rock,
       teamName: team?.name ?? null,
       owner: {
         userId: ownerId,
-        label: formatOwnerLabel(ownerId, ownerEmail),
-        email: ownerEmail,
+        label: ownerLabelFromProfiles(ownerProfiles, ownerId),
+        email: ownerProfile?.email ?? null,
       },
     };
   });
@@ -79,11 +80,9 @@ export async function getRockById(
     return null;
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const ownerProfiles = await resolveOwnerProfiles([row.owner_id]);
   const ownerId = row.owner_id;
-  const ownerEmail = user?.id === ownerId ? (user?.email ?? null) : null;
+  const ownerProfile = ownerProfiles.get(ownerId);
   const { teams: teamJoin, ...rock } = row;
   const team = teamJoin as { name: string } | null;
 
@@ -92,8 +91,8 @@ export async function getRockById(
     teamName: team?.name ?? null,
     owner: {
       userId: ownerId,
-      label: formatOwnerLabel(ownerId, ownerEmail),
-      email: ownerEmail,
+      label: ownerLabelFromProfiles(ownerProfiles, ownerId),
+      email: ownerProfile?.email ?? null,
     },
   };
 }
@@ -119,29 +118,5 @@ export async function getOrgTeamsForRocks(
 export async function getOrgMembersForRocks(
   organizationId: string,
 ): Promise<RockMemberOption[]> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data, error } = await supabase
-    .from("organization_members")
-    .select("user_id, org_role")
-    .eq("organization_id", organizationId)
-    .in("org_role", ["owner", "admin", "member"])
-    .order("created_at", { ascending: true });
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data.map((member) => ({
-    userId: member.user_id,
-    orgRole: member.org_role,
-    label:
-      user?.id === member.user_id
-        ? formatOwnerLabel(member.user_id, user.email)
-        : formatOwnerLabel(member.user_id),
-  }));
+  return getOrgMemberOptions(organizationId);
 }

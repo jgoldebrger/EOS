@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import { formatOwnerLabel } from "@/features/scorecard/utils";
+import {
+  ownerLabelFromProfiles,
+  resolveOwnerProfiles,
+} from "@/lib/users/owner-labels";
 import {
   parseAgendaTemplate,
 } from "@/features/meetings/utils";
@@ -45,11 +48,6 @@ export async function getMeetingById(
 ): Promise<MeetingWithNotes | null> {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const currentEmail = user?.email ?? null;
-
   const { data: meeting, error } = await supabase
     .from("meetings")
     .select("*, teams(name)")
@@ -73,6 +71,10 @@ export async function getMeetingById(
     .eq("meeting_id", meetingId)
     .order("created_at", { ascending: true });
 
+  const deciderProfiles = await resolveOwnerProfiles(
+    (decisions ?? []).map((decision) => decision.decided_by),
+  );
+
   const { teams: teamJoin, ...meetingRow } = meeting as {
     teams: { name: string } | null;
   } & MeetingWithNotes;
@@ -80,9 +82,7 @@ export async function getMeetingById(
   const mappedDecisions: MeetingDecision[] = (decisions ?? []).map((decision) => ({
     ...decision,
     deciderLabel: decision.decided_by
-      ? user?.id === decision.decided_by
-        ? formatOwnerLabel(decision.decided_by, currentEmail)
-        : formatOwnerLabel(decision.decided_by)
+      ? ownerLabelFromProfiles(deciderProfiles, decision.decided_by)
       : "Unassigned",
   }));
 
