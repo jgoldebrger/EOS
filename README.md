@@ -4,7 +4,7 @@ Business Operating System for EOS practitioners — Strety-style team workspaces
 
 ## Navigation (Strety-style)
 
-- **Global top nav:** Home, Inbox, Activity, Reports, Teams, People, Company, Projects
+- **Global top nav:** Home, Inbox, Activity, Reports, Teams, People, Company, Projects, Transport
 - **Team workspace:** `/org/[slug]/teams/[teamSlug]/` with Overview, Agendas, Rocks, Scorecards, To-Dos, Headlines, Issues, Process
 - **Global search:** `Ctrl+K` / `Cmd+K`
 - Legacy routes (`/scorecard`, `/rocks`, etc.) redirect to your first team workspace

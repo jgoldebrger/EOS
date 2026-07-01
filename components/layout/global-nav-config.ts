@@ -6,6 +6,7 @@ import {
   Home,
   Inbox,
   BarChart3,
+  Truck,
   Users,
   UsersRound,
   type LucideIcon,
@@ -27,6 +28,7 @@ export const GLOBAL_NAV_ITEMS: GlobalNavItem[] = [
   { label: "Process", segment: "process", icon: FileText },
   { label: "Company", segment: "company", icon: Building2 },
   { label: "Projects", segment: "projects", icon: FolderKanban },
+  { label: "Transport", segment: "transport", icon: Truck },
 ];
 
 export function getGlobalNavHref(orgSlug: string, segment: string): string {

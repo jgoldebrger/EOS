@@ -74,6 +74,20 @@ export type ProjectPriorityDb = "urgent" | "high" | "medium" | "low" | "none";
 export type ProjectCycleStatusDb = "draft" | "current" | "upcoming" | "completed";
 export type ProjectDisplayTypeDb = "list" | "kanban" | "triage";
 export type ProjectPageContentFormatDb = "text" | "markdown";
+export type TransportLoadStatusDb =
+  | "quote"
+  | "dispatched"
+  | "in_transit"
+  | "delivered"
+  | "cancelled";
+export type TransportStopTypeDb = "pickup" | "delivery";
+export type TransportStopStatusDb = "pending" | "arrived" | "completed" | "skipped";
+export type TransportAnalysisTypeDb = "isochrone" | "matrix";
+export type TransportAnalysisStatusDb =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed";
 
 export interface Database {
   public: {
@@ -1776,6 +1790,342 @@ export interface Database {
         };
         Relationships: [];
       };
+      transport_analyses: {
+        Row: {
+          id: string;
+          organization_id: string;
+          analysis_type: TransportAnalysisTypeDb;
+          status: TransportAnalysisStatusDb;
+          params: Json;
+          result: Json | null;
+          error_message: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          analysis_type: TransportAnalysisTypeDb;
+          status?: TransportAnalysisStatusDb;
+          params?: Json;
+          result?: Json | null;
+          error_message?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          analysis_type?: TransportAnalysisTypeDb;
+          status?: TransportAnalysisStatusDb;
+          params?: Json;
+          result?: Json | null;
+          error_message?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      transport_carriers: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          contact_name: string | null;
+          contact_email: string | null;
+          contact_phone: string | null;
+          mc_number: string | null;
+          notes: string | null;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          name: string;
+          contact_name?: string | null;
+          contact_email?: string | null;
+          contact_phone?: string | null;
+          mc_number?: string | null;
+          notes?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          name?: string;
+          contact_name?: string | null;
+          contact_email?: string | null;
+          contact_phone?: string | null;
+          mc_number?: string | null;
+          notes?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      transport_depots: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          address: string | null;
+          latitude: number | null;
+          longitude: number | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          name: string;
+          address?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          name?: string;
+          address?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      transport_issue_links: {
+        Row: {
+          load_id: string;
+          issue_id: string;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          load_id: string;
+          issue_id: string;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          load_id?: string;
+          issue_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      transport_loads: {
+        Row: {
+          id: string;
+          organization_id: string;
+          load_number: number;
+          reference: string | null;
+          status: TransportLoadStatusDb;
+          customer_name: string | null;
+          customer_phone: string | null;
+          carrier_id: string | null;
+          driver_id: string | null;
+          depot_id: string | null;
+          project_id: string | null;
+          scheduled_date: string | null;
+          notes: string | null;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          load_number: number;
+          reference?: string | null;
+          status?: TransportLoadStatusDb;
+          customer_name?: string | null;
+          customer_phone?: string | null;
+          carrier_id?: string | null;
+          driver_id?: string | null;
+          depot_id?: string | null;
+          project_id?: string | null;
+          scheduled_date?: string | null;
+          notes?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          load_number?: number;
+          reference?: string | null;
+          status?: TransportLoadStatusDb;
+          customer_name?: string | null;
+          customer_phone?: string | null;
+          carrier_id?: string | null;
+          driver_id?: string | null;
+          depot_id?: string | null;
+          project_id?: string | null;
+          scheduled_date?: string | null;
+          notes?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      transport_project_links: {
+        Row: {
+          load_id: string;
+          project_id: string;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          load_id: string;
+          project_id: string;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          load_id?: string;
+          project_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      transport_routes: {
+        Row: {
+          id: string;
+          organization_id: string;
+          load_id: string;
+          route_data: Json;
+          total_distance_meters: number | null;
+          total_duration_seconds: number | null;
+          optimized_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          load_id: string;
+          route_data?: Json;
+          total_distance_meters?: number | null;
+          total_duration_seconds?: number | null;
+          optimized_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          load_id?: string;
+          route_data?: Json;
+          total_distance_meters?: number | null;
+          total_duration_seconds?: number | null;
+          optimized_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      transport_stops: {
+        Row: {
+          id: string;
+          organization_id: string;
+          load_id: string;
+          sequence_number: number;
+          stop_type: TransportStopTypeDb;
+          address: string;
+          latitude: number | null;
+          longitude: number | null;
+          contact_name: string | null;
+          contact_phone: string | null;
+          time_window_start: string | null;
+          time_window_end: string | null;
+          service_duration_minutes: number;
+          status: TransportStopStatusDb;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          load_id: string;
+          sequence_number: number;
+          stop_type?: TransportStopTypeDb;
+          address: string;
+          latitude?: number | null;
+          longitude?: number | null;
+          contact_name?: string | null;
+          contact_phone?: string | null;
+          time_window_start?: string | null;
+          time_window_end?: string | null;
+          service_duration_minutes?: number;
+          status?: TransportStopStatusDb;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          load_id?: string;
+          sequence_number?: number;
+          stop_type?: TransportStopTypeDb;
+          address?: string;
+          latitude?: number | null;
+          longitude?: number | null;
+          contact_name?: string | null;
+          contact_phone?: string | null;
+          time_window_start?: string | null;
+          time_window_end?: string | null;
+          service_duration_minutes?: number;
+          status?: TransportStopStatusDb;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      transport_todo_links: {
+        Row: {
+          load_id: string;
+          todo_id: string;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          load_id: string;
+          todo_id: string;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          load_id?: string;
+          todo_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
       vto_sections: {
         Row: {
           id: string;
@@ -1890,6 +2240,10 @@ export interface Database {
         Args: { team_id: string };
         Returns: boolean;
       };
+      can_mutate_transport_resource: {
+        Args: { p_organization_id: string };
+        Returns: boolean;
+      };
       set_updated_at: {
         Args: Record<string, never>;
         Returns: undefined;
@@ -1941,3 +2295,9 @@ export type ProjectWorkItem = Tables<"project_work_items">;
 export type ProjectModule = Tables<"project_modules">;
 export type ProjectCycle = Tables<"project_cycles">;
 export type ProjectPage = Tables<"project_pages">;
+export type TransportDepot = Tables<"transport_depots">;
+export type TransportCarrier = Tables<"transport_carriers">;
+export type TransportLoad = Tables<"transport_loads">;
+export type TransportStop = Tables<"transport_stops">;
+export type TransportRoute = Tables<"transport_routes">;
+export type TransportAnalysis = Tables<"transport_analyses">;

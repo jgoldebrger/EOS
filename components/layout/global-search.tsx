@@ -4,6 +4,8 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useOrgContext } from "@/features/organizations/components/org-context";
 import { searchProjectsForNav } from "@/features/projects/actions";
+import { searchTransportForNav } from "@/features/transport/actions";
+import { formatLoadLabel } from "@/features/transport/utils";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +21,7 @@ const QUICK_LINKS = [
   { label: "People", segment: "people" },
   { label: "Company", segment: "company" },
   { label: "Projects", segment: "projects" },
+  { label: "Transport", segment: "transport" },
   { label: "Inbox", segment: "inbox" },
   { label: "Activity", segment: "activity" },
   { label: "Reports", segment: "reports" },
@@ -30,6 +33,9 @@ export function GlobalSearch() {
   const [projectResults, setProjectResults] = useState<
     Awaited<ReturnType<typeof searchProjectsForNav>>
   >({ projects: [], workItems: [] });
+  const [transportResults, setTransportResults] = useState<
+    Awaited<ReturnType<typeof searchTransportForNav>>
+  >([]);
   const [, startTransition] = useTransition();
   const router = useRouter();
   const { orgSlug, orgId } = useOrgContext();
@@ -48,13 +54,19 @@ export function GlobalSearch() {
   useEffect(() => {
     if (!open || query.trim().length < 2) {
       setProjectResults({ projects: [], workItems: [] });
+      setTransportResults([]);
       return;
     }
 
     const handle = window.setTimeout(() => {
       startTransition(async () => {
-        const results = await searchProjectsForNav(orgId, query.trim());
-        setProjectResults(results);
+        const q = query.trim();
+        const [projects, loads] = await Promise.all([
+          searchProjectsForNav(orgId, q),
+          searchTransportForNav(orgId, q),
+        ]);
+        setProjectResults(projects);
+        setTransportResults(loads);
       });
     }, 200);
 
@@ -72,7 +84,7 @@ export function GlobalSearch() {
           <DialogTitle>Search</DialogTitle>
         </DialogHeader>
         <Input
-          placeholder="Search navigation and projects…"
+          placeholder="Search navigation, projects, and loads…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Global search"
@@ -98,6 +110,32 @@ export function GlobalSearch() {
                       }}
                     >
                       {project.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {transportResults.length > 0 && (
+            <div>
+              <p className="mb-1 px-3 text-xs font-medium text-muted-foreground">
+                Loads
+              </p>
+              <ul className="space-y-1">
+                {transportResults.map((load) => (
+                  <li key={load.id}>
+                    <button
+                      type="button"
+                      className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
+                      onClick={() => {
+                        router.push(`/org/${orgSlug}/transport/${load.id}`);
+                        setOpen(false);
+                      }}
+                    >
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {formatLoadLabel(load.load_number)}
+                      </span>{" "}
+                      {load.customer_name ?? "Load"}
                     </button>
                   </li>
                 ))}

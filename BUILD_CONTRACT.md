@@ -62,11 +62,12 @@ Stubs: `lib/permissions/checks.ts`
 | done | 024 | Project cycles |
 | done | 025 | Project pages + EOS links |
 | done | 026 | Project table grants |
-| **Next available** | **027** | — |
+| done | 027 | Transport TMS core (loads, stops, carriers, routes, analyses) |
+| **Next available** | **028** | — |
 
 Team workspace routes: `/org/[orgSlug]/teams/[teamSlug]/{overview,agendas,rocks,scorecard,todos,headlines,issues,process}`
 
-Global nav routes: `/org/[orgSlug]/{home,inbox,activity,reports,teams,people,company,projects}`
+Global nav routes: `/org/[orgSlug]/{home,inbox,activity,reports,teams,people,company,projects,transport}`
 
 Migrations live in `supabase/migrations/`.
 

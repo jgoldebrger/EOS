@@ -1,0 +1,27 @@
+services:
+  vroom:
+    image: ghcr.io/vroom-project/vroom-docker:v1.14.0
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+
+  # Optional OSRM backend — preprocess a regional .osm.pbf into /data first.
+  # See README.md for graph build steps.
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    profiles:
+      - osrm
+    volumes:
+      - ./data:/data
+    command: osrm-routed --algorithm mld /data/region.osrm
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
+  ferrobus-worker:
+    build: ./ferrobus-worker
+    ports:
+      - "8090:8090"
+    restart: unless-stopped

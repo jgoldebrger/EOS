@@ -10,6 +10,8 @@ All functions use [`@supabase/server`](https://github.com/supabase/server) with 
 | `summarize-meeting` | `user` | AI meeting summary |
 | `validate-sso-membership` | `user` | SSO auto-join validation |
 | `discover-sso-provider` | `publishable` | Pre-login SSO discovery (`verify_jwt = false`) |
+| `optimize-routes` | `user` | VROOM route optimization proxy |
+| `run-transport-analysis` | `user` | Ferrobus isochrone worker proxy |
 
 Shared helpers: [`_shared/edge-utils.ts`](./_shared/edge-utils.ts)
 
