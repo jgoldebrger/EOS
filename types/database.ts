@@ -1213,6 +1213,8 @@ export interface Database {
           content: string;
           content_format: ProcessPageContentFormatDb;
           sop_document: Json | null;
+          category: string;
+          archived_at: string | null;
           display_order: number;
           created_at: string;
           updated_at: string;
@@ -1227,6 +1229,8 @@ export interface Database {
           content?: string;
           content_format?: ProcessPageContentFormatDb;
           sop_document?: Json | null;
+          category?: string;
+          archived_at?: string | null;
           display_order?: number;
           created_at?: string;
           updated_at?: string;
@@ -1241,6 +1245,8 @@ export interface Database {
           content?: string;
           content_format?: ProcessPageContentFormatDb;
           sop_document?: Json | null;
+          category?: string;
+          archived_at?: string | null;
           display_order?: number;
           created_at?: string;
           updated_at?: string;
@@ -1266,6 +1272,87 @@ export interface Database {
             columns: ["parent_id"];
             isOneToOne: false;
             referencedRelation: "process_pages";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      process_page_versions: {
+        Row: {
+          id: string;
+          process_page_id: string;
+          organization_id: string;
+          sop_document: Json | null;
+          content: string;
+          version_number: number;
+          note: string | null;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          process_page_id: string;
+          organization_id: string;
+          sop_document?: Json | null;
+          content?: string;
+          version_number: number;
+          note?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          process_page_id?: string;
+          organization_id?: string;
+          sop_document?: Json | null;
+          content?: string;
+          version_number?: number;
+          note?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "process_page_versions_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "process_page_versions_process_page_id_fkey";
+            columns: ["process_page_id"];
+            isOneToOne: false;
+            referencedRelation: "process_pages";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      process_page_tags: {
+        Row: {
+          process_page_id: string;
+          tag_id: string;
+        };
+        Insert: {
+          process_page_id: string;
+          tag_id: string;
+        };
+        Update: {
+          process_page_id?: string;
+          tag_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "process_page_tags_process_page_id_fkey";
+            columns: ["process_page_id"];
+            isOneToOne: false;
+            referencedRelation: "process_pages";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "process_page_tags_tag_id_fkey";
+            columns: ["tag_id"];
+            isOneToOne: false;
+            referencedRelation: "tags";
             referencedColumns: ["id"];
           },
         ];
@@ -1428,3 +1515,5 @@ export type Decision = Tables<"decisions">;
 export type VtoSection = Tables<"vto_sections">;
 export type VtoSnapshot = Tables<"vto_snapshots">;
 export type ProcessPage = Tables<"process_pages">;
+export type ProcessPageVersion = Tables<"process_page_versions">;
+export type ProcessPageTag = Tables<"process_page_tags">;

@@ -10,7 +10,7 @@ export default async function OrgProcessPage({
 }) {
   const { orgSlug } = await params;
   const access = await requireOrgAccess(orgSlug);
-  const pages = await getProcessPagesForOrg(access.orgId);
+  const pages = await getProcessPagesForOrg(access.orgId, { includeArchived: true });
   const base = `/org/${orgSlug}/process`;
 
   return (

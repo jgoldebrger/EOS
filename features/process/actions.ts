@@ -5,25 +5,44 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Json, TablesUpdate } from "@/types/database";
 import {
+  archiveProcessPageSchema,
   createProcessPageSchema,
   deleteProcessPageSchema,
+  restoreProcessPageVersionSchema,
+  setProcessPageTagsSchema,
   sopDocumentSchema,
   updateProcessPageSchema,
   type SopDocument,
 } from "@/features/process/schema";
+import {
+  getProcessPageById,
+  getProcessPageVersions,
+} from "@/features/process/queries";
+import type { ProcessPageVersionListItem } from "@/features/process/types";
 
 export type ProcessActionResult =
-  | { success: true; id?: string }
+  | { success: true; id?: string; document?: SopDocument }
   | { success: false; error: string };
+
+const MAX_VERSIONS_PER_PAGE = 20;
 
 function revalidateProcessPaths(
   orgSlug: string,
   teamSlug?: string | null,
+  pageId?: string,
 ) {
   after(() => {
     revalidatePath(`/org/${orgSlug}/process`);
     if (teamSlug) {
       revalidatePath(`/org/${orgSlug}/teams/${teamSlug}/process`);
+    }
+    if (pageId) {
+      revalidatePath(`/org/${orgSlug}/process/${pageId}`);
+      revalidatePath(`/org/${orgSlug}/process/${pageId}/edit`);
+      if (teamSlug) {
+        revalidatePath(`/org/${orgSlug}/teams/${teamSlug}/process/${pageId}`);
+        revalidatePath(`/org/${orgSlug}/teams/${teamSlug}/process/${pageId}/edit`);
+      }
     }
   });
 }
@@ -37,6 +56,125 @@ function createEmptySopDocument(pageId: string, title: string): SopDocument {
     steps: [],
     lastModified: new Date().toISOString(),
   };
+}
+
+function applyTeamScope<T extends { is: Function; eq: Function }>(
+  query: T,
+  teamId: string | null | undefined,
+): T {
+  if (teamId === null) {
+    return query.is("team_id", null) as T;
+  }
+  if (teamId) {
+    return query.eq("team_id", teamId) as T;
+  }
+  return query;
+}
+
+async function saveProcessPageVersion(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  page: {
+    id: string;
+    organization_id: string;
+    title: string;
+    content: string;
+    sop_document: Json | null;
+  },
+  userId: string,
+): Promise<{ error?: string }> {
+  const { data: maxRow } = await supabase
+    .from("process_page_versions")
+    .select("version_number")
+    .eq("process_page_id", page.id)
+    .order("version_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const nextVersion = (maxRow?.version_number ?? 0) + 1;
+
+  const { error: insertError } = await supabase
+    .from("process_page_versions")
+    .insert({
+      process_page_id: page.id,
+      organization_id: page.organization_id,
+      sop_document: page.sop_document,
+      content: page.content ?? "",
+      version_number: nextVersion,
+      note: `Before update (v${nextVersion})`,
+      created_by: userId,
+    });
+
+  if (insertError) {
+    return { error: "Could not save version snapshot" };
+  }
+
+  const { data: staleVersions } = await supabase
+    .from("process_page_versions")
+    .select("id")
+    .eq("process_page_id", page.id)
+    .order("version_number", { ascending: false })
+    .range(MAX_VERSIONS_PER_PAGE, MAX_VERSIONS_PER_PAGE + 99);
+
+  if (staleVersions?.length) {
+    await supabase
+      .from("process_page_versions")
+      .delete()
+      .in(
+        "id",
+        staleVersions.map((row) => row.id),
+      );
+  }
+
+  return {};
+}
+
+async function replaceProcessPageTags(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  pageId: string,
+  tagIds: string[],
+): Promise<{ error?: string }> {
+  if (tagIds.length > 0) {
+    const { data: validTags, error: tagError } = await supabase
+      .from("tags")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .in("id", tagIds);
+
+    if (tagError) {
+      return { error: "Unable to validate tags" };
+    }
+
+    if ((validTags ?? []).length !== tagIds.length) {
+      return { error: "One or more tags are invalid" };
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from("process_page_tags")
+    .delete()
+    .eq("process_page_id", pageId);
+
+  if (deleteError) {
+    return { error: "Unable to update page tags" };
+  }
+
+  if (tagIds.length === 0) {
+    return {};
+  }
+
+  const { error: insertError } = await supabase.from("process_page_tags").insert(
+    tagIds.map((tagId) => ({
+      process_page_id: pageId,
+      tag_id: tagId,
+    })),
+  );
+
+  if (insertError) {
+    return { error: "Unable to update page tags" };
+  }
+
+  return {};
 }
 
 export async function createProcessPage(
@@ -58,14 +196,24 @@ export async function createProcessPage(
     return { success: false, error: "You must be signed in" };
   }
 
-  const { organizationId, orgSlug, teamId, teamSlug, title } = parsed.data;
+  const {
+    organizationId,
+    orgSlug,
+    teamId,
+    teamSlug,
+    title,
+    category,
+    parentId,
+  } = parsed.data;
 
   const { data, error } = await supabase
     .from("process_pages")
     .insert({
       organization_id: organizationId,
       team_id: teamId ?? null,
+      parent_id: parentId ?? null,
       title,
+      category: category ?? "General",
       content: "",
       content_format: "sop",
       created_by: user.id,
@@ -121,12 +269,31 @@ export async function updateProcessPage(
     teamId,
     teamSlug,
     title,
+    category,
+    parentId,
     contentMarkdown,
     sopDocument,
+    tagIds,
   } = parsed.data;
+
+  let currentQuery = supabase
+    .from("process_pages")
+    .select("id, organization_id, title, content, sop_document")
+    .eq("id", id)
+    .eq("organization_id", organizationId);
+
+  currentQuery = applyTeamScope(currentQuery, teamId);
+
+  const { data: currentPage } = await currentQuery.maybeSingle();
+
+  if (!currentPage) {
+    return { success: false, error: "SOP not found" };
+  }
 
   const updates: TablesUpdate<"process_pages"> = {};
   if (title !== undefined) updates.title = title;
+  if (category !== undefined) updates.category = category;
+  if (parentId !== undefined) updates.parent_id = parentId;
   if (contentMarkdown !== undefined) updates.content = contentMarkdown;
   if (sopDocument !== undefined) {
     const doc = sopDocumentSchema.parse(sopDocument);
@@ -137,36 +304,271 @@ export async function updateProcessPage(
     }
   }
 
-  if (Object.keys(updates).length === 0) {
+  if (Object.keys(updates).length === 0 && tagIds === undefined) {
     return { success: false, error: "Nothing to update" };
   }
 
-  let query = supabase
+  if (Object.keys(updates).length > 0) {
+    const versionResult = await saveProcessPageVersion(
+      supabase,
+      currentPage,
+      user.id,
+    );
+    if (versionResult.error) {
+      return { success: false, error: versionResult.error };
+    }
+  }
+
+  if (Object.keys(updates).length > 0) {
+    let query = supabase
+      .from("process_pages")
+      .update(updates)
+      .eq("id", id)
+      .eq("organization_id", organizationId);
+
+    query = applyTeamScope(query, teamId);
+
+    const { error } = await query;
+
+    if (error) {
+      return { success: false, error: "Could not update SOP" };
+    }
+  }
+
+  if (tagIds !== undefined) {
+    const tagResult = await replaceProcessPageTags(
+      supabase,
+      organizationId,
+      id,
+      [...new Set(tagIds)],
+    );
+    if (tagResult.error) {
+      return { success: false, error: tagResult.error };
+    }
+  }
+
+  revalidateProcessPaths(orgSlug, teamSlug, id);
+  return { success: true };
+}
+
+export async function listProcessPageVersions(input: {
+  organizationId: string;
+  processPageId: string;
+}): Promise<
+  | { success: true; versions: ProcessPageVersionListItem[] }
+  | { success: false; error: string }
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: "You must be signed in" };
+  }
+
+  const versions = await getProcessPageVersions(
+    input.organizationId,
+    input.processPageId,
+  );
+  return { success: true, versions };
+}
+
+export async function loadProcessPageSopDocument(
+  organizationId: string,
+  pageId: string,
+): Promise<SopDocument | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return null;
+  }
+
+  const page = await getProcessPageById(organizationId, pageId);
+  return page?.sop_document ?? null;
+}
+
+export async function restoreProcessPageVersion(
+  input: unknown,
+): Promise<ProcessActionResult> {
+  const parsed = restoreProcessPageVersionSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid restore request",
+    };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: "You must be signed in" };
+  }
+
+  const { organizationId, orgSlug, teamId, teamSlug, pageId, versionId } =
+    parsed.data;
+
+  let pageQuery = supabase
+    .from("process_pages")
+    .select("id, organization_id, title, content, sop_document")
+    .eq("id", pageId)
+    .eq("organization_id", organizationId);
+
+  pageQuery = applyTeamScope(pageQuery, teamId);
+
+  const { data: currentPage } = await pageQuery.maybeSingle();
+
+  if (!currentPage) {
+    return { success: false, error: "SOP not found" };
+  }
+
+  const { data: version } = await supabase
+    .from("process_page_versions")
+    .select("id, sop_document, content, version_number")
+    .eq("id", versionId)
+    .eq("process_page_id", pageId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (!version) {
+    return { success: false, error: "Version not found" };
+  }
+
+  const versionResult = await saveProcessPageVersion(
+    supabase,
+    currentPage,
+    user.id,
+  );
+  if (versionResult.error) {
+    return { success: false, error: versionResult.error };
+  }
+
+  const restoredDoc =
+    version.sop_document && typeof version.sop_document === "object"
+      ? sopDocumentSchema.parse(version.sop_document)
+      : null;
+
+  const updates: TablesUpdate<"process_pages"> = {
+    content: version.content ?? "",
+  };
+
+  if (restoredDoc) {
+    updates.sop_document = restoredDoc as unknown as Json;
+    updates.content_format = "sop";
+    updates.title = restoredDoc.title;
+  }
+
+  let updateQuery = supabase
     .from("process_pages")
     .update(updates)
+    .eq("id", pageId)
+    .eq("organization_id", organizationId);
+
+  updateQuery = applyTeamScope(updateQuery, teamId);
+
+  const { error } = await updateQuery;
+
+  if (error) {
+    return { success: false, error: "Could not restore version" };
+  }
+
+  revalidateProcessPaths(orgSlug, teamSlug, pageId);
+  return { success: true };
+}
+
+export async function setProcessPageTags(
+  input: unknown,
+): Promise<ProcessActionResult> {
+  const parsed = setProcessPageTagsSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid tag assignment",
+    };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: "You must be signed in" };
+  }
+
+  const { organizationId, orgSlug, teamId, teamSlug, pageId, tagIds } =
+    parsed.data;
+
+  let pageQuery = supabase
+    .from("process_pages")
+    .select("id")
+    .eq("id", pageId)
+    .eq("organization_id", organizationId);
+
+  pageQuery = applyTeamScope(pageQuery, teamId);
+
+  const { data: page } = await pageQuery.maybeSingle();
+
+  if (!page) {
+    return { success: false, error: "SOP not found" };
+  }
+
+  const tagResult = await replaceProcessPageTags(
+    supabase,
+    organizationId,
+    pageId,
+    [...new Set(tagIds)],
+  );
+
+  if (tagResult.error) {
+    return { success: false, error: tagResult.error };
+  }
+
+  revalidateProcessPaths(orgSlug, teamSlug, pageId);
+  return { success: true };
+}
+
+export async function archiveProcessPage(
+  input: unknown,
+): Promise<ProcessActionResult> {
+  const parsed = archiveProcessPageSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid archive request",
+    };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: "You must be signed in" };
+  }
+
+  const { id, organizationId, orgSlug, teamId, teamSlug, archived } =
+    parsed.data;
+
+  let query = supabase
+    .from("process_pages")
+    .update({
+      archived_at: archived ? new Date().toISOString() : null,
+    })
     .eq("id", id)
     .eq("organization_id", organizationId);
 
-  if (teamId === null) {
-    query = query.is("team_id", null);
-  } else if (teamId) {
-    query = query.eq("team_id", teamId);
-  }
+  query = applyTeamScope(query, teamId);
 
   const { error } = await query;
 
   if (error) {
-    return { success: false, error: "Could not update SOP" };
+    return { success: false, error: "Could not update archive status" };
   }
 
-  revalidateProcessPaths(orgSlug, teamSlug);
-  revalidatePath(`/org/${orgSlug}/process/${id}`);
-  revalidatePath(`/org/${orgSlug}/process/${id}/edit`);
-  if (teamSlug) {
-    revalidatePath(`/org/${orgSlug}/teams/${teamSlug}/process/${id}`);
-    revalidatePath(`/org/${orgSlug}/teams/${teamSlug}/process/${id}/edit`);
-  }
-
+  revalidateProcessPaths(orgSlug, teamSlug, id);
   return { success: true };
 }
 
@@ -197,11 +599,7 @@ export async function deleteProcessPage(
     .eq("id", id)
     .eq("organization_id", organizationId);
 
-  if (teamId === null) {
-    query = query.is("team_id", null);
-  } else if (teamId) {
-    query = query.eq("team_id", teamId);
-  }
+  query = applyTeamScope(query, teamId);
 
   const { error } = await query;
 

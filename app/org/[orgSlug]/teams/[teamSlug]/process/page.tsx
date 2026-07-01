@@ -10,7 +10,9 @@ export default async function TeamProcessPage({
 }) {
   const { orgSlug, teamSlug } = await params;
   const ctx = await getTeamPageContext(orgSlug, teamSlug);
-  const pages = await getProcessPagesForTeam(ctx.orgId, ctx.teamId);
+  const pages = await getProcessPagesForTeam(ctx.orgId, ctx.teamId, {
+    includeArchived: true,
+  });
   const base = `/org/${orgSlug}/teams/${teamSlug}/process`;
   const canEdit = canManageOrg(ctx.orgRole) || ctx.isTeamLeader;
 
