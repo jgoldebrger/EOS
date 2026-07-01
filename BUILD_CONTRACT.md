@@ -50,7 +50,18 @@ Stubs: `lib/permissions/checks.ts`
 | done | 012 | Scorecard Strety enhancements |
 | done | 013 | Headlines + Process |
 | done | 014 | Inbox + Projects |
-| **Next available** | **015** | — |
+| done | 015 | Measurable options |
+| done | 016 | Time kind |
+| done | 017 | Reports to + formula metrics |
+| done | 018 | Tags |
+| done | 019 | SOP documents |
+| done | 020 | Process enhancements |
+| done | 021 | SOP images storage |
+| done | 022 | Projects core (work items, modules, labels) |
+| done | 023 | Project views |
+| done | 024 | Project cycles |
+| done | 025 | Project pages + EOS links |
+| **Next available** | **026** | — |
 
 Team workspace routes: `/org/[orgSlug]/teams/[teamSlug]/{overview,agendas,rocks,scorecard,todos,headlines,issues,process}`
 

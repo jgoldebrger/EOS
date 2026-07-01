@@ -62,6 +62,18 @@ export type AiSuggestionTypeDb =
   | "agenda_focus";
 export type AiSuggestionStatusDb = "pending" | "approved" | "dismissed";
 export type ProcessPageContentFormatDb = "text" | "sop";
+export type ProjectStatusDb = "active" | "on_hold" | "completed" | "cancelled";
+export type ProjectWorkItemStateDb =
+  | "triage"
+  | "backlog"
+  | "unstarted"
+  | "started"
+  | "completed"
+  | "cancelled";
+export type ProjectPriorityDb = "urgent" | "high" | "medium" | "low" | "none";
+export type ProjectCycleStatusDb = "draft" | "current" | "upcoming" | "completed";
+export type ProjectDisplayTypeDb = "list" | "kanban" | "triage";
+export type ProjectPageContentFormatDb = "text" | "markdown";
 
 export interface Database {
   public: {
@@ -1357,6 +1369,413 @@ export interface Database {
           },
         ];
       };
+      projects: {
+        Row: {
+          id: string;
+          organization_id: string;
+          team_id: string | null;
+          title: string;
+          description: string | null;
+          owner_id: string | null;
+          status: ProjectStatusDb;
+          due_date: string | null;
+          slug: string;
+          identifier_prefix: string;
+          lead_id: string | null;
+          start_date: string | null;
+          target_date: string | null;
+          icon: string | null;
+          color: string | null;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+          archived_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          team_id?: string | null;
+          title: string;
+          description?: string | null;
+          owner_id?: string | null;
+          status?: ProjectStatusDb;
+          due_date?: string | null;
+          slug: string;
+          identifier_prefix?: string;
+          lead_id?: string | null;
+          start_date?: string | null;
+          target_date?: string | null;
+          icon?: string | null;
+          color?: string | null;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          archived_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          team_id?: string | null;
+          title?: string;
+          description?: string | null;
+          owner_id?: string | null;
+          status?: ProjectStatusDb;
+          due_date?: string | null;
+          slug?: string;
+          identifier_prefix?: string;
+          lead_id?: string | null;
+          start_date?: string | null;
+          target_date?: string | null;
+          icon?: string | null;
+          color?: string | null;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          archived_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "projects_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      project_modules: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string;
+          name: string;
+          description: string | null;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          project_id: string;
+          name: string;
+          description?: string | null;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          project_id?: string;
+          name?: string;
+          description?: string | null;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      project_work_items: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string;
+          parent_id: string | null;
+          module_id: string | null;
+          cycle_id: string | null;
+          title: string;
+          description: string | null;
+          state: ProjectWorkItemStateDb;
+          priority: ProjectPriorityDb;
+          assignee_id: string | null;
+          sequence_number: number;
+          display_order: number;
+          due_date: string | null;
+          estimate_points: number | null;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          project_id: string;
+          parent_id?: string | null;
+          module_id?: string | null;
+          cycle_id?: string | null;
+          title: string;
+          description?: string | null;
+          state?: ProjectWorkItemStateDb;
+          priority?: ProjectPriorityDb;
+          assignee_id?: string | null;
+          sequence_number: number;
+          display_order?: number;
+          due_date?: string | null;
+          estimate_points?: number | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          project_id?: string;
+          parent_id?: string | null;
+          module_id?: string | null;
+          cycle_id?: string | null;
+          title?: string;
+          description?: string | null;
+          state?: ProjectWorkItemStateDb;
+          priority?: ProjectPriorityDb;
+          assignee_id?: string | null;
+          sequence_number?: number;
+          display_order?: number;
+          due_date?: string | null;
+          estimate_points?: number | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      project_labels: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string;
+          name: string;
+          color: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          project_id: string;
+          name: string;
+          color?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          project_id?: string;
+          name?: string;
+          color?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      project_work_item_labels: {
+        Row: {
+          work_item_id: string;
+          label_id: string;
+        };
+        Insert: {
+          work_item_id: string;
+          label_id: string;
+        };
+        Update: {
+          work_item_id?: string;
+          label_id?: string;
+        };
+        Relationships: [];
+      };
+      project_views: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string;
+          name: string;
+          display_type: ProjectDisplayTypeDb;
+          filters: Json;
+          is_default: boolean;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          project_id: string;
+          name: string;
+          display_type?: ProjectDisplayTypeDb;
+          filters?: Json;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          project_id?: string;
+          name?: string;
+          display_type?: ProjectDisplayTypeDb;
+          filters?: Json;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      project_cycles: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string;
+          name: string;
+          start_date: string | null;
+          end_date: string | null;
+          status: ProjectCycleStatusDb;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          project_id: string;
+          name: string;
+          start_date?: string | null;
+          end_date?: string | null;
+          status?: ProjectCycleStatusDb;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          project_id?: string;
+          name?: string;
+          start_date?: string | null;
+          end_date?: string | null;
+          status?: ProjectCycleStatusDb;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      project_pages: {
+        Row: {
+          id: string;
+          organization_id: string;
+          project_id: string;
+          parent_id: string | null;
+          title: string;
+          content: string;
+          content_format: ProjectPageContentFormatDb;
+          display_order: number;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          project_id: string;
+          parent_id?: string | null;
+          title: string;
+          content?: string;
+          content_format?: ProjectPageContentFormatDb;
+          display_order?: number;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          project_id?: string;
+          parent_id?: string | null;
+          title?: string;
+          content?: string;
+          content_format?: ProjectPageContentFormatDb;
+          display_order?: number;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      project_issue_links: {
+        Row: {
+          project_id: string;
+          issue_id: string;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          project_id: string;
+          issue_id: string;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          project_id?: string;
+          issue_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      project_rock_links: {
+        Row: {
+          project_id: string;
+          rock_id: string;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          project_id: string;
+          rock_id: string;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          project_id?: string;
+          rock_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      project_todo_links: {
+        Row: {
+          project_id: string;
+          todo_id: string;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          project_id: string;
+          todo_id: string;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          project_id?: string;
+          todo_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
       vto_sections: {
         Row: {
           id: string;
@@ -1517,3 +1936,8 @@ export type VtoSnapshot = Tables<"vto_snapshots">;
 export type ProcessPage = Tables<"process_pages">;
 export type ProcessPageVersion = Tables<"process_page_versions">;
 export type ProcessPageTag = Tables<"process_page_tags">;
+export type Project = Tables<"projects">;
+export type ProjectWorkItem = Tables<"project_work_items">;
+export type ProjectModule = Tables<"project_modules">;
+export type ProjectCycle = Tables<"project_cycles">;
+export type ProjectPage = Tables<"project_pages">;

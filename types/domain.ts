@@ -21,7 +21,8 @@ export type AuditEntityType =
   | "vto_snapshots"
   | "ai_suggestions"
   | "sso_connections"
-  | "users";
+  | "users"
+  | "projects";
 
 export const AUDIT_ACTIONS = {
   CREATE: "create",

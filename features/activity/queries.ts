@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 
+import { getProjectsForOrg } from "@/features/projects/queries";
+
 export async function getActivityForOrg(organizationId: string, limit = 50) {
   const supabase = await createClient();
   const { data } = await supabase
@@ -23,23 +25,7 @@ export async function getPeopleForOrg(organizationId: string) {
   return data ?? [];
 }
 
-export async function getProjectsForOrg(organizationId: string) {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("projects" as never)
-    .select("*")
-    .eq("organization_id", organizationId)
-    .is("archived_at", null)
-    .order("created_at", { ascending: false });
-
-  return (data ?? []) as Array<{
-    id: string;
-    title: string;
-    status: string;
-    due_date: string | null;
-    team_id: string | null;
-  }>;
-}
+export { getProjectsForOrg };
 
 export async function getReportsSummary(organizationId: string) {
   const supabase = await createClient();
