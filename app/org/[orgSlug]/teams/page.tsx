@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { getAllTeamsForOrgListing } from "@/features/teams/queries";
+import { getAllTeamsForOrgListing, getTeamsForOrg } from "@/features/teams/queries";
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
-import { PageHeader } from "@/components/shared/page-header";
+import { canManageOrg } from "@/lib/permissions/checks";import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTeamNavHref } from "@/components/layout/team-nav-config";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -15,10 +15,10 @@ export default async function TeamsListPage({
 }) {
   const { orgSlug } = await params;
   const access = await requireOrgAccess(orgSlug);
-  const teams = await getAllTeamsForOrgListing(access.orgId);
-  const canManageTeams =
-    access.role === "owner" || access.role === "admin";
-
+  const canManageTeams = canManageOrg(access.role);
+  const teams = canManageTeams
+    ? await getAllTeamsForOrgListing(access.orgId)
+    : await getTeamsForOrg(access.orgId);
   return (
     <div className="mx-auto max-w-4xl space-y-8 p-8">
       <PageHeader
@@ -40,7 +40,7 @@ export default async function TeamsListPage({
           description={
             canManageTeams
               ? "Create your first team to start using scorecards, rocks, and meetings."
-              : "Ask an organization admin to create a team for you."
+              : "You are not on any teams yet. Ask an organization admin to add you to a team."
           }
           action={
             canManageTeams ? (

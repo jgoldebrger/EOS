@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { TeamRole } from "@/types/domain";
 import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import { requireOrgAccess, type OrgAccessContext } from "@/lib/auth/require-org-access";
@@ -46,7 +46,7 @@ export const requireTeamAccess = cache(async (
     orgAccess.role === "owner" || orgAccess.role === "admin";
 
   if (!membership && !isOrgAdmin) {
-    notFound();
+    redirect(`/org/${orgSlug}/teams`);
   }
 
   return {
