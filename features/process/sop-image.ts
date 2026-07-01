@@ -1,10 +1,9 @@
-import { createClient } from "@/lib/supabase/client";
+import { uploadSopStepImageAction } from "@/features/process/actions";
 import type { SopDocument } from "@/features/process/schema";
 
 const MAX_IMAGE_BYTES = 450_000;
 const MAX_DIMENSION = 1280;
 const JPEG_QUALITY = 0.82;
-const SOP_IMAGES_BUCKET = "sop-images";
 
 function loadImageFromFile(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -80,21 +79,17 @@ export async function uploadSopStepImage(
     };
   }
 
-  const supabase = createClient();
-  const path = `${organizationId}/${pageId}/${crypto.randomUUID()}.jpg`;
-  const { error } = await supabase.storage
-    .from(SOP_IMAGES_BUCKET)
-    .upload(path, compressed, {
-      contentType: "image/jpeg",
-      upsert: false,
-    });
+  const formData = new FormData();
+  formData.append("organizationId", organizationId);
+  formData.append("pageId", pageId);
+  formData.append("file", compressed, "sop-step.jpg");
 
-  if (error) {
-    return { error: error.message };
+  const result = await uploadSopStepImageAction(formData);
+  if (!result.success) {
+    return { error: result.error };
   }
 
-  const { data } = supabase.storage.from(SOP_IMAGES_BUCKET).getPublicUrl(path);
-  return { url: data.publicUrl };
+  return { url: result.url };
 }
 
 async function uploadDataUrlImage(

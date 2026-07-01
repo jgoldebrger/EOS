@@ -610,3 +610,59 @@ export async function deleteProcessPage(
   revalidateProcessPaths(orgSlug, teamSlug);
   return { success: true };
 }
+
+const SOP_IMAGES_BUCKET = "sop-images";
+const MAX_SOP_IMAGE_UPLOAD_BYTES = 600_000;
+
+export async function uploadSopStepImageAction(
+  formData: FormData,
+): Promise<{ success: true; url: string } | { success: false; error: string }> {
+  const organizationId = formData.get("organizationId");
+  const pageId = formData.get("pageId");
+  const file = formData.get("file");
+
+  if (
+    typeof organizationId !== "string" ||
+    typeof pageId !== "string" ||
+    !(file instanceof File)
+  ) {
+    return { success: false, error: "Invalid upload request" };
+  }
+
+  if (file.size === 0 || file.size > MAX_SOP_IMAGE_UPLOAD_BYTES) {
+    return {
+      success: false,
+      error: "Image file is missing or too large",
+    };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: "You must be signed in" };
+  }
+
+  const page = await getProcessPageById(organizationId, pageId);
+  if (!page) {
+    return { success: false, error: "SOP not found" };
+  }
+
+  const path = `${organizationId}/${pageId}/${crypto.randomUUID()}.jpg`;
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  const { error } = await supabase.storage
+    .from(SOP_IMAGES_BUCKET)
+    .upload(path, bytes, {
+      contentType: file.type || "image/jpeg",
+      upsert: false,
+    });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  const { data } = supabase.storage.from(SOP_IMAGES_BUCKET).getPublicUrl(path);
+  return { success: true, url: data.publicUrl };
+}
