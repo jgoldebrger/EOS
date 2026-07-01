@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const ENABLED = process.env.NODE_ENV === "production";
-const DOCKED_GAP_THRESHOLD_PX = 72;
-const POLL_MS = 200;
+/** Docked DevTools shrink the viewport; ignore scrollbar-sized gaps. */
+const DOCKED_GAP_THRESHOLD_PX = 160;
+const POLL_MS = 400;
+const OPEN_STREAK_REQUIRED = 2;
+const CLOSE_STREAK_REQUIRED = 2;
 
 function shouldBlockShortcut(event: KeyboardEvent) {
   const key = event.key.toLowerCase();
@@ -39,36 +42,6 @@ function detectDockedInspector(): boolean {
   return widthGap > DOCKED_GAP_THRESHOLD_PX || heightGap > DOCKED_GAP_THRESHOLD_PX;
 }
 
-function detectConsoleInspector(): boolean {
-  let open = false;
-
-  const probe = new Image();
-  Object.defineProperty(probe, "id", {
-    get() {
-      open = true;
-      return "";
-    },
-    configurable: true,
-  });
-
-  const log = Function.prototype.bind.call(console.log, console);
-  log(probe);
-
-  const styled = /./;
-  styled.toString = () => {
-    open = true;
-    return "";
-  };
-  console.log("%c", styled);
-
-  console.clear();
-  return open;
-}
-
-function isInspectorOpen(): boolean {
-  return detectDockedInspector() || detectConsoleInspector();
-}
-
 function setPageBlocked(blocked: boolean) {
   const root = document.documentElement;
   if (blocked) {
@@ -82,6 +55,7 @@ function setPageBlocked(blocked: boolean) {
 
 export function ClientHardening() {
   const [devtoolsOpen, setDevtoolsOpen] = useState(false);
+  const streakRef = useRef(0);
 
   useLayoutEffect(() => {
     setPageBlocked(devtoolsOpen);
@@ -111,14 +85,27 @@ export function ClientHardening() {
     };
 
     const checkDevtools = () => {
-      setDevtoolsOpen(isInspectorOpen());
+      const docked = detectDockedInspector();
+
+      if (docked) {
+        streakRef.current =
+          streakRef.current >= 0 ? streakRef.current + 1 : 1;
+      } else {
+        streakRef.current =
+          streakRef.current <= 0 ? streakRef.current - 1 : -1;
+      }
+
+      if (streakRef.current >= OPEN_STREAK_REQUIRED) {
+        setDevtoolsOpen(true);
+      } else if (streakRef.current <= -CLOSE_STREAK_REQUIRED) {
+        setDevtoolsOpen(false);
+      }
     };
 
     document.addEventListener("keydown", onKeyDown, true);
     document.addEventListener("contextmenu", onContextMenu);
     document.addEventListener("dragstart", onDragStart);
     window.addEventListener("resize", checkDevtools);
-    window.addEventListener("focus", checkDevtools);
 
     const interval = window.setInterval(checkDevtools, POLL_MS);
     checkDevtools();
@@ -128,8 +115,8 @@ export function ClientHardening() {
       document.removeEventListener("contextmenu", onContextMenu);
       document.removeEventListener("dragstart", onDragStart);
       window.removeEventListener("resize", checkDevtools);
-      window.removeEventListener("focus", checkDevtools);
       window.clearInterval(interval);
+      streakRef.current = 0;
       setPageBlocked(false);
     };
   }, []);
