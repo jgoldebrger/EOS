@@ -5,6 +5,7 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  TouchSensor,
   useDroppable,
   useSensor,
   useSensors,
@@ -12,11 +13,12 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
+  arrayMove,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { moveWorkItemState } from "@/features/projects/actions";
+import { moveWorkItemState, updateWorkItem } from "@/features/projects/actions";
 import type { WorkItemWithMeta } from "@/features/projects/types";
 import { KANBAN_COLUMNS, formatWorkItemState } from "@/features/projects/utils";
 import type { ProjectWorkItemStateDb } from "@/types/database";
@@ -89,6 +91,12 @@ function Column({
   );
 }
 
+function sortByDisplayOrder(items: WorkItemWithMeta[]) {
+  return [...items].sort(
+    (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0),
+  );
+}
+
 export function ProjectBoard({
   items,
   organizationId,
@@ -103,6 +111,7 @@ export function ProjectBoard({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
   );
 
   const columns = useMemo(() => {
@@ -114,6 +123,9 @@ export function ProjectBoard({
       if (KANBAN_COLUMNS.includes(item.state as ProjectWorkItemStateDb)) {
         map.get(item.state as ProjectWorkItemStateDb)?.push(item);
       }
+    }
+    for (const col of KANBAN_COLUMNS) {
+      map.set(col, sortByDisplayOrder(map.get(col) ?? []));
     }
     return map;
   }, [items]);
@@ -132,23 +144,56 @@ export function ProjectBoard({
     const item = items.find((i) => i.id === active.id);
     if (!item) return;
 
-    const overState = KANBAN_COLUMNS.includes(over.id as ProjectWorkItemStateDb)
+    const overIsColumn = KANBAN_COLUMNS.includes(over.id as ProjectWorkItemStateDb);
+    const overItem = overIsColumn ? null : items.find((i) => i.id === over.id);
+    const overState = overIsColumn
       ? (over.id as ProjectWorkItemStateDb)
-      : (items.find((i) => i.id === over.id)?.state ?? item.state);
+      : (overItem?.state as ProjectWorkItemStateDb) ?? item.state;
 
-    if (overState === item.state) return;
+    if (overState !== item.state) {
+      const targetCol = sortByDisplayOrder(columns.get(overState) ?? []);
+      const displayOrder = overItem
+        ? targetCol.findIndex((i) => i.id === overItem.id)
+        : targetCol.length;
+
+      startTransition(async () => {
+        const result = await moveWorkItemState({
+          organizationId,
+          projectId,
+          workItemId: item.id,
+          orgSlug,
+          projectSlug,
+          state: overState,
+          displayOrder: displayOrder >= 0 ? displayOrder : targetCol.length,
+        });
+        if (!result.success) {
+          showErrorToast("Could not move item", result.error);
+        }
+      });
+      return;
+    }
+
+    if (!overItem || overItem.id === item.id) return;
+
+    const colItems = columns.get(item.state as ProjectWorkItemStateDb) ?? [];
+    const oldIndex = colItems.findIndex((i) => i.id === item.id);
+    const newIndex = colItems.findIndex((i) => i.id === overItem.id);
+    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+
+    const reordered = arrayMove(colItems, oldIndex, newIndex);
+    const displayOrder = reordered.findIndex((i) => i.id === item.id);
 
     startTransition(async () => {
-      const result = await moveWorkItemState({
+      const result = await updateWorkItem({
         organizationId,
         projectId,
         workItemId: item.id,
         orgSlug,
         projectSlug,
-        state: overState,
+        displayOrder,
       });
       if (!result.success) {
-        showErrorToast("Could not move item", result.error);
+        showErrorToast("Could not reorder item", result.error);
       }
     });
   }

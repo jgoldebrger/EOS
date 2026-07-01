@@ -172,3 +172,31 @@ export const linkEntitySchema = z.object({
   projectSlug: z.string().trim().min(1),
   entityId: z.string().uuid(),
 });
+
+export const restoreProjectSchema = archiveProjectSchema;
+
+export const createProjectLabelSchema = z.object({
+  organizationId: z.string().uuid(),
+  projectId: z.string().uuid(),
+  orgSlug: z.string().trim().min(1),
+  projectSlug: z.string().trim().min(1),
+  name: z.string().trim().min(1).max(40),
+  color: z.string().trim().max(32).nullable().optional(),
+});
+
+export const setWorkItemLabelsSchema = z.object({
+  organizationId: z.string().uuid(),
+  projectId: z.string().uuid(),
+  workItemId: z.string().uuid(),
+  orgSlug: z.string().trim().min(1),
+  projectSlug: z.string().trim().min(1),
+  labelIds: z.array(z.string().uuid()),
+});
+
+export const archiveWorkItemSchema = z.object({
+  organizationId: z.string().uuid(),
+  projectId: z.string().uuid(),
+  workItemId: z.string().uuid(),
+  orgSlug: z.string().trim().min(1),
+  projectSlug: z.string().trim().min(1),
+});

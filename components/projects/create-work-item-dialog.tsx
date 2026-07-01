@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createWorkItem } from "@/features/projects/actions";
-import type { ProjectMemberOption } from "@/features/projects/types";
+import type {
+  ProjectCycle,
+  ProjectMemberOption,
+  ProjectModule,
+} from "@/features/projects/types";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { WORK_ITEM_PRIORITIES } from "@/features/projects/schema";
 
 interface CreateWorkItemDialogProps {
   organizationId: string;
@@ -22,10 +27,15 @@ interface CreateWorkItemDialogProps {
   orgSlug: string;
   projectSlug: string;
   members: ProjectMemberOption[];
+  modules: ProjectModule[];
+  cycles: ProjectCycle[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultState?: string;
 }
+
+const selectClassName =
+  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm";
 
 export function CreateWorkItemDialog({
   organizationId,
@@ -33,6 +43,8 @@ export function CreateWorkItemDialog({
   orgSlug,
   projectSlug,
   members,
+  modules,
+  cycles,
   open,
   onOpenChange,
   defaultState = "backlog",
@@ -40,7 +52,18 @@ export function CreateWorkItemDialog({
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
+  const [priority, setPriority] = useState("none");
+  const [moduleId, setModuleId] = useState("");
+  const [cycleId, setCycleId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  function resetForm() {
+    setTitle("");
+    setAssigneeId("");
+    setPriority("none");
+    setModuleId("");
+    setCycleId("");
+  }
 
   async function handleSubmit() {
     if (!title.trim()) {
@@ -56,6 +79,9 @@ export function CreateWorkItemDialog({
       projectSlug,
       title: title.trim(),
       assigneeId: assigneeId || null,
+      priority: priority as "urgent" | "high" | "medium" | "low" | "none",
+      moduleId: moduleId || null,
+      cycleId: cycleId || null,
       state: (defaultState ?? "backlog") as
         | "triage"
         | "backlog"
@@ -72,14 +98,19 @@ export function CreateWorkItemDialog({
     }
 
     showSuccessToast("Work item created");
-    setTitle("");
-    setAssigneeId("");
+    resetForm();
     onOpenChange(false);
     router.refresh();
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        onOpenChange(next);
+        if (!next) resetForm();
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>New work item</DialogTitle>
@@ -97,7 +128,7 @@ export function CreateWorkItemDialog({
             <Label htmlFor="work-item-assignee">Assignee</Label>
             <select
               id="work-item-assignee"
-              className="flex h-9 w-full rounded-md border border-input px-3 text-sm"
+              className={selectClassName}
               value={assigneeId}
               onChange={(e) => setAssigneeId(e.target.value)}
             >
@@ -105,6 +136,53 @@ export function CreateWorkItemDialog({
               {members.map((m) => (
                 <option key={m.userId} value={m.userId}>
                   {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="work-item-priority">Priority</Label>
+            <select
+              id="work-item-priority"
+              className={`${selectClassName} capitalize`}
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+            >
+              {WORK_ITEM_PRIORITIES.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="work-item-module">Module</Label>
+            <select
+              id="work-item-module"
+              className={selectClassName}
+              value={moduleId}
+              onChange={(e) => setModuleId(e.target.value)}
+            >
+              <option value="">None</option>
+              {modules.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="work-item-cycle">Cycle</Label>
+            <select
+              id="work-item-cycle"
+              className={selectClassName}
+              value={cycleId}
+              onChange={(e) => setCycleId(e.target.value)}
+            >
+              <option value="">None</option>
+              {cycles.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>

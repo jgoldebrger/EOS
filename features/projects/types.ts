@@ -37,6 +37,7 @@ export interface WorkItemWithMeta extends ProjectWorkItem {
   moduleName: string | null;
   cycleName: string | null;
   labelNames: string[];
+  labelIds: string[];
 }
 
 export interface ProjectDetail extends Project {
@@ -81,6 +82,15 @@ export interface WorkItemFilters {
   moduleId?: string;
   cycleId?: string;
   search?: string;
+}
+
+export interface SavedViewFilters {
+  search?: string;
+  state?: string;
+  priority?: string;
+  assigneeId?: string;
+  moduleId?: string;
+  cycleId?: string;
 }
 
 export interface ProjectMemberOption {

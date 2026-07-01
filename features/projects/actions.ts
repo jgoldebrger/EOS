@@ -9,8 +9,10 @@ import { AUDIT_ACTIONS, type OrgRole } from "@/types/domain";
 import type { Json, TablesUpdate } from "@/types/database";
 import {
   archiveProjectSchema,
+  archiveWorkItemSchema,
   createCycleSchema,
   createModuleSchema,
+  createProjectLabelSchema,
   createProjectPageSchema,
   createProjectSchema,
   createProjectViewSchema,
@@ -18,6 +20,8 @@ import {
   linkEntitySchema,
   moveWorkItemStateSchema,
   projectSlugFromTitle,
+  restoreProjectSchema,
+  setWorkItemLabelsSchema,
   updateCycleSchema,
   updateProjectPageSchema,
   updateProjectSchema,
@@ -238,6 +242,36 @@ export async function archiveProject(input: unknown): Promise<ProjectActionResul
   return { success: true };
 }
 
+export async function restoreProject(input: unknown): Promise<ProjectActionResult> {
+  const parsed = restoreProjectSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid request" };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+  if (!canEditResource(actor.orgRole, "projects")) {
+    return { success: false, error: "You do not have permission to restore projects" };
+  }
+
+  const { data: project, error } = await actor.supabase
+    .from("projects")
+    .update({ archived_at: null, status: "active" })
+    .eq("id", parsed.data.projectId)
+    .eq("organization_id", parsed.data.organizationId)
+    .select("slug")
+    .single();
+
+  if (error || !project) {
+    return { success: false, error: "Unable to restore project." };
+  }
+
+  revalidateProjectPaths(parsed.data.orgSlug, project.slug);
+  return { success: true };
+}
+
 export async function createWorkItem(input: unknown): Promise<CreateWorkItemResult> {
   const parsed = createWorkItemSchema.safeParse(input);
   if (!parsed.success) {
@@ -260,6 +294,14 @@ export async function createWorkItem(input: unknown): Promise<CreateWorkItemResu
     parsed.data.projectId,
   );
 
+  const defaultState = parsed.data.state ?? "backlog";
+  const assigneeId =
+    parsed.data.assigneeId !== undefined
+      ? parsed.data.assigneeId
+      : defaultState === "triage"
+        ? null
+        : actor.user.id;
+
   const { data: item, error } = await actor.supabase
     .from("project_work_items")
     .insert({
@@ -267,9 +309,9 @@ export async function createWorkItem(input: unknown): Promise<CreateWorkItemResu
       project_id: parsed.data.projectId,
       title: parsed.data.title,
       description: parsed.data.description ?? null,
-      state: parsed.data.state ?? "backlog",
+      state: defaultState,
       priority: parsed.data.priority ?? "none",
-      assignee_id: parsed.data.assigneeId ?? actor.user.id,
+      assignee_id: assigneeId,
       module_id: parsed.data.moduleId ?? null,
       cycle_id: parsed.data.cycleId ?? null,
       due_date: parsed.data.dueDate ?? null,
@@ -305,18 +347,25 @@ export async function updateWorkItem(input: unknown): Promise<ProjectActionResul
     return { success: false, error: "You do not have permission to update work items" };
   }
 
-  const patch: TablesUpdate<"project_work_items"> = {
-    title: parsed.data.title,
-    description: parsed.data.description ?? null,
-    state: parsed.data.state,
-    priority: parsed.data.priority,
-    assignee_id: parsed.data.assigneeId,
-    module_id: parsed.data.moduleId,
-    cycle_id: parsed.data.cycleId,
-    due_date: parsed.data.dueDate ?? null,
-    estimate_points: parsed.data.estimatePoints ?? null,
-    display_order: parsed.data.displayOrder,
-  };
+  const patch: TablesUpdate<"project_work_items"> = {};
+  if (parsed.data.title !== undefined) patch.title = parsed.data.title;
+  if (parsed.data.description !== undefined) {
+    patch.description = parsed.data.description ?? null;
+  }
+  if (parsed.data.state !== undefined) patch.state = parsed.data.state;
+  if (parsed.data.priority !== undefined) patch.priority = parsed.data.priority;
+  if (parsed.data.assigneeId !== undefined) {
+    patch.assignee_id = parsed.data.assigneeId;
+  }
+  if (parsed.data.moduleId !== undefined) patch.module_id = parsed.data.moduleId;
+  if (parsed.data.cycleId !== undefined) patch.cycle_id = parsed.data.cycleId;
+  if (parsed.data.dueDate !== undefined) patch.due_date = parsed.data.dueDate ?? null;
+  if (parsed.data.estimatePoints !== undefined) {
+    patch.estimate_points = parsed.data.estimatePoints ?? null;
+  }
+  if (parsed.data.displayOrder !== undefined) {
+    patch.display_order = parsed.data.displayOrder;
+  }
 
   const { error } = await actor.supabase
     .from("project_work_items")
@@ -671,5 +720,100 @@ export async function searchProjectsForNav(
     "@/features/projects/queries"
   );
   return searchProjectsAndWorkItems(organizationId, query);
+}
+
+export async function archiveWorkItem(input: unknown): Promise<ProjectActionResult> {
+  const parsed = archiveWorkItemSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid request" };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+  if (!canEditResource(actor.orgRole, "projects")) {
+    return { success: false, error: "You do not have permission to archive work items" };
+  }
+
+  const { error } = await actor.supabase
+    .from("project_work_items")
+    .update({ archived_at: new Date().toISOString(), state: "cancelled" })
+    .eq("id", parsed.data.workItemId)
+    .eq("project_id", parsed.data.projectId);
+
+  if (error) {
+    return { success: false, error: "Unable to archive work item." };
+  }
+
+  revalidateProjectPaths(parsed.data.orgSlug, parsed.data.projectSlug);
+  return { success: true };
+}
+
+export async function createProjectLabel(input: unknown): Promise<ProjectActionResult> {
+  const parsed = createProjectLabelSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid label" };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+  if (!canEditResource(actor.orgRole, "projects")) {
+    return { success: false, error: "You do not have permission to create labels" };
+  }
+
+  const { error } = await actor.supabase.from("project_labels").insert({
+    organization_id: parsed.data.organizationId,
+    project_id: parsed.data.projectId,
+    name: parsed.data.name,
+    color: parsed.data.color ?? null,
+  });
+
+  if (error) {
+    return {
+      success: false,
+      error: error.code === "23505" ? "Label already exists" : "Unable to create label.",
+    };
+  }
+
+  revalidateProjectPaths(parsed.data.orgSlug, parsed.data.projectSlug);
+  return { success: true };
+}
+
+export async function setWorkItemLabels(input: unknown): Promise<ProjectActionResult> {
+  const parsed = setWorkItemLabelsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid request" };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+  if (!canEditResource(actor.orgRole, "projects")) {
+    return { success: false, error: "You do not have permission to update labels" };
+  }
+
+  await actor.supabase
+    .from("project_work_item_labels")
+    .delete()
+    .eq("work_item_id", parsed.data.workItemId);
+
+  if (parsed.data.labelIds.length > 0) {
+    const { error } = await actor.supabase.from("project_work_item_labels").insert(
+      parsed.data.labelIds.map((labelId) => ({
+        work_item_id: parsed.data.workItemId,
+        label_id: labelId,
+      })),
+    );
+    if (error) {
+      return { success: false, error: "Unable to update labels." };
+    }
+  }
+
+  revalidateProjectPaths(parsed.data.orgSlug, parsed.data.projectSlug);
+  return { success: true };
 }
 

@@ -237,6 +237,7 @@ async function mapWorkItems(
     },
     moduleName: item.module_id ? (moduleMap.get(item.module_id) ?? null) : null,
     cycleName: item.cycle_id ? (cycleMap.get(item.cycle_id) ?? null) : null,
+    labelIds: labelLinksByItem.get(item.id) ?? [],
     labelNames: (labelLinksByItem.get(item.id) ?? [])
       .map((id) => labelNameMap.get(id))
       .filter((name): name is string => Boolean(name)),

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FolderKanban, Plus } from "lucide-react";
+import { restoreProject } from "@/features/projects/actions";
 import type {
   ProjectFilters,
   ProjectMemberOption,
@@ -12,6 +13,7 @@ import type {
 } from "@/features/projects/types";
 import { formatProjectStatus } from "@/features/projects/utils";
 import { CreateProjectDialog } from "@/components/projects/create-project-dialog";
+import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +28,7 @@ interface ProjectsWorkspaceProps {
   projects: ProjectWithStats[];
   teams: ProjectTeamOption[];
   members: ProjectMemberOption[];
+  showArchived: boolean;
 }
 
 export function ProjectsWorkspace({
@@ -35,13 +38,17 @@ export function ProjectsWorkspace({
   projects,
   teams,
   members,
+  showArchived,
 }: ProjectsWorkspaceProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [createOpen, setCreateOpen] = useState(false);
   const [filters, setFilters] = useState<ProjectFilters>({});
+  const [isRestoring, startRestore] = useTransition();
 
   const canCreate =
+    orgRole === "owner" || orgRole === "admin" || orgRole === "member";
+  const canEdit =
     orgRole === "owner" || orgRole === "admin" || orgRole === "member";
 
   useEffect(() => {
@@ -50,6 +57,31 @@ export function ProjectsWorkspace({
       router.replace(`/org/${orgSlug}/projects`, { scroll: false });
     }
   }, [searchParams, canCreate, orgSlug, router]);
+
+  function toggleArchived() {
+    const next = !showArchived;
+    router.push(
+      next ? `/org/${orgSlug}/projects?archived=1` : `/org/${orgSlug}/projects`,
+    );
+  }
+
+  function handleRestore(projectId: string, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    startRestore(async () => {
+      const result = await restoreProject({
+        organizationId,
+        projectId,
+        orgSlug,
+      });
+      if (!result.success) {
+        showErrorToast("Could not restore project", result.error);
+        return;
+      }
+      showSuccessToast("Project restored");
+      router.refresh();
+    });
+  }
 
   const filtered = useMemo(() => {
     return projects.filter((project) => {
@@ -103,15 +135,26 @@ export function ProjectsWorkspace({
           <option value="on_hold">On hold</option>
           <option value="completed">Completed</option>
         </select>
+        <Button
+          size="sm"
+          variant={showArchived ? "secondary" : "outline"}
+          onClick={toggleArchived}
+        >
+          {showArchived ? "Showing archived" : "Show archived"}
+        </Button>
       </div>
 
       {filtered.length === 0 ? (
         <EmptyState
           icon={<FolderKanban className="h-6 w-6" />}
-          title="No projects"
-          description="Create a project to group related work."
+          title={showArchived ? "No archived projects" : "No projects"}
+          description={
+            showArchived
+              ? "Archived projects will appear here."
+              : "Create a project to group related work."
+          }
           action={
-            canCreate ? (
+            canCreate && !showArchived ? (
               <Button size="sm" onClick={() => setCreateOpen(true)}>
                 Create project
               </Button>
@@ -120,28 +163,50 @@ export function ProjectsWorkspace({
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((project) => (
-            <Link key={project.id} href={`/org/${orgSlug}/projects/${project.slug}`}>
-              <Card className="h-full transition-colors hover:bg-muted/50">
-                <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
-                  <CardTitle className="text-base leading-snug">
-                    {project.title}
-                  </CardTitle>
-                  <Badge variant="secondary" className="shrink-0 capitalize">
-                    {formatProjectStatus(project.status)}
-                  </Badge>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm text-muted-foreground">
-                  {project.leadLabel && <p>Lead: {project.leadLabel}</p>}
-                  <p>
-                    {project.openWorkItemCount} open · {project.workItemCount}{" "}
-                    total items
-                  </p>
-                  {project.due_date && <p>Due {project.due_date}</p>}
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+          {filtered.map((project) => {
+            const isArchived = Boolean(project.archived_at);
+            return (
+              <Link
+                key={project.id}
+                href={`/org/${orgSlug}/projects/${project.slug}`}
+                className="block"
+              >
+                <Card className="h-full transition-colors hover:bg-muted/50">
+                  <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
+                    <CardTitle className="text-base leading-snug">
+                      {project.title}
+                    </CardTitle>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <Badge variant="secondary" className="capitalize">
+                        {formatProjectStatus(project.status)}
+                      </Badge>
+                      {isArchived && (
+                        <Badge variant="outline">Archived</Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm text-muted-foreground">
+                    {project.leadLabel && <p>Lead: {project.leadLabel}</p>}
+                    <p>
+                      {project.openWorkItemCount} open · {project.workItemCount}{" "}
+                      total items
+                    </p>
+                    {project.due_date && <p>Due {project.due_date}</p>}
+                    {isArchived && canEdit && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={isRestoring}
+                        onClick={(e) => handleRestore(project.id, e)}
+                      >
+                        Restore
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
 
