@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 
 const ENABLED = process.env.NODE_ENV === "production";
+const DOCKED_GAP_THRESHOLD_PX = 72;
+const POLL_MS = 200;
 
 function shouldBlockShortcut(event: KeyboardEvent) {
   const key = event.key.toLowerCase();
@@ -31,14 +33,60 @@ function shouldBlockShortcut(event: KeyboardEvent) {
   return false;
 }
 
-function isDevToolsLikelyOpen() {
+function detectDockedInspector(): boolean {
   const widthGap = window.outerWidth - window.innerWidth;
   const heightGap = window.outerHeight - window.innerHeight;
-  return widthGap > 160 || heightGap > 160;
+  return widthGap > DOCKED_GAP_THRESHOLD_PX || heightGap > DOCKED_GAP_THRESHOLD_PX;
+}
+
+function detectConsoleInspector(): boolean {
+  let open = false;
+
+  const probe = new Image();
+  Object.defineProperty(probe, "id", {
+    get() {
+      open = true;
+      return "";
+    },
+    configurable: true,
+  });
+
+  const log = Function.prototype.bind.call(console.log, console);
+  log(probe);
+
+  const styled = /./;
+  styled.toString = () => {
+    open = true;
+    return "";
+  };
+  console.log("%c", styled);
+
+  console.clear();
+  return open;
+}
+
+function isInspectorOpen(): boolean {
+  return detectDockedInspector() || detectConsoleInspector();
+}
+
+function setPageBlocked(blocked: boolean) {
+  const root = document.documentElement;
+  if (blocked) {
+    root.dataset.inspectorBlocked = "true";
+    document.body.style.overflow = "hidden";
+  } else {
+    delete root.dataset.inspectorBlocked;
+    document.body.style.overflow = "";
+  }
 }
 
 export function ClientHardening() {
   const [devtoolsOpen, setDevtoolsOpen] = useState(false);
+
+  useLayoutEffect(() => {
+    setPageBlocked(devtoolsOpen);
+    return () => setPageBlocked(false);
+  }, [devtoolsOpen]);
 
   useEffect(() => {
     if (!ENABLED) {
@@ -63,15 +111,16 @@ export function ClientHardening() {
     };
 
     const checkDevtools = () => {
-      setDevtoolsOpen(isDevToolsLikelyOpen());
+      setDevtoolsOpen(isInspectorOpen());
     };
 
     document.addEventListener("keydown", onKeyDown, true);
     document.addEventListener("contextmenu", onContextMenu);
     document.addEventListener("dragstart", onDragStart);
     window.addEventListener("resize", checkDevtools);
+    window.addEventListener("focus", checkDevtools);
 
-    const interval = window.setInterval(checkDevtools, 500);
+    const interval = window.setInterval(checkDevtools, POLL_MS);
     checkDevtools();
 
     return () => {
@@ -79,7 +128,9 @@ export function ClientHardening() {
       document.removeEventListener("contextmenu", onContextMenu);
       document.removeEventListener("dragstart", onDragStart);
       window.removeEventListener("resize", checkDevtools);
+      window.removeEventListener("focus", checkDevtools);
       window.clearInterval(interval);
+      setPageBlocked(false);
     };
   }, []);
 
@@ -89,7 +140,8 @@ export function ClientHardening() {
 
   return (
     <div
-      className="fixed inset-0 z-[99999] flex items-center justify-center bg-background/95 p-8 text-center backdrop-blur-sm"
+      data-inspector-guard
+      className="fixed inset-0 z-[99999] flex items-center justify-center bg-background p-8 text-center"
       role="alertdialog"
       aria-modal="true"
       aria-label="Developer tools are not permitted"
