@@ -61,6 +61,7 @@ export type AiSuggestionTypeDb =
   | "scorecard_insight"
   | "agenda_focus";
 export type AiSuggestionStatusDb = "pending" | "approved" | "dismissed";
+export type ProcessPageContentFormatDb = "text" | "sop";
 
 export interface Database {
   public: {
@@ -1202,6 +1203,73 @@ export interface Database {
           },
         ];
       };
+      process_pages: {
+        Row: {
+          id: string;
+          organization_id: string;
+          team_id: string | null;
+          parent_id: string | null;
+          title: string;
+          content: string;
+          content_format: ProcessPageContentFormatDb;
+          sop_document: Json | null;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          team_id?: string | null;
+          parent_id?: string | null;
+          title: string;
+          content?: string;
+          content_format?: ProcessPageContentFormatDb;
+          sop_document?: Json | null;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          team_id?: string | null;
+          parent_id?: string | null;
+          title?: string;
+          content?: string;
+          content_format?: ProcessPageContentFormatDb;
+          sop_document?: Json | null;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "process_pages_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "process_pages_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "process_pages_parent_id_fkey";
+            columns: ["parent_id"];
+            isOneToOne: false;
+            referencedRelation: "process_pages";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       vto_sections: {
         Row: {
           id: string;
@@ -1359,3 +1427,4 @@ export type MeetingNote = Tables<"meeting_notes">;
 export type Decision = Tables<"decisions">;
 export type VtoSection = Tables<"vto_sections">;
 export type VtoSnapshot = Tables<"vto_snapshots">;
+export type ProcessPage = Tables<"process_pages">;

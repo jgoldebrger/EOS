@@ -1,6 +1,7 @@
 import {
   Activity,
   Building2,
+  FileText,
   FolderKanban,
   Home,
   Inbox,
@@ -23,6 +24,7 @@ export const GLOBAL_NAV_ITEMS: GlobalNavItem[] = [
   { label: "Reports", segment: "reports", icon: BarChart3 },
   { label: "Teams", segment: "teams", icon: UsersRound },
   { label: "People", segment: "people", icon: Users },
+  { label: "Process", segment: "process", icon: FileText },
   { label: "Company", segment: "company", icon: Building2 },
   { label: "Projects", segment: "projects", icon: FolderKanban },
 ];

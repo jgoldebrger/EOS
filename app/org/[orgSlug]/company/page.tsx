@@ -35,6 +35,14 @@ export default async function CompanyPage({
             </CardHeader>
           </Card>
         </Link>
+        <Link href={`${base}/process`}>
+          <Card className="transition-colors hover:bg-muted/50">
+            <CardHeader>
+              <CardTitle>Process / SOPs</CardTitle>
+              <CardDescription>Organization-wide standard operating procedures</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
         <Link href={`${base}/rocks?scope=company`}>
           <Card className="transition-colors hover:bg-muted/50">
             <CardHeader>
