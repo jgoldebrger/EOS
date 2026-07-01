@@ -174,6 +174,10 @@ describe("time input helpers", () => {
     expect(parseClockTimeInput("2")).toBe(840);
     expect(parseClockTimeInput("2:00 PM")).toBe(840);
     expect(parseClockTimeInput("1:45 PM")).toBe(825);
+    expect(parseClockTimeInput("2pm")).toBe(840);
+    expect(parseClockTimeInput("14:30")).toBe(870);
+    expect(parseClockTimeInput("230")).toBe(870);
+    expect(parseClockTimeInput("1430")).toBe(870);
     expect(formatClockTime(840)).toBe("2:00 PM");
     expect(clockTimeToInput(840)).toBe("2:00 PM");
   });

@@ -9,6 +9,7 @@ export const inviteOrgMemberSchema = z.object({
     .email("Enter a valid email address")
     .transform((value) => value.toLowerCase()),
   orgRole: z.enum(["admin", "member", "viewer"]),
+  sendEmail: z.boolean().optional().default(false),
 });
 
 export type InviteOrgMemberInput = z.infer<typeof inviteOrgMemberSchema>;
@@ -21,3 +22,16 @@ export const addOrgMemberSchema = z.object({
 });
 
 export type AddOrgMemberInput = z.infer<typeof addOrgMemberSchema>;
+
+export const addPersonToOrgSchema = z.object({
+  organizationId: z.string().uuid(),
+  orgSlug: z.string().trim().min(1),
+  email: z
+    .string()
+    .trim()
+    .email("Enter a valid email address")
+    .transform((value) => value.toLowerCase()),
+  orgRole: z.enum(["admin", "member", "viewer"]),
+});
+
+export type AddPersonToOrgInput = z.infer<typeof addPersonToOrgSchema>;

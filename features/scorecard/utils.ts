@@ -202,7 +202,8 @@ export function parseDurationTimeInput(input: string): number | null {
 
 /**
  * Parse clock time to minutes since midnight.
- * Accepts "2", "2 PM", "2:30 PM", "14:00". Bare 1–12 defaults to PM (e.g. 2 → 2:00 PM).
+ * Accepts "2", "2 PM", "2:30 PM", "14:00", "230", "1430".
+ * Bare 1–12 defaults to PM (e.g. 2 → 2:00 PM). Compact 3-digit HMM uses PM default (230 → 2:30 PM).
  */
 export function parseClockTimeInput(input: string): number | null {
   const trimmed = input.trim();
@@ -243,6 +244,26 @@ export function parseClockTimeInput(input: string): number | null {
     }
 
     return hours * 60 + minutes + Math.round(seconds / 60);
+  }
+
+  const compactMatch = upper.match(/^(\d{3,4})$/);
+  if (compactMatch) {
+    const digits = compactMatch[1];
+    if (digits.length === 3) {
+      const hour = Number(digits[0]);
+      const minutes = Number(digits.slice(1));
+      if (hour >= 1 && hour <= 9 && minutes < 60) {
+        const hours24 = hour === 12 ? 12 : hour + 12;
+        return hours24 * 60 + minutes;
+      }
+    } else {
+      const hours = Number(digits.slice(0, 2));
+      const minutes = Number(digits.slice(2));
+      if (hours <= 23 && minutes < 60) {
+        return hours * 60 + minutes;
+      }
+    }
+    return Number.NaN;
   }
 
   if (/^\d{1,2}$/.test(upper)) {

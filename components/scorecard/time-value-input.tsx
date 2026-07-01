@@ -58,6 +58,12 @@ export function TimeValueInput({
   function handleDraftChange(nextDraft: string) {
     setDraft(nextDraft);
 
+    // Clock times commit on blur/Enter only so partial entry (e.g. "2" before ":30") is not
+    // auto-formatted to a full time while the user is still typing.
+    if (timeKind === "clock") {
+      return;
+    }
+
     const trimmed = nextDraft.trim();
     if (trimmed === "") {
       return;

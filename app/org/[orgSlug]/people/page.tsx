@@ -1,6 +1,7 @@
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
 import { getOrgPeopleWithManagers } from "@/features/people/queries";
 import { PeopleList } from "@/components/people/people-list";
+import { AddPersonDialog } from "@/components/people/add-person-dialog";
 import { InvitePersonDialog } from "@/components/people/invite-person-dialog";
 import { PageHeader } from "@/components/shared/page-header";
 import { canManageOrg } from "@/lib/permissions/checks";
@@ -24,7 +25,10 @@ export default async function PeoplePage({
         actions={
           <>
             {canManage ? (
-              <InvitePersonDialog organizationId={access.orgId} orgSlug={orgSlug} />
+              <div className="flex items-center gap-2">
+                <AddPersonDialog organizationId={access.orgId} orgSlug={orgSlug} />
+                <InvitePersonDialog organizationId={access.orgId} orgSlug={orgSlug} />
+              </div>
             ) : null}
             <Link
               href={`/org/${orgSlug}/accountability`}

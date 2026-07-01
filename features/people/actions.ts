@@ -12,6 +12,7 @@ import { canManageOrg } from "@/lib/permissions/checks";
 import { logAuditEvent } from "@/lib/audit";
 import {
   addOrgMemberSchema,
+  addPersonToOrgSchema,
   inviteOrgMemberSchema,
 } from "@/features/people/schema";
 import { AUDIT_ACTIONS, type OrgRole } from "@/types/domain";
@@ -163,6 +164,47 @@ export async function addOrgMember(input: unknown): Promise<AddOrgMemberResult> 
   return { success: true };
 }
 
+export async function addPersonToOrg(
+  input: unknown,
+): Promise<AddOrgMemberResult> {
+  const parsed = addPersonToOrgSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid request",
+    };
+  }
+
+  const { organizationId, orgSlug, email, orgRole } = parsed.data;
+  const access = await assertCanManageOrgMembers(organizationId);
+  if (!access.ok) {
+    return { success: false, error: access.error };
+  }
+
+  const existingUser = await findAuthUserByEmail(email);
+  if (!existingUser) {
+    return {
+      success: false,
+      error:
+        "No account with this email. Use Invite person for someone who hasn't signed up yet.",
+    };
+  }
+
+  const supabase = await createClient();
+  const addResult = await addOrgMember({
+    organizationId,
+    orgSlug,
+    userId: existingUser.id,
+    orgRole,
+  });
+
+  if (addResult.success) {
+    await markInvitationsAccepted(supabase, organizationId, email);
+  }
+
+  return addResult;
+}
+
 export async function inviteOrgMember(
   input: unknown,
 ): Promise<InviteOrgMemberResult> {
@@ -174,7 +216,7 @@ export async function inviteOrgMember(
     };
   }
 
-  const { organizationId, orgSlug, email, orgRole } = parsed.data;
+  const { organizationId, orgSlug, email, orgRole, sendEmail } = parsed.data;
   const access = await assertCanManageOrgMembers(organizationId);
   if (!access.ok) {
     return { success: false, error: access.error };
@@ -270,19 +312,24 @@ export async function inviteOrgMember(
   });
 
   let emailSent = false;
-  try {
-    const admin = createAdminClient();
-    const redirectTo = await getInviteRedirectUrl();
-    const { error: emailError } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo,
-      data: {
-        invitation_token: token,
-        organization_id: organizationId,
-      },
-    });
-    emailSent = !emailError;
-  } catch {
-    emailSent = false;
+  if (sendEmail) {
+    try {
+      const admin = createAdminClient();
+      const redirectTo = await getInviteRedirectUrl();
+      const { error: emailError } = await admin.auth.admin.inviteUserByEmail(
+        email,
+        {
+          redirectTo,
+          data: {
+            invitation_token: token,
+            organization_id: organizationId,
+          },
+        },
+      );
+      emailSent = !emailError;
+    } catch {
+      emailSent = false;
+    }
   }
 
   revalidatePeoplePath(orgSlug);
