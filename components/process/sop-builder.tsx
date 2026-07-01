@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Download,
   History,
@@ -64,6 +64,8 @@ export interface SopBuilderProps {
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+const AUTO_SAVE_DELAY_MS = 2500;
+
 const selectClassName =
   "h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -98,11 +100,16 @@ export function SopBuilder({
     buildInitialDocument(pageId, initialTitle, initialDocument),
   );
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [isDirty, setIsDirty] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [versionPanelOpen, setVersionPanelOpen] = useState(false);
-  const [, startTransition] = useTransition();
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const documentRef = useRef(document);
+  const isSavingRef = useRef(false);
+  const queuedSaveRef = useRef<SopDocument | null>(null);
+  const lastSavedSnapshotRef = useRef(
+    JSON.stringify(buildInitialDocument(pageId, initialTitle, initialDocument)),
+  );
 
   useEffect(() => {
     documentRef.current = document;
@@ -117,8 +124,19 @@ export function SopBuilder({
   }, []);
 
   const persistSave = useCallback(
-    (doc: SopDocument, options?: { showToast?: boolean }) => {
+    async (doc: SopDocument, options?: { showToast?: boolean }) => {
       if (readOnly) return;
+
+      if (isSavingRef.current) {
+        queuedSaveRef.current = doc;
+        return;
+      }
+
+      const snapshot = JSON.stringify(doc);
+      if (snapshot === lastSavedSnapshotRef.current && !options?.showToast) {
+        setIsDirty(false);
+        return;
+      }
 
       const markdown = sopToMarkdown(doc);
       const payload = {
@@ -126,32 +144,60 @@ export function SopBuilder({
         lastModified: new Date().toISOString(),
       };
 
-      startTransition(async () => {
-        setSaveState("saving");
-        const result = await updateProcessPage({
-          id: pageId,
-          organizationId,
-          orgSlug,
-          teamId,
-          teamSlug,
-          title: payload.title,
-          contentMarkdown: markdown,
-          sopDocument: payload,
-        });
+      isSavingRef.current = true;
+      setSaveState("saving");
 
-        if (!result.success) {
-          setSaveState("error");
-          showErrorToast("Could not save SOP", result.error);
-          return;
-        }
-
-        setDocument(payload);
-        setSaveState("saved");
-        if (options?.showToast) {
-          showSuccessToast("SOP saved");
-        }
-        setTimeout(() => setSaveState("idle"), 2000);
+      const result = await updateProcessPage({
+        id: pageId,
+        organizationId,
+        orgSlug,
+        teamId,
+        teamSlug,
+        title: payload.title,
+        contentMarkdown: markdown,
+        sopDocument: payload,
       });
+
+      isSavingRef.current = false;
+
+      if (!result.success) {
+        setSaveState("error");
+        showErrorToast("Could not save SOP", result.error);
+        return;
+      }
+
+      lastSavedSnapshotRef.current = snapshot;
+
+      const queued = queuedSaveRef.current;
+      queuedSaveRef.current = null;
+      const latest = documentRef.current;
+      const latestSnapshot = JSON.stringify(latest);
+
+      if (queued && JSON.stringify(queued) !== snapshot) {
+        setIsDirty(true);
+        setSaveState("idle");
+        void persistSave(queued);
+        return;
+      }
+
+      if (latestSnapshot !== snapshot) {
+        setIsDirty(true);
+        setSaveState("idle");
+        if (saveTimerRef.current) {
+          clearTimeout(saveTimerRef.current);
+        }
+        saveTimerRef.current = setTimeout(() => {
+          void persistSave(latest);
+        }, AUTO_SAVE_DELAY_MS);
+        return;
+      }
+
+      setIsDirty(false);
+      setSaveState("saved");
+      if (options?.showToast) {
+        showSuccessToast("SOP saved");
+      }
+      setTimeout(() => setSaveState("idle"), 2000);
     },
     [organizationId, orgSlug, pageId, readOnly, teamId, teamSlug],
   );
@@ -163,8 +209,8 @@ export function SopBuilder({
         clearTimeout(saveTimerRef.current);
       }
       saveTimerRef.current = setTimeout(() => {
-        persistSave(doc);
-      }, 800);
+        void persistSave(doc);
+      }, AUTO_SAVE_DELAY_MS);
     },
     [persistSave, readOnly],
   );
@@ -172,6 +218,7 @@ export function SopBuilder({
   function updateDocument(updater: (current: SopDocument) => SopDocument) {
     setDocument((current) => {
       const next = updater(current);
+      setIsDirty(true);
       scheduleSave(next);
       return next;
     });
@@ -182,7 +229,7 @@ export function SopBuilder({
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
     }
-    persistSave(documentRef.current, { showToast: true });
+    void persistSave(documentRef.current, { showToast: true });
   }
 
   function handleApplyTemplate(templateId: string) {
@@ -219,9 +266,11 @@ export function SopBuilder({
         ? "Saved"
         : saveState === "error"
           ? "Save failed"
-          : readOnly
-            ? "View only"
-            : "Auto-save on";
+          : isDirty
+            ? "Unsaved changes"
+            : readOnly
+              ? "View only"
+              : "Up to date";
 
   const saveBadgeVariant =
     saveState === "error"
@@ -373,7 +422,7 @@ export function SopBuilder({
           ) : (
             document.steps.map((step, index) => (
               <SopStepCard
-                key={`${index}-${step.title}`}
+                key={index}
                 step={step}
                 index={index}
                 totalSteps={document.steps.length}
@@ -479,6 +528,8 @@ export function SopBuilder({
         readOnly={readOnly}
         onRestored={(restored) => {
           setDocument(restored);
+          lastSavedSnapshotRef.current = JSON.stringify(restored);
+          setIsDirty(false);
           setSaveState("saved");
         }}
       />
