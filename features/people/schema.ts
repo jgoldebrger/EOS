@@ -35,3 +35,22 @@ export const addPersonToOrgSchema = z.object({
 });
 
 export type AddPersonToOrgInput = z.infer<typeof addPersonToOrgSchema>;
+
+const authPasswordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(128, "Password is too long");
+
+export const createOrgUserAccountSchema = z.object({
+  organizationId: z.string().uuid(),
+  orgSlug: z.string().trim().min(1),
+  email: z
+    .string()
+    .trim()
+    .email("Enter a valid email address")
+    .transform((value) => value.toLowerCase()),
+  password: authPasswordSchema,
+  orgRole: z.enum(["admin", "member", "viewer"]),
+});
+
+export type CreateOrgUserAccountInput = z.infer<typeof createOrgUserAccountSchema>;

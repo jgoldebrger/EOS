@@ -2,6 +2,7 @@ import { DashboardSummaryCards } from "@/components/dashboard/dashboard-summary-
 import { getDashboardSummary } from "@/features/dashboard/queries";
 import { getOrganizationBySlug } from "@/features/organizations/queries";
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
+import { requireUser } from "@/lib/auth/require-user";
 import { Badge } from "@/components/ui/badge";
 
 export default async function HomePage({
@@ -10,10 +11,10 @@ export default async function HomePage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = await params;
-  const access = await requireOrgAccess(orgSlug);
+  const [access, user] = await Promise.all([requireOrgAccess(orgSlug), requireUser()]);
   const [org, summary] = await Promise.all([
     getOrganizationBySlug(orgSlug),
-    getDashboardSummary(access.orgId),
+    getDashboardSummary(access.orgId, user.id),
   ]);
 
   return (

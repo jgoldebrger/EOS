@@ -10,9 +10,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { findAuthUserByEmail } from "@/lib/users/find-by-email";
 import { canManageOrg } from "@/lib/permissions/checks";
 import { logAuditEvent } from "@/lib/audit";
+import { toSafeAuthError } from "@/lib/auth/errors";
 import {
   addOrgMemberSchema,
   addPersonToOrgSchema,
+  createOrgUserAccountSchema,
   inviteOrgMemberSchema,
 } from "@/features/people/schema";
 import { AUDIT_ACTIONS, type OrgRole } from "@/types/domain";
@@ -27,6 +29,10 @@ export type AddOrgMemberResult =
 
 export type InviteOrgMemberResult =
   | { success: true; mode: "added" | "invited"; emailSent?: boolean }
+  | { success: false; error: string };
+
+export type CreateOrgUserAccountResult =
+  | { success: true }
   | { success: false; error: string };
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -203,6 +209,75 @@ export async function addPersonToOrg(
   }
 
   return addResult;
+}
+
+export async function createOrgUserAccount(
+  input: unknown,
+): Promise<CreateOrgUserAccountResult> {
+  const parsed = createOrgUserAccountSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid account details",
+    };
+  }
+
+  const { organizationId, orgSlug, email, password, orgRole } = parsed.data;
+  const access = await assertCanManageOrgMembers(organizationId);
+  if (!access.ok) {
+    return { success: false, error: access.error };
+  }
+
+  const existingUser = await findAuthUserByEmail(email);
+  if (existingUser) {
+    return {
+      success: false,
+      error:
+        "An account with this email already exists. Use Add person instead.",
+    };
+  }
+
+  const admin = createAdminClient();
+  const { data: created, error: createError } =
+    await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+
+  if (createError || !created.user?.id) {
+    return {
+      success: false,
+      error: toSafeAuthError(createError),
+    };
+  }
+
+  const supabase = await createClient();
+  const addResult = await addOrgMember({
+    organizationId,
+    orgSlug,
+    userId: created.user.id,
+    orgRole,
+  });
+
+  if (!addResult.success) {
+    return addResult;
+  }
+
+  await markInvitationsAccepted(supabase, organizationId, email);
+
+  await logAuditEvent(supabase, {
+    organizationId,
+    actorId: access.userId,
+    action: AUDIT_ACTIONS.CREATE,
+    entityType: "users",
+    entityId: created.user.id,
+    metadata: { email, orgRole },
+  });
+
+  revalidatePeoplePath(orgSlug);
+
+  return { success: true };
 }
 
 export async function inviteOrgMember(

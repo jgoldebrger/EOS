@@ -9,26 +9,27 @@ export interface DashboardSummary {
   pendingSuggestionsCount: number;
 }
 
-async function countRows(
-  table:
-    | "scorecard_metrics"
-    | "rocks"
-    | "issues"
-    | "todos"
-    | "meetings"
-    | "ai_suggestions",
+async function countRowsForUser(
+  table: "scorecard_metrics" | "rocks" | "issues" | "todos",
   organizationId: string,
+  userId: string,
   filters?: { column: string; value: string }[],
+  nullColumns?: string[],
 ): Promise<number> {
   const supabase = await createClient();
 
   let query = supabase
     .from(table)
     .select("id", { count: "exact", head: true })
-    .eq("organization_id", organizationId);
+    .eq("organization_id", organizationId)
+    .eq("owner_id", userId);
 
   for (const filter of filters ?? []) {
     query = query.eq(filter.column, filter.value);
+  }
+
+  for (const column of nullColumns ?? []) {
+    query = query.is(column, null);
   }
 
   const { count, error } = await query;
@@ -42,6 +43,7 @@ async function countRows(
 
 export async function getDashboardSummary(
   organizationId: string,
+  userId: string,
 ): Promise<DashboardSummary> {
   const supabase = await createClient();
 
@@ -49,25 +51,43 @@ export async function getDashboardSummary(
     .from("rocks")
     .select("id", { count: "exact", head: true })
     .eq("organization_id", organizationId)
+    .eq("owner_id", userId)
     .is("archived_at", null)
     .in("status", ["on_track", "off_track"]);
+
+  const meetingsQuery = supabase
+    .from("meetings")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+    .eq("created_by", userId);
+
+  const aiSuggestionsQuery = supabase
+    .from("ai_suggestions")
+    .select("id, ai_runs!inner(actor_id)", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+    .eq("status", "pending")
+    .eq("ai_runs.actor_id", userId);
 
   const [
     metricsCount,
     rocksResult,
     openIssuesCount,
     openTodosCount,
-    meetingsCount,
-    pendingSuggestionsCount,
+    meetingsResult,
+    aiSuggestionsResult,
   ] = await Promise.all([
-    countRows("scorecard_metrics", organizationId),
-    rocksQuery,
-    countRows("issues", organizationId, [{ column: "status", value: "open" }]),
-    countRows("todos", organizationId, [{ column: "status", value: "open" }]),
-    countRows("meetings", organizationId),
-    countRows("ai_suggestions", organizationId, [
-      { column: "status", value: "pending" },
+    countRowsForUser("scorecard_metrics", organizationId, userId, undefined, [
+      "archived_at",
     ]),
+    rocksQuery,
+    countRowsForUser("issues", organizationId, userId, [
+      { column: "status", value: "open" },
+    ]),
+    countRowsForUser("todos", organizationId, userId, [
+      { column: "status", value: "open" },
+    ]),
+    meetingsQuery,
+    aiSuggestionsQuery,
   ]);
 
   return {
@@ -75,7 +95,7 @@ export async function getDashboardSummary(
     openRocksCount: rocksResult.count ?? 0,
     openIssuesCount,
     openTodosCount,
-    meetingsCount,
-    pendingSuggestionsCount,
+    meetingsCount: meetingsResult.count ?? 0,
+    pendingSuggestionsCount: aiSuggestionsResult.count ?? 0,
   };
 }

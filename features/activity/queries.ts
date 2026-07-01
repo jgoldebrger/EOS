@@ -47,7 +47,11 @@ export async function getReportsSummary(organizationId: string) {
     supabase.from("rocks").select("id", { count: "exact", head: true }).eq("organization_id", organizationId),
     supabase.from("issues").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "open"),
     supabase.from("todos").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "open"),
-    supabase.from("scorecard_metrics").select("id", { count: "exact", head: true }).eq("organization_id", organizationId),
+    supabase
+      .from("scorecard_metrics")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .is("archived_at", null),
   ]);
 
   return {

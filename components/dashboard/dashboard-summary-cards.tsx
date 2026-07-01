@@ -40,7 +40,7 @@ export function DashboardSummaryCards({
   const cards: SummaryCard[] = [
     {
       title: "Scorecard",
-      description: "Active metrics",
+      description: "Your active metrics",
       count: summary.metricsCount,
       href: `${base}/scorecard`,
       icon: BarChart3,
@@ -48,7 +48,7 @@ export function DashboardSummaryCards({
     },
     {
       title: "Rocks",
-      description: "Active quarterly rocks",
+      description: "Your active rocks",
       count: summary.openRocksCount,
       href: `${base}/rocks`,
       icon: Mountain,
@@ -56,7 +56,7 @@ export function DashboardSummaryCards({
     },
     {
       title: "Issues",
-      description: "Open issues",
+      description: "Your open issues",
       count: summary.openIssuesCount,
       href: `${base}/issues`,
       icon: ListTodo,
@@ -64,7 +64,7 @@ export function DashboardSummaryCards({
     },
     {
       title: "Todos",
-      description: "Open to-dos",
+      description: "Your open to-dos",
       count: summary.openTodosCount,
       href: `${base}/todos`,
       icon: CheckSquare,
@@ -72,7 +72,7 @@ export function DashboardSummaryCards({
     },
     {
       title: "Meetings",
-      description: "L10 meetings",
+      description: "Meetings you created",
       count: summary.meetingsCount,
       href: `${base}/meetings`,
       icon: Video,
@@ -80,7 +80,7 @@ export function DashboardSummaryCards({
     },
     {
       title: "AI suggestions",
-      description: "Pending review",
+      description: "Your pending review",
       count: summary.pendingSuggestionsCount,
       href: `${base}/meetings`,
       icon: Sparkles,
