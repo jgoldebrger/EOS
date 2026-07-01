@@ -7,6 +7,7 @@ import type {
   ProjectCycle,
   ProjectMemberOption,
   ProjectModule,
+  WorkItemWithMeta,
 } from "@/features/projects/types";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ interface CreateWorkItemDialogProps {
   members: ProjectMemberOption[];
   modules: ProjectModule[];
   cycles: ProjectCycle[];
+  parentItem?: WorkItemWithMeta | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultState?: string;
@@ -45,6 +47,7 @@ export function CreateWorkItemDialog({
   members,
   modules,
   cycles,
+  parentItem,
   open,
   onOpenChange,
   defaultState = "backlog",
@@ -78,11 +81,12 @@ export function CreateWorkItemDialog({
       orgSlug,
       projectSlug,
       title: title.trim(),
+      parentId: parentItem?.id ?? null,
       assigneeId: assigneeId || null,
       priority: priority as "urgent" | "high" | "medium" | "low" | "none",
       moduleId: moduleId || null,
       cycleId: cycleId || null,
-      state: (defaultState ?? "backlog") as
+      state: (parentItem?.state ?? defaultState ?? "backlog") as
         | "triage"
         | "backlog"
         | "unstarted"
@@ -97,7 +101,7 @@ export function CreateWorkItemDialog({
       return;
     }
 
-    showSuccessToast("Work item created");
+    showSuccessToast(parentItem ? "Subtask created" : "Task created");
     resetForm();
     onOpenChange(false);
     router.refresh();
@@ -113,7 +117,9 @@ export function CreateWorkItemDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New work item</DialogTitle>
+          <DialogTitle>
+            {parentItem ? `New subtask of ${parentItem.identifier}` : "New task"}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -189,7 +195,7 @@ export function CreateWorkItemDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={handleSubmit} disabled={isSubmitting || !title.trim()}>
+          <Button type="button" onClick={handleSubmit} disabled={isSubmitting || !title.trim()}>
             {isSubmitting ? "Creating…" : "Create"}
           </Button>
         </DialogFooter>

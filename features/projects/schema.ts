@@ -95,6 +95,7 @@ export const createWorkItemSchema = z.object({
   cycleId: z.string().uuid().nullable().optional(),
   dueDate: z.string().nullable().optional(),
   estimatePoints: z.number().min(0).max(999).nullable().optional(),
+  parentId: z.string().uuid().nullable().optional(),
 });
 
 export const updateWorkItemSchema = createWorkItemSchema

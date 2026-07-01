@@ -11,7 +11,7 @@ import type {
   WorkItemWithMeta,
 } from "@/features/projects/types";
 import { createProjectView } from "@/features/projects/actions";
-import { filterWorkItems, formatProjectStatus } from "@/features/projects/utils";
+import { filterWorkItems, flattenWorkItemsWithDepth, formatProjectStatus } from "@/features/projects/utils";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 import { CreateWorkItemDialog } from "@/components/projects/create-work-item-dialog";
 import {
@@ -89,6 +89,9 @@ export function ProjectWorkspace({
   const [selectedItem, setSelectedItem] = useState<WorkItemWithMeta | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [createParentItem, setCreateParentItem] = useState<WorkItemWithMeta | null>(
+    null,
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isSavingView, startSaveView] = useTransition();
 
@@ -98,6 +101,11 @@ export function ProjectWorkspace({
   const filteredItems = useMemo(
     () => filterWorkItems(project.workItems, filters),
     [project.workItems, filters],
+  );
+
+  const workItemRows = useMemo(
+    () => flattenWorkItemsWithDepth(filteredItems),
+    [filteredItems],
   );
 
   const hasActiveFilters = Object.values(filters).some(Boolean);
@@ -179,12 +187,19 @@ export function ProjectWorkspace({
                 Settings
               </Button>
             )}
-            {canEdit && (tab === "work" || tab === "kanban" || tab === "triage") && (
-              <Button size="sm" className="gap-1" onClick={() => setCreateOpen(true)}>
-                <Plus className="h-4 w-4" />
-                New work item
-              </Button>
-            )}
+          {canEdit && (tab === "work" || tab === "kanban" || tab === "triage") && (
+            <Button
+              size="sm"
+              className="gap-1"
+              onClick={() => {
+                setCreateParentItem(null);
+                setCreateOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              New task
+            </Button>
+          )}
           </div>
         </div>
       </div>
@@ -269,7 +284,7 @@ export function ProjectWorkspace({
             }
           />
         ) : (
-          <WorkItemTable items={filteredItems} onSelect={openItem} />
+          <WorkItemTable rows={workItemRows} onSelect={openItem} />
         )
       )}
 
@@ -381,6 +396,7 @@ export function ProjectWorkspace({
 
       <WorkItemDetailSheet
         item={selectedItem}
+        allWorkItems={project.workItems}
         organizationId={project.organization_id}
         projectId={project.id}
         orgSlug={orgSlug}
@@ -392,6 +408,10 @@ export function ProjectWorkspace({
         canEdit={canEdit}
         open={detailOpen}
         onOpenChange={setDetailOpen}
+        onCreateSubtask={(parent) => {
+          setCreateParentItem(parent);
+          setCreateOpen(true);
+        }}
       />
 
       <ProjectSettingsSheet
@@ -412,8 +432,12 @@ export function ProjectWorkspace({
         members={members}
         modules={project.modules}
         cycles={project.cycles}
+        parentItem={createParentItem}
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={(next) => {
+          setCreateOpen(next);
+          if (!next) setCreateParentItem(null);
+        }}
         defaultState={tab === "triage" ? "triage" : "backlog"}
       />
     </div>

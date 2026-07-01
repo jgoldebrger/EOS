@@ -223,9 +223,16 @@ async function mapWorkItems(
 
   const labelNameMap = new Map((labelRows ?? []).map((l) => [l.id, l.name]));
 
+  const identifierById = new Map(
+    items.map((item) => [
+      item.id,
+      formatWorkItemIdentifier(identifierPrefix, item.sequence_number),
+    ]),
+  );
+
   return items.map((item) => ({
     ...item,
-    identifier: formatWorkItemIdentifier(identifierPrefix, item.sequence_number),
+    identifier: identifierById.get(item.id)!,
     assignee: {
       userId: item.assignee_id,
       label: item.assignee_id
@@ -241,6 +248,9 @@ async function mapWorkItems(
     labelNames: (labelLinksByItem.get(item.id) ?? [])
       .map((id) => labelNameMap.get(id))
       .filter((name): name is string => Boolean(name)),
+    parentIdentifier: item.parent_id
+      ? (identifierById.get(item.parent_id) ?? null)
+      : null,
   }));
 }
 

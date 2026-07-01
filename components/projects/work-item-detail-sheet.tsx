@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import {
   archiveWorkItem,
+  createWorkItem,
   setWorkItemLabels,
   updateWorkItem,
 } from "@/features/projects/actions";
@@ -34,6 +36,7 @@ import {
 
 interface WorkItemDetailSheetProps {
   item: WorkItemWithMeta | null;
+  allWorkItems: WorkItemWithMeta[];
   organizationId: string;
   projectId: string;
   orgSlug: string;
@@ -45,6 +48,7 @@ interface WorkItemDetailSheetProps {
   canEdit: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCreateSubtask?: (parent: WorkItemWithMeta) => void;
 }
 
 const selectClassName =
@@ -52,6 +56,7 @@ const selectClassName =
 
 export function WorkItemDetailSheet({
   item,
+  allWorkItems,
   organizationId,
   projectId,
   orgSlug,
@@ -63,6 +68,7 @@ export function WorkItemDetailSheet({
   canEdit,
   open,
   onOpenChange,
+  onCreateSubtask,
 }: WorkItemDetailSheetProps) {
   const router = useRouter();
   const [title, setTitle] = useState("");
@@ -75,9 +81,18 @@ export function WorkItemDetailSheet({
   const [dueDate, setDueDate] = useState("");
   const [estimatePoints, setEstimatePoints] = useState("");
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
+  const [subtaskTitle, setSubtaskTitle] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const activeItem = item;
+
+  const subtasks = useMemo(
+    () =>
+      activeItem
+        ? allWorkItems.filter((workItem) => workItem.parent_id === activeItem.id)
+        : [],
+    [activeItem, allWorkItems],
+  );
 
   function syncFromItem() {
     if (!item) return;
@@ -151,7 +166,7 @@ export function WorkItemDetailSheet({
         }
       }
 
-      showSuccessToast("Work item saved");
+      showSuccessToast("Task saved");
       router.refresh();
     });
   }
@@ -170,8 +185,30 @@ export function WorkItemDetailSheet({
         showErrorToast("Could not archive", result.error);
         return;
       }
-      showSuccessToast("Work item archived");
+      showSuccessToast("Task archived");
       onOpenChange(false);
+      router.refresh();
+    });
+  }
+
+  function handleAddSubtask() {
+    if (!item || !subtaskTitle.trim()) return;
+    startTransition(async () => {
+      const result = await createWorkItem({
+        organizationId,
+        projectId,
+        orgSlug,
+        projectSlug,
+        title: subtaskTitle.trim(),
+        parentId: item.id,
+        state: item.state,
+      });
+      if (!result.success) {
+        showErrorToast("Could not create subtask", result.error);
+        return;
+      }
+      showSuccessToast("Subtask created");
+      setSubtaskTitle("");
       router.refresh();
     });
   }
@@ -323,6 +360,11 @@ export function WorkItemDetailSheet({
               />
             </div>
           </div>
+          {activeItem.parentIdentifier && (
+            <p className="text-sm text-muted-foreground">
+              Subtask of {activeItem.parentIdentifier}
+            </p>
+          )}
           {labels.length > 0 && (
             <div className="space-y-2">
               <Label>Labels</Label>
@@ -348,6 +390,63 @@ export function WorkItemDetailSheet({
               </div>
             </div>
           )}
+          <div className="space-y-3 border-t pt-4">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Subtasks ({subtasks.length})</Label>
+              {canEdit && onCreateSubtask && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1"
+                  onClick={() => onCreateSubtask(activeItem)}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add subtask
+                </Button>
+              )}
+            </div>
+            {subtasks.length > 0 ? (
+              <ul className="space-y-2">
+                {subtasks.map((subtask) => (
+                  <li
+                    key={subtask.id}
+                    className="rounded-md border px-3 py-2 text-sm"
+                  >
+                    <p className="font-mono text-[10px] text-muted-foreground">
+                      {subtask.identifier}
+                    </p>
+                    <p className="font-medium">{subtask.title}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">No subtasks yet.</p>
+            )}
+            {canEdit && (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Quick add subtask…"
+                  value={subtaskTitle}
+                  onChange={(e) => setSubtaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddSubtask();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={isPending || !subtaskTitle.trim()}
+                  onClick={handleAddSubtask}
+                >
+                  Add
+                </Button>
+              </div>
+            )}
+          </div>
           {canEdit && (
             <div className="flex flex-wrap gap-2 pt-2">
               <Button onClick={handleSave} disabled={isPending}>

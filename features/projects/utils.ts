@@ -1,4 +1,5 @@
 import type { ProjectWorkItemStateDb } from "@/types/database";
+import type { WorkItemWithMeta } from "@/features/projects/types";
 
 export const WORK_ITEM_STATE_ORDER: ProjectWorkItemStateDb[] = [
   "triage",
@@ -35,7 +36,41 @@ export function isOpenWorkItemState(state: string): boolean {
   return state !== "completed" && state !== "cancelled";
 }
 
-export function filterWorkItems<T extends { title: string; state: string; priority: string; assignee_id: string | null; module_id: string | null; cycle_id: string | null }>(
+export function flattenWorkItemsWithDepth(
+  items: WorkItemWithMeta[],
+): Array<{ item: WorkItemWithMeta; depth: number }> {
+  const byParent = new Map<string | null, WorkItemWithMeta[]>();
+  for (const item of items) {
+    const key = item.parent_id;
+    const list = byParent.get(key) ?? [];
+    list.push(item);
+    byParent.set(key, list);
+  }
+
+  function walk(
+    parentId: string | null,
+    depth: number,
+  ): Array<{ item: WorkItemWithMeta; depth: number }> {
+    const children = byParent.get(parentId) ?? [];
+    return children.flatMap((item) => [
+      { item, depth },
+      ...walk(item.id, depth + 1),
+    ]);
+  }
+
+  return walk(null, 0);
+}
+
+export function filterWorkItems<
+  T extends {
+    title: string;
+    state: string;
+    priority: string;
+    assignee_id: string | null;
+    module_id: string | null;
+    cycle_id: string | null;
+  },
+>(
   items: T[],
   filters: {
     state?: string;

@@ -38,6 +38,7 @@ export interface WorkItemWithMeta extends ProjectWorkItem {
   cycleName: string | null;
   labelNames: string[];
   labelIds: string[];
+  parentIdentifier: string | null;
 }
 
 export interface ProjectDetail extends Project {

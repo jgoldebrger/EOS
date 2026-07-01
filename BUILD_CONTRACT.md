@@ -61,7 +61,8 @@ Stubs: `lib/permissions/checks.ts`
 | done | 023 | Project views |
 | done | 024 | Project cycles |
 | done | 025 | Project pages + EOS links |
-| **Next available** | **026** | — |
+| done | 026 | Project table grants |
+| **Next available** | **027** | — |
 
 Team workspace routes: `/org/[orgSlug]/teams/[teamSlug]/{overview,agendas,rocks,scorecard,todos,headlines,issues,process}`
 

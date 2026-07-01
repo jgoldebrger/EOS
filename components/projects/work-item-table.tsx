@@ -12,28 +12,38 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+
+interface WorkItemRow {
+  item: WorkItemWithMeta;
+  depth: number;
+}
 
 interface WorkItemTableProps {
-  items: WorkItemWithMeta[];
+  rows: WorkItemRow[];
   onSelect: (item: WorkItemWithMeta) => void;
 }
 
 function WorkItemCard({
   item,
+  depth,
   onSelect,
-}: {
-  item: WorkItemWithMeta;
-  onSelect: (item: WorkItemWithMeta) => void;
-}) {
+}: WorkItemRow & { onSelect: (item: WorkItemWithMeta) => void }) {
   return (
     <Card
       className="cursor-pointer transition-colors hover:bg-muted/50"
+      style={{ marginLeft: depth * 12 }}
       onClick={() => onSelect(item)}
     >
       <CardContent className="space-y-2 p-4">
         <div className="flex items-start justify-between gap-2">
           <span className="font-mono text-xs text-muted-foreground">
             {item.identifier}
+            {item.parentIdentifier && (
+              <span className="ml-2 font-sans text-muted-foreground/80">
+                subtask of {item.parentIdentifier}
+              </span>
+            )}
           </span>
           <Badge variant="secondary" className="capitalize shrink-0">
             {formatWorkItemState(item.state)}
@@ -59,11 +69,11 @@ function WorkItemCard({
   );
 }
 
-export function WorkItemTable({ items, onSelect }: WorkItemTableProps) {
-  if (items.length === 0) {
+export function WorkItemTable({ rows, onSelect }: WorkItemTableProps) {
+  if (rows.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center">
-        No work items match your filters.
+        No tasks match your filters.
       </p>
     );
   }
@@ -83,14 +93,22 @@ export function WorkItemTable({ items, onSelect }: WorkItemTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((item) => (
+            {rows.map(({ item, depth }) => (
               <TableRow
                 key={item.id}
                 className="cursor-pointer"
                 onClick={() => onSelect(item)}
               >
                 <TableCell className="font-mono text-xs">{item.identifier}</TableCell>
-                <TableCell className="font-medium">{item.title}</TableCell>
+                <TableCell className="font-medium">
+                  <span
+                    className={cn(depth > 0 && "text-muted-foreground")}
+                    style={{ paddingLeft: depth * 16 }}
+                  >
+                    {depth > 0 && "↳ "}
+                    {item.title}
+                  </span>
+                </TableCell>
                 <TableCell>
                   <Badge variant="secondary" className="capitalize">
                     {formatWorkItemState(item.state)}
@@ -114,8 +132,8 @@ export function WorkItemTable({ items, onSelect }: WorkItemTableProps) {
       </div>
 
       <div className="block space-y-3 md:hidden">
-        {items.map((item) => (
-          <WorkItemCard key={item.id} item={item} onSelect={onSelect} />
+        {rows.map((row) => (
+          <WorkItemCard key={row.item.id} {...row} onSelect={onSelect} />
         ))}
       </div>
     </>

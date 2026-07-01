@@ -302,18 +302,40 @@ export async function createWorkItem(input: unknown): Promise<CreateWorkItemResu
         ? null
         : actor.user.id;
 
+  let parentState = defaultState;
+  let parentModuleId = parsed.data.moduleId ?? null;
+  let parentCycleId = parsed.data.cycleId ?? null;
+
+  if (parsed.data.parentId) {
+    const { data: parent } = await actor.supabase
+      .from("project_work_items")
+      .select("id, state, module_id, cycle_id")
+      .eq("id", parsed.data.parentId)
+      .eq("project_id", parsed.data.projectId)
+      .maybeSingle();
+
+    if (!parent) {
+      return { success: false, error: "Parent task not found." };
+    }
+
+    parentState = parsed.data.state ?? parent.state;
+    parentModuleId = parsed.data.moduleId ?? parent.module_id;
+    parentCycleId = parsed.data.cycleId ?? parent.cycle_id;
+  }
+
   const { data: item, error } = await actor.supabase
     .from("project_work_items")
     .insert({
       organization_id: parsed.data.organizationId,
       project_id: parsed.data.projectId,
+      parent_id: parsed.data.parentId ?? null,
       title: parsed.data.title,
       description: parsed.data.description ?? null,
-      state: defaultState,
+      state: parentState,
       priority: parsed.data.priority ?? "none",
       assignee_id: assigneeId,
-      module_id: parsed.data.moduleId ?? null,
-      cycle_id: parsed.data.cycleId ?? null,
+      module_id: parentModuleId,
+      cycle_id: parentCycleId,
       due_date: parsed.data.dueDate ?? null,
       estimate_points: parsed.data.estimatePoints ?? null,
       sequence_number: sequenceNumber,
@@ -323,7 +345,10 @@ export async function createWorkItem(input: unknown): Promise<CreateWorkItemResu
     .single();
 
   if (error || !item) {
-    return { success: false, error: "Unable to create work item." };
+    return {
+      success: false,
+      error: error?.message ?? "Unable to create work item.",
+    };
   }
 
   revalidateProjectPaths(parsed.data.orgSlug, parsed.data.projectSlug);
