@@ -138,7 +138,7 @@ export function ProcessPageViewer({
                 <ol className="space-y-3">
                   {sop.steps.map((step, index) => (
                     <li
-                      key={`${index}-${step.title}`}
+                      key={index}
                       className="flex gap-3 rounded-md border border-border/60 px-3 py-2 text-sm"
                     >
                       <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
@@ -152,22 +152,23 @@ export function ProcessPageViewer({
                         <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
                           {step.time ? <span>{step.time} min</span> : null}
                           {step.approver ? <span>Approver: {step.approver}</span> : null}
+                          {step.approvalStatus &&
+                          step.approvalStatus !== "pending" ? (
+                            <span className="capitalize">{step.approvalStatus}</span>
+                          ) : null}
                         </div>
+                        {step.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={step.imageUrl}
+                            alt=""
+                            className="mt-2 max-h-48 rounded-md border object-contain"
+                          />
+                        ) : null}
                       </div>
                     </li>
                   ))}
                 </ol>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {page.content ? (
-            <Card className="print:border-0 print:shadow-none">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-medium">Full document</CardTitle>
-              </CardHeader>
-              <CardContent className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                {page.content}
               </CardContent>
             </Card>
           ) : null}
