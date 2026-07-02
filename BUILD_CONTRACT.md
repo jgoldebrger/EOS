@@ -73,6 +73,7 @@ Team L10 routes:
 - Live meeting: `/org/[orgSlug]/teams/[teamSlug]/l10/[meetingId]`
 - Legacy `/teams/.../agendas` redirects to `/l10`
 - Org `/meetings/[meetingId]` redirects to team L10 when `team_id` is set
+- Org admins configure default section time boxes at `/org/[orgSlug]/settings/l10` (`organizations.settings.l10AgendaDurations`); new meetings snapshot the template at creation
 
 Global nav routes: `/org/[orgSlug]/{home,inbox,activity,reports,teams,people,company,projects,transport}`
 

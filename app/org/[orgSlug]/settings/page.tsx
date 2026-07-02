@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronRight, ShieldCheck } from "lucide-react";
+import { ChevronRight, Clock, ShieldCheck } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -79,6 +79,28 @@ export default async function SettingsPage({
               Contact an organization owner or admin to change workspace settings.
             </p>
           )}
+        </CardContent>
+      </Card>
+
+      <Card data-testid="l10-agenda-settings-link">
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="size-5" />
+              L10 agenda
+            </CardTitle>
+            <CardDescription>
+              Set time boxes for Segue, Scorecard, Rocks, IDS, and other L10 sections.
+            </CardDescription>
+          </div>
+          <ChevronRight className="size-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline">
+            <Link href={`/org/${orgSlug}/settings/l10`}>
+              {canEdit ? "Manage L10 timings" : "View L10 timings"}
+            </Link>
+          </Button>
         </CardContent>
       </Card>
 

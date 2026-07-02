@@ -1,5 +1,19 @@
 import type { AgendaStep, L10AgendaTemplate } from "@/features/meetings/types";
 
+export const L10_SECTION_KEYS = [
+  "segue",
+  "scorecard",
+  "rocks",
+  "headlines",
+  "todos",
+  "issues",
+  "conclude",
+] as const;
+
+export type L10SectionKey = (typeof L10_SECTION_KEYS)[number];
+
+export type L10AgendaDurations = Partial<Record<L10SectionKey, number>>;
+
 /** Default EOS L10 agenda with standard time boxes (minutes). */
 export const DEFAULT_L10_AGENDA: L10AgendaTemplate = [
   { key: "segue", label: "Segue", durationMinutes: 5, required: false },
@@ -13,6 +27,56 @@ export const DEFAULT_L10_AGENDA: L10AgendaTemplate = [
 
 export function getDefaultL10Agenda(): L10AgendaTemplate {
   return DEFAULT_L10_AGENDA.map((step) => ({ ...step }));
+}
+
+export function parseL10AgendaDurations(raw: unknown): L10AgendaDurations | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return null;
+  }
+
+  const durations: L10AgendaDurations = {};
+  for (const key of L10_SECTION_KEYS) {
+    const value = (raw as Record<string, unknown>)[key];
+    if (typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 480) {
+      durations[key] = value;
+    }
+  }
+
+  return Object.keys(durations).length > 0 ? durations : null;
+}
+
+export function parseOrgL10Settings(settings: unknown): L10AgendaDurations | null {
+  if (typeof settings !== "object" || settings === null || Array.isArray(settings)) {
+    return null;
+  }
+
+  return parseL10AgendaDurations(
+    (settings as Record<string, unknown>).l10AgendaDurations,
+  );
+}
+
+export function applyAgendaDurations(
+  durations: L10AgendaDurations | null | undefined,
+): L10AgendaTemplate {
+  return getDefaultL10Agenda().map((step) => ({
+    ...step,
+    durationMinutes:
+      durations?.[step.key as L10SectionKey] ?? step.durationMinutes,
+  }));
+}
+
+export function extractAgendaDurations(agenda: L10AgendaTemplate): L10AgendaDurations {
+  const durations: L10AgendaDurations = {};
+  for (const step of agenda) {
+    if (L10_SECTION_KEYS.includes(step.key as L10SectionKey)) {
+      durations[step.key as L10SectionKey] = step.durationMinutes;
+    }
+  }
+  return durations;
+}
+
+export function resolveL10AgendaFromSettings(settings: unknown): L10AgendaTemplate {
+  return applyAgendaDurations(parseOrgL10Settings(settings));
 }
 
 export function parseAgendaTemplate(raw: unknown): L10AgendaTemplate {

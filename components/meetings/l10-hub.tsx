@@ -9,9 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { CreateL10MeetingButton } from "@/components/meetings/create-l10-meeting-button";
-import type { MeetingListItem } from "@/features/meetings/types";
+import type { L10AgendaTemplate, MeetingListItem } from "@/features/meetings/types";
 import {
+  formatSectionDuration,
   getL10MeetingHref,
+  getTotalAgendaMinutes,
   isUpcomingMeeting,
   meetingStatusLabel,
 } from "@/features/meetings/utils";
@@ -23,6 +25,8 @@ interface L10HubProps {
   teamId: string;
   teamName: string;
   canEdit: boolean;
+  canManageAgenda: boolean;
+  agendaTemplate: L10AgendaTemplate;
   meetings: MeetingListItem[];
   inProgressMeeting: MeetingListItem | null;
 }
@@ -65,6 +69,8 @@ export function L10Hub({
   teamId,
   teamName,
   canEdit,
+  canManageAgenda,
+  agendaTemplate,
   meetings,
   inProgressMeeting,
 }: L10HubProps) {
@@ -98,6 +104,33 @@ export function L10Hub({
           ) : undefined
         }
       />
+
+      <Card data-testid="l10-agenda-summary">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">Agenda timings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            New meetings use{" "}
+            <span className="font-medium text-foreground">
+              {formatSectionDuration(getTotalAgendaMinutes(agendaTemplate))}
+            </span>{" "}
+            across {agendaTemplate.length} sections.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {agendaTemplate.map((step) => (
+              <Badge key={step.key} variant="secondary">
+                {step.label}: {formatSectionDuration(step.durationMinutes)}
+              </Badge>
+            ))}
+          </div>
+          {canManageAgenda ? (
+            <Button asChild variant="outline" size="sm" data-testid="l10-agenda-settings-link">
+              <Link href={`/org/${orgSlug}/settings/l10`}>Edit agenda timings</Link>
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
 
       {inProgressMeeting ? (
         <Card className="border-primary/40 bg-primary/5" data-testid="l10-resume-banner">

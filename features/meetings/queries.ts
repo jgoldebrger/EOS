@@ -11,7 +11,9 @@ import type {
   MeetingListItem,
   MeetingTeamOption,
   MeetingWithNotes,
+  L10AgendaTemplate,
 } from "@/features/meetings/types";
+import { getDefaultL10Agenda, resolveL10AgendaFromSettings } from "@/features/meetings/utils";
 
 function mapMeetingListRow(row: Record<string, unknown>): MeetingListItem {
   const { teams: teamJoin, ...meeting } = row as unknown as {
@@ -154,4 +156,22 @@ export async function getOrgTeamsForMeetings(
   }
 
   return data;
+}
+
+export async function getOrgL10AgendaTemplate(
+  organizationId: string,
+): Promise<L10AgendaTemplate> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("organizations")
+    .select("settings")
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return getDefaultL10Agenda();
+  }
+
+  return resolveL10AgendaFromSettings(data.settings);
 }

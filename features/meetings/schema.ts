@@ -80,6 +80,32 @@ export const endMeetingSchema = z.object({
   meetingId: z.string().uuid("Invalid meeting"),
 });
 
+const l10SectionKeySchema = z.enum([
+  "segue",
+  "scorecard",
+  "rocks",
+  "headlines",
+  "todos",
+  "issues",
+  "conclude",
+]);
+
+export const l10AgendaDurationsSchema = z.object({
+  organizationId: z.string().uuid("Invalid organization"),
+  orgSlug: z.string().min(1, "Invalid organization slug"),
+  durations: z.object({
+    segue: z.number().int().min(1).max(480),
+    scorecard: z.number().int().min(1).max(480),
+    rocks: z.number().int().min(1).max(480),
+    headlines: z.number().int().min(1).max(480),
+    todos: z.number().int().min(1).max(480),
+    issues: z.number().int().min(1).max(480),
+    conclude: z.number().int().min(1).max(480),
+  }),
+});
+
+export type L10AgendaDurationsInput = z.infer<typeof l10AgendaDurationsSchema>;
+
 export type CreateMeetingInput = z.infer<typeof createMeetingSchema>;
 export type UpdateMeetingInput = z.infer<typeof updateMeetingSchema>;
 export type StartMeetingInput = z.infer<typeof startMeetingSchema>;

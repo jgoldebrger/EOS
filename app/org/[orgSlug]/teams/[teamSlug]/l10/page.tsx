@@ -3,9 +3,10 @@ import { L10Hub } from "@/components/meetings/l10-hub";
 import {
   getInProgressMeetingForTeam,
   getMeetingsForTeam,
+  getOrgL10AgendaTemplate,
 } from "@/features/meetings/queries";
 import { getTeamPageContext } from "@/lib/team-page-context";
-import { canEditResource } from "@/lib/permissions/checks";
+import { canEditResource, canManageOrg } from "@/lib/permissions/checks";
 
 export default async function TeamL10Page({
   params,
@@ -15,12 +16,14 @@ export default async function TeamL10Page({
   const { orgSlug, teamSlug } = await params;
   const ctx = await getTeamPageContext(orgSlug, teamSlug);
 
-  const [meetings, inProgressMeeting] = await Promise.all([
+  const [meetings, inProgressMeeting, agendaTemplate] = await Promise.all([
     getMeetingsForTeam(ctx.orgId, ctx.teamId),
     getInProgressMeetingForTeam(ctx.orgId, ctx.teamId),
+    getOrgL10AgendaTemplate(ctx.orgId),
   ]);
 
   const canEdit = canEditResource(ctx.orgRole, "meetings");
+  const canManageAgenda = canManageOrg(ctx.orgRole);
 
   return (
     <div className="p-8">
@@ -32,6 +35,8 @@ export default async function TeamL10Page({
           teamId={ctx.teamId}
           teamName={ctx.teamName}
           canEdit={canEdit}
+          canManageAgenda={canManageAgenda}
+          agendaTemplate={agendaTemplate}
           meetings={meetings}
           inProgressMeeting={inProgressMeeting}
         />

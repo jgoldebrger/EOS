@@ -3,12 +3,15 @@ import {
   createDecisionSchema,
   createMeetingSchema,
   endMeetingSchema,
+  l10AgendaDurationsSchema,
   saveNoteSchema,
   startMeetingSchema,
   updateActiveSectionSchema,
 } from "@/features/meetings/schema";
 import {
+  applyAgendaDurations,
   DEFAULT_L10_AGENDA,
+  extractAgendaDurations,
   formatSectionDuration,
   formatTimerDisplay,
   getDefaultL10Agenda,
@@ -24,6 +27,8 @@ import {
   isUpcomingMeeting,
   meetingStatusLabel,
   parseAgendaTemplate,
+  parseOrgL10Settings,
+  resolveL10AgendaFromSettings,
 } from "@/features/meetings/utils";
 
 const orgId = "550e8400-e29b-41d4-a716-446655440001";
@@ -58,6 +63,75 @@ describe("parseAgendaTemplate", () => {
       { key: "custom", label: "Custom", durationMinutes: 10, required: true },
     ];
     expect(parseAgendaTemplate(custom)).toEqual(custom);
+  });
+});
+
+describe("org L10 agenda settings", () => {
+  it("parses l10AgendaDurations from org settings", () => {
+    expect(
+      parseOrgL10Settings({
+        l10AgendaDurations: { issues: 45, segue: 3 },
+      }),
+    ).toEqual({ issues: 45, segue: 3 });
+  });
+
+  it("ignores invalid duration values", () => {
+    expect(
+      parseOrgL10Settings({
+        l10AgendaDurations: { issues: 0, segue: "five" },
+      }),
+    ).toBeNull();
+  });
+
+  it("applies org overrides onto default agenda", () => {
+    const agenda = applyAgendaDurations({ issues: 30, conclude: 10 });
+    expect(getSectionByKey(agenda, "issues")?.durationMinutes).toBe(30);
+    expect(getSectionByKey(agenda, "conclude")?.durationMinutes).toBe(10);
+    expect(getSectionByKey(agenda, "scorecard")?.durationMinutes).toBe(5);
+  });
+
+  it("resolves full agenda from org settings", () => {
+    const agenda = resolveL10AgendaFromSettings({
+      l10AgendaDurations: { todos: 15 },
+    });
+    expect(getTotalAgendaMinutes(agenda)).toBe(100);
+    expect(extractAgendaDurations(agenda).todos).toBe(15);
+  });
+});
+
+describe("l10AgendaDurationsSchema", () => {
+  it("requires all section durations", () => {
+    const result = l10AgendaDurationsSchema.safeParse({
+      organizationId: orgId,
+      orgSlug: "acme",
+      durations: {
+        segue: 5,
+        scorecard: 5,
+        rocks: 5,
+        headlines: 5,
+        todos: 5,
+        issues: 60,
+        conclude: 5,
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects out-of-range durations", () => {
+    const result = l10AgendaDurationsSchema.safeParse({
+      organizationId: orgId,
+      orgSlug: "acme",
+      durations: {
+        segue: 5,
+        scorecard: 5,
+        rocks: 5,
+        headlines: 5,
+        todos: 5,
+        issues: 0,
+        conclude: 5,
+      },
+    });
+    expect(result.success).toBe(false);
   });
 });
 

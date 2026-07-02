@@ -6,6 +6,7 @@ import {
   createDecisionSchema,
   createMeetingSchema,
   endMeetingSchema,
+  l10AgendaDurationsSchema,
   saveNoteSchema,
   startMeetingSchema,
   updateActiveSectionSchema,
@@ -15,7 +16,8 @@ import type {
   MeetingActionResult,
 } from "@/features/meetings/types";
 import { getDefaultL10Agenda, getFirstSectionKey } from "@/features/meetings/utils";
-import { canEditResource } from "@/lib/permissions/checks";
+import { getOrgL10AgendaTemplate } from "@/features/meetings/queries";
+import { canEditResource, canManageOrg } from "@/lib/permissions/checks";
 import { AUDIT_ACTIONS } from "@/types/domain";
 import type { OrgRole } from "@/types/domain";
 import type { Json } from "@/types/database";
@@ -87,9 +89,80 @@ async function getOrgSlug(
 
 async function revalidateMeetings(orgSlug: string, meetingId?: string) {
   revalidatePath(`/org/${orgSlug}/meetings`);
+  revalidatePath(`/org/${orgSlug}/settings/l10`);
+  revalidatePath(`/org/${orgSlug}/teams`);
   if (meetingId) {
     revalidatePath(`/org/${orgSlug}/meetings/${meetingId}`);
   }
+}
+
+export async function updateOrgL10Agenda(
+  input: unknown,
+): Promise<MeetingActionResult> {
+  const parsed = l10AgendaDurationsSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid agenda timings",
+    };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  if (!canManageOrg(actor.orgRole)) {
+    return {
+      success: false,
+      error: "Only organization admins can change L10 agenda timings",
+    };
+  }
+
+  const { data: org, error: orgError } = await actor.supabase
+    .from("organizations")
+    .select("settings")
+    .eq("id", parsed.data.organizationId)
+    .maybeSingle();
+
+  if (orgError || !org) {
+    return { success: false, error: "Organization not found" };
+  }
+
+  const currentSettings =
+    typeof org.settings === "object" &&
+    org.settings !== null &&
+    !Array.isArray(org.settings)
+      ? (org.settings as Record<string, unknown>)
+      : {};
+
+  const nextSettings = {
+    ...currentSettings,
+    l10AgendaDurations: parsed.data.durations,
+  };
+
+  const { error } = await actor.supabase
+    .from("organizations")
+    .update({ settings: nextSettings as Json })
+    .eq("id", parsed.data.organizationId);
+
+  if (error) {
+    return { success: false, error: "Unable to save L10 agenda timings" };
+  }
+
+  await writeAudit(
+    actor.supabase,
+    parsed.data.organizationId,
+    actor.user.id,
+    "meetings",
+    AUDIT_ACTIONS.UPDATE,
+    parsed.data.organizationId,
+    { l10AgendaDurations: parsed.data.durations } as Json,
+  );
+
+  revalidateMeetings(parsed.data.orgSlug);
+  return { success: true };
 }
 
 export async function createMeeting(input: unknown): Promise<CreateMeetingResult> {
@@ -116,7 +189,9 @@ export async function createMeeting(input: unknown): Promise<CreateMeetingResult
 
   const meetingType = parsed.data.meetingType ?? "l10";
   const agenda =
-    meetingType === "l10" ? getDefaultL10Agenda() : ([] as Json);
+    meetingType === "l10"
+      ? await getOrgL10AgendaTemplate(parsed.data.organizationId)
+      : ([] as Json);
 
   const { data: meeting, error } = await actor.supabase
     .from("meetings")
