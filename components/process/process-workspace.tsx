@@ -43,6 +43,7 @@ interface ProcessWorkspaceProps {
   scopeLabel: string;
   pages: ProcessPageListItem[];
   processBasePath: string;
+  seats?: Array<{ id: string; title: string }>;
 }
 
 function formatDate(iso: string) {
@@ -62,11 +63,13 @@ export function ProcessWorkspace({
   scopeLabel,
   pages: initialPages,
   processBasePath,
+  seats = [],
 }: ProcessWorkspaceProps) {
   const router = useRouter();
   const [pages, setPages] = useState(initialPages);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState(DEFAULT_PROCESS_CATEGORY);
+  const [seatFilter, setSeatFilter] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -78,8 +81,11 @@ export function ProcessWorkspace({
         search,
         category,
         showArchived,
+      }).filter((page) => {
+        if (!seatFilter) return true;
+        return page.accountability_seat_id === seatFilter;
       }),
-    [pages, search, category, showArchived],
+    [pages, search, category, showArchived, seatFilter],
   );
 
   const visibleNodes = useMemo(
@@ -228,6 +234,24 @@ export function ProcessWorkspace({
               ))}
             </select>
           </label>
+          {seats.length > 0 ? (
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Seat</span>
+              <select
+                value={seatFilter}
+                onChange={(event) => setSeatFilter(event.target.value)}
+                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                aria-label="Filter by accountability seat"
+              >
+                <option value="">All seats</option>
+                {seats.map((seat) => (
+                  <option key={seat.id} value={seat.id}>
+                    {seat.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"

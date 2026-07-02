@@ -561,7 +561,7 @@ export async function endMeeting(input: unknown): Promise<MeetingActionResult> {
 
   const { data: existing } = await actor.supabase
     .from("meetings")
-    .select("status")
+    .select("status, team_id, metadata, teams(slug, name)")
     .eq("id", parsed.data.meetingId)
     .eq("organization_id", parsed.data.organizationId)
     .maybeSingle();
@@ -604,7 +604,50 @@ export async function endMeeting(input: unknown): Promise<MeetingActionResult> {
   );
 
   const orgSlug = await getOrgSlug(actor.supabase, parsed.data.organizationId);
-  if (orgSlug) {
+  if (orgSlug && existing.team_id) {
+    await revalidateMeetings(orgSlug, parsed.data.meetingId);
+
+    const teamJoin = existing.teams as { slug: string; name: string } | null;
+    const metadata =
+      typeof existing.metadata === "object" &&
+      existing.metadata !== null &&
+      !Array.isArray(existing.metadata)
+        ? (existing.metadata as Record<string, unknown>)
+        : {};
+
+    const cascadingMessages = Array.isArray(metadata.cascadingMessages)
+      ? (metadata.cascadingMessages as Array<{ label: string; completed: boolean }>)
+      : [];
+
+    if (cascadingMessages.length > 0) {
+      const { sendMeetingCascades } = await import("@/features/cascades/actions");
+      await sendMeetingCascades(
+        parsed.data.organizationId,
+        orgSlug,
+        existing.team_id,
+        parsed.data.meetingId,
+        cascadingMessages,
+      );
+    }
+
+    const { data: attendees } = await actor.supabase
+      .from("team_members")
+      .select("user_id")
+      .eq("team_id", existing.team_id);
+
+    if (teamJoin?.slug) {
+      const recapUrl = `/org/${orgSlug}/teams/${teamJoin.slug}/l10/${parsed.data.meetingId}/recap`;
+      const { notifyL10Recap } = await import("@/lib/notifications/send");
+
+      for (const attendee of attendees ?? []) {
+        await notifyL10Recap({
+          userId: attendee.user_id,
+          teamName: teamJoin.name,
+          recapUrl,
+        });
+      }
+    }
+  } else if (orgSlug) {
     await revalidateMeetings(orgSlug, parsed.data.meetingId);
   }
 

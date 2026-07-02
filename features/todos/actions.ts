@@ -14,6 +14,7 @@ import { AUDIT_ACTIONS } from "@/types/domain";
 import type { OrgRole, TeamRole } from "@/types/domain";
 import { logAuditEvent } from "@/lib/audit";
 import { createInboxItem } from "@/features/inbox/actions";
+import { notifyAssignment } from "@/lib/notifications/send";
 import type { Json, TablesUpdate } from "@/types/database";
 
 async function getActorContext(organizationId: string) {
@@ -280,6 +281,11 @@ export async function updateTodo(input: unknown): Promise<TodoActionResult> {
       title: `To-do assigned: ${existing.title}`,
       sourceType: "todo",
       sourceId: parsed.data.todoId,
+      actionUrl: `/org/${org?.slug ?? ""}/todos`,
+    });
+    await notifyAssignment({
+      userId: parsed.data.ownerId,
+      title: `To-do assigned: ${existing.title}`,
       actionUrl: `/org/${org?.slug ?? ""}/todos`,
     });
   }

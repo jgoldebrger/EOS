@@ -12,6 +12,7 @@ import {
 } from "@/features/people/utils";
 import { getCurrentQuarter } from "@/features/rocks/utils";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
+import { PeopleAnalyzerGrid } from "@/components/people/people-analyzer-grid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +33,7 @@ interface PeopleAnalyzerProps {
   seats: SeatOption[];
   canReview: boolean;
   currentUserId: string;
+  defaultQuarter?: string;
 }
 
 const selectClassName =
@@ -365,10 +367,11 @@ export function PeopleAnalyzer({
   seats,
   canReview,
   currentUserId,
+  defaultQuarter,
 }: PeopleAnalyzerProps) {
-  const [quarter, setQuarter] = useState(getCurrentQuarter());
+  const [quarter, setQuarter] = useState(defaultQuarter ?? getCurrentQuarter());
   const [reviews, setReviews] = useState(initialReviews);
-  const [view, setView] = useState<"review" | "matrix">("review");
+  const [view, setView] = useState<"review" | "matrix" | "grid">("review");
   const [isPending] = useTransition();
 
   function getReviewFor(subjectUserId: string) {
@@ -411,10 +414,27 @@ export function PeopleAnalyzer({
           >
             RPRS matrix
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={view === "grid" ? "default" : "outline"}
+            onClick={() => setView("grid")}
+          >
+            Analyzer grid
+          </Button>
         </div>
       </div>
 
-      {view === "matrix" ? (
+      {view === "grid" ? (
+        <PeopleAnalyzerGrid
+          people={people}
+          reviews={reviews}
+          coreValues={coreValues}
+          seats={seats}
+          currentUserId={currentUserId}
+          quarter={quarter}
+        />
+      ) : view === "matrix" ? (
         <RprsMatrix
           people={people}
           reviews={reviews}

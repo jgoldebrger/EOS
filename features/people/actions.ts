@@ -592,15 +592,83 @@ export async function removeOrgMember(input: unknown): Promise<PeopleActionResul
     return { success: false, error: "Could not remove member" };
   }
 
-  await logAuditEvent(supabase, {
-    organizationId: parsed.data.organizationId,
-    actorId: access.userId,
-    action: AUDIT_ACTIONS.DELETE,
-    entityType: "org_members",
-    entityId: parsed.data.userId,
-    metadata: {},
-  });
-
   revalidatePeoplePath(parsed.data.orgSlug);
   return { success: true };
+}
+
+export async function sendPeopleReviewReminders(input: {
+  organizationId: string;
+  orgSlug: string;
+  quarter: string;
+}): Promise<PeopleActionResult & { remindedCount?: number }> {
+  const access = await assertCanManageOrgMembers(input.organizationId);
+  if (!access.ok) {
+    return { success: false, error: access.error };
+  }
+
+  const supabase = await createClient();
+  const { data: managers } = await supabase
+    .from("organization_members")
+    .select("user_id")
+    .eq("organization_id", input.organizationId)
+    .in("org_role", ["owner", "admin", "member"]);
+
+  const { data: reviews } = await supabase
+    .from("people_reviews" as never)
+    .select("reviewer_user_id, subject_user_id")
+    .eq("organization_id", input.organizationId)
+    .eq("quarter", input.quarter);
+
+  const completedPairs = new Set(
+    ((reviews ?? []) as Array<{ reviewer_user_id: string; subject_user_id: string }>).map(
+      (row) => `${row.reviewer_user_id}:${row.subject_user_id}`,
+    ),
+  );
+
+  const { data: people } = await supabase
+    .from("organization_members")
+    .select("user_id, reports_to_user_id")
+    .eq("organization_id", input.organizationId);
+
+  const { createInboxItem } = await import("@/features/inbox/actions");
+  const { queueNotification } = await import("@/lib/notifications/send");
+
+  let remindedCount = 0;
+  const actionUrl = `/org/${input.orgSlug}/people/analyzer`;
+
+  for (const manager of managers ?? []) {
+    const subordinates = (people ?? []).filter(
+      (person) => person.reports_to_user_id === manager.user_id,
+    );
+
+    for (const subordinate of subordinates) {
+      const key = `${manager.user_id}:${subordinate.user_id}`;
+      if (completedPairs.has(key)) {
+        continue;
+      }
+
+      await createInboxItem({
+        organizationId: input.organizationId,
+        assigneeId: manager.user_id,
+        title: `Complete People Analyzer review for ${input.quarter}`,
+        body: "Quarterly GWC and core values review is due for a direct report.",
+        sourceType: "people_review",
+        sourceId: subordinate.user_id,
+        actionUrl,
+      });
+
+      await queueNotification({
+        userId: manager.user_id,
+        type: "people_review_reminder",
+        subject: `People Analyzer review due (${input.quarter})`,
+        body: "A quarterly People Analyzer review is waiting for your direct report.",
+        actionUrl,
+      });
+
+      remindedCount += 1;
+    }
+  }
+
+  revalidatePath(`/org/${input.orgSlug}/inbox`);
+  return { success: true, remindedCount };
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type Resolver } from "react-hook-form";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { createRock } from "@/features/rocks/actions";
 import { createRockSchema, type CreateRockInput } from "@/features/rocks/schema";
 import { getCurrentQuarter } from "@/features/rocks/utils";
@@ -54,6 +54,11 @@ export function CreateRockDialog({
 }: CreateRockDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [draftMilestones, setDraftMilestones] = useState<
+    Array<{ title: string; dueDate: string }>
+  >([]);
+  const [milestoneTitle, setMilestoneTitle] = useState("");
+  const [milestoneDueDate, setMilestoneDueDate] = useState("");
 
   const form = useForm<CreateRockInput>({
     resolver: zodResolver(createRockSchema) as Resolver<CreateRockInput>,
@@ -79,6 +84,10 @@ export function CreateRockDialog({
       successDefinition: values.successDefinition || null,
       dueDate: values.dueDate || null,
       confidence: values.confidence ?? null,
+      initialMilestones: draftMilestones.map((milestone) => ({
+        title: milestone.title,
+        dueDate: milestone.dueDate || null,
+      })),
     });
     setIsSubmitting(false);
 
@@ -101,6 +110,9 @@ export function CreateRockDialog({
       successDefinition: "",
     });
     setOpen(false);
+    setDraftMilestones([]);
+    setMilestoneTitle("");
+    setMilestoneDueDate("");
   }
 
   return (
@@ -291,6 +303,63 @@ export function CreateRockDialog({
                 </FormItem>
               )}
             />
+
+            <div className="space-y-2 rounded-md border p-3">
+              <p className="text-sm font-medium">Initial milestones (optional)</p>
+              {draftMilestones.map((milestone, index) => (
+                <div key={index} className="flex items-center gap-2 text-sm">
+                  <span className="flex-1">{milestone.title}</span>
+                  {milestone.dueDate ? (
+                    <span className="text-xs text-muted-foreground">{milestone.dueDate}</span>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() =>
+                      setDraftMilestones((current) =>
+                        current.filter((_, itemIndex) => itemIndex !== index),
+                      )
+                    }
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  placeholder="Milestone title"
+                  value={milestoneTitle}
+                  onChange={(e) => setMilestoneTitle(e.target.value)}
+                  className="max-w-xs"
+                />
+                <Input
+                  type="date"
+                  value={milestoneDueDate}
+                  onChange={(e) => setMilestoneDueDate(e.target.value)}
+                  className="w-36"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!milestoneTitle.trim()}
+                  onClick={() => {
+                    if (!milestoneTitle.trim()) return;
+                    setDraftMilestones((current) => [
+                      ...current,
+                      { title: milestoneTitle.trim(), dueDate: milestoneDueDate },
+                    ]);
+                    setMilestoneTitle("");
+                    setMilestoneDueDate("");
+                  }}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Add milestone
+                </Button>
+              </div>
+            </div>
 
             <DialogFooter>
               <Button type="submit" disabled={isSubmitting} data-testid="create-rock-submit">

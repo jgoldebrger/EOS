@@ -27,6 +27,7 @@ function makePage(
     team_id: null,
     category: DEFAULT_PROCESS_CATEGORY,
     archived_at: null,
+    accountability_seat_id: null,
     tags: [],
     updated_at: "2026-06-30T12:00:00.000Z",
     created_at: "2026-06-30T12:00:00.000Z",

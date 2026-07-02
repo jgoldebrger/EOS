@@ -21,6 +21,7 @@ import type { OrgRole } from "@/types/domain";
 import type { Json, TablesUpdate } from "@/types/database";
 import { logAuditEvent } from "@/lib/audit";
 import { createInboxItem } from "@/features/inbox/actions";
+import { notifyAssignment } from "@/lib/notifications/send";
 
 async function getActorContext(organizationId: string) {
   const supabase = await createClient();
@@ -240,6 +241,11 @@ export async function updateIssue(input: unknown): Promise<IssueActionResult> {
       title: `Issue assigned: ${existing.title}`,
       sourceType: "issue",
       sourceId: parsed.data.issueId,
+      actionUrl: `/org/${org?.slug ?? ""}/issues`,
+    });
+    await notifyAssignment({
+      userId: parsed.data.ownerId,
+      title: `Issue assigned: ${existing.title}`,
       actionUrl: `/org/${org?.slug ?? ""}/issues`,
     });
   }

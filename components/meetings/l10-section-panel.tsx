@@ -153,14 +153,22 @@ export async function L10SectionPanel({
 
     case "headlines": {
       const headlines = await getHeadlinesForTeam(organizationId, teamId);
+      const supabase = await (await import("@/lib/supabase/server")).createClient();
+      const { data: teams } = await supabase
+        .from("teams")
+        .select("id, name")
+        .eq("organization_id", organizationId)
+        .neq("id", teamId);
 
       return (
         <div data-testid={`l10-section-${sectionKey}`}>
           <HeadlinesWorkspace
             organizationId={organizationId}
+            orgSlug={orgSlug}
             teamId={teamId}
             canCreate={canCreate}
             headlines={headlines}
+            targetTeams={teams ?? []}
             variant="meeting"
             meetingId={meetingId}
           />

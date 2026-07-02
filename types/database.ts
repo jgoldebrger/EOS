@@ -330,6 +330,66 @@ export interface Database {
           },
         ];
       };
+      cascade_deliveries: {
+        Row: {
+          id: string;
+          organization_id: string;
+          source_type: "headline" | "meeting_message";
+          source_id: string | null;
+          source_label: string;
+          target_team_id: string;
+          status: "pending" | "acknowledged";
+          delivered_at: string;
+          acknowledged_at: string | null;
+          acknowledged_by: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          source_type: "headline" | "meeting_message";
+          source_id?: string | null;
+          source_label: string;
+          target_team_id: string;
+          status?: "pending" | "acknowledged";
+          delivered_at?: string;
+          acknowledged_at?: string | null;
+          acknowledged_by?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          source_type?: "headline" | "meeting_message";
+          source_id?: string | null;
+          source_label?: string;
+          target_team_id?: string;
+          status?: "pending" | "acknowledged";
+          delivered_at?: string;
+          acknowledged_at?: string | null;
+          acknowledged_by?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cascade_deliveries_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "cascade_deliveries_target_team_id_fkey";
+            columns: ["target_team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       accountability_seats: {
         Row: {
           id: string;
@@ -904,6 +964,57 @@ export interface Database {
           },
         ];
       };
+      rock_milestones: {
+        Row: {
+          id: string;
+          organization_id: string;
+          rock_id: string;
+          title: string;
+          due_date: string | null;
+          completed_at: string | null;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          rock_id: string;
+          title: string;
+          due_date?: string | null;
+          completed_at?: string | null;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          rock_id?: string;
+          title?: string;
+          due_date?: string | null;
+          completed_at?: string | null;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "rock_milestones_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "rock_milestones_rock_id_fkey";
+            columns: ["rock_id"];
+            isOneToOne: false;
+            referencedRelation: "rocks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       issues: {
         Row: {
           id: string;
@@ -1244,6 +1355,7 @@ export interface Database {
           sop_document: Json | null;
           category: string;
           archived_at: string | null;
+          accountability_seat_id: string | null;
           display_order: number;
           created_at: string;
           updated_at: string;
@@ -1260,6 +1372,7 @@ export interface Database {
           sop_document?: Json | null;
           category?: string;
           archived_at?: string | null;
+          accountability_seat_id?: string | null;
           display_order?: number;
           created_at?: string;
           updated_at?: string;
@@ -1276,6 +1389,7 @@ export interface Database {
           sop_document?: Json | null;
           category?: string;
           archived_at?: string | null;
+          accountability_seat_id?: string | null;
           display_order?: number;
           created_at?: string;
           updated_at?: string;

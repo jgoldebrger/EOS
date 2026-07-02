@@ -7,23 +7,28 @@ import {
 import { getSeatsForOrg } from "@/features/accountability/queries";
 import { PeopleAnalyzer } from "@/components/people/people-analyzer";
 import { PeoplePageTabs } from "@/components/people/people-page-tabs";
+import { PeopleReviewRemindersButton } from "@/components/people/people-review-reminders-button";
 import { PageHeader } from "@/components/shared/page-header";
 import { getCurrentQuarter } from "@/features/rocks/utils";
+import { canManageOrg } from "@/lib/permissions/checks";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function PeopleAnalyzerPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ orgSlug: string }>;
+  searchParams: Promise<{ quarter?: string }>;
 }) {
   const { orgSlug } = await params;
+  const { quarter: quarterParam } = await searchParams;
   const access = await requireOrgAccess(orgSlug);
+  const quarter = quarterParam ?? getCurrentQuarter();
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const quarter = getCurrentQuarter();
   const [people, reviews, coreValues, seats] = await Promise.all([
     getOrgPeopleWithManagers(access.orgId),
     getPeopleReviewsForOrg(access.orgId, quarter),
@@ -32,10 +37,19 @@ export default async function PeopleAnalyzerPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 p-8">
+    <div className="mx-auto max-w-5xl space-y-8 p-8">
       <PageHeader
         title="People Analyzer"
         description="Right Person (core values) and Right Seat (GWC) quarterly reviews."
+        actions={
+          canManageOrg(access.role) ? (
+            <PeopleReviewRemindersButton
+              organizationId={access.orgId}
+              orgSlug={orgSlug}
+              quarter={quarter}
+            />
+          ) : undefined
+        }
       />
       <PeoplePageTabs orgSlug={orgSlug} />
       <PeopleAnalyzer
@@ -50,6 +64,7 @@ export default async function PeopleAnalyzerPage({
         }))}
         canReview={access.role !== "viewer"}
         currentUserId={user?.id ?? ""}
+        defaultQuarter={quarter}
       />
     </div>
   );

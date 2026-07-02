@@ -89,6 +89,7 @@ export function RocksWorkspace({
         isTeamLeader={isTeamLeader}
         rocks={filteredRocks}
         canCreate={canCreate}
+        variant={variant}
       />
     </div>
   );

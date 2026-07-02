@@ -65,6 +65,8 @@ export interface SopBuilderProps {
   teamSlug?: string;
   initialTitle: string;
   initialDocument: SopDocument | null;
+  initialAccountabilitySeatId?: string | null;
+  seats?: Array<{ id: string; title: string }>;
   readOnly: boolean;
 }
 
@@ -101,8 +103,13 @@ export function SopBuilder({
   teamSlug,
   initialTitle,
   initialDocument,
+  initialAccountabilitySeatId = null,
+  seats = [],
   readOnly,
 }: SopBuilderProps) {
+  const [accountabilitySeatId, setAccountabilitySeatId] = useState(
+    initialAccountabilitySeatId ?? "",
+  );
   const [document, setDocument] = useState<SopDocument>(() =>
     buildInitialDocument(pageId, initialTitle, initialDocument),
   );
@@ -287,6 +294,27 @@ export function SopBuilder({
     void persistSave(documentRef.current, { showToast: true });
   }
 
+  async function handleSeatChange(seatId: string) {
+    setAccountabilitySeatId(seatId);
+    if (readOnly) return;
+
+    const result = await updateProcessPage({
+      id: pageId,
+      organizationId,
+      orgSlug,
+      teamId,
+      teamSlug,
+      accountabilitySeatId: seatId || null,
+    });
+
+    if (!result.success) {
+      showErrorToast("Could not link seat", result.error);
+      return;
+    }
+
+    showSuccessToast("Accountability seat linked");
+  }
+
   function handleApplyTemplate(templateId: string) {
     const template = SOP_TEMPLATES.find((item) => item.id === templateId);
     if (!template) return;
@@ -378,6 +406,26 @@ export function SopBuilder({
             aria-label="SOP title"
           />
         </div>
+
+        {seats.length > 0 ? (
+          <div className="space-y-2">
+            <Label htmlFor="sop-seat">Accountability seat</Label>
+            <select
+              id="sop-seat"
+              className={selectClassName}
+              value={accountabilitySeatId}
+              onChange={(event) => void handleSeatChange(event.target.value)}
+              disabled={readOnly}
+            >
+              <option value="">No seat linked</option>
+              {seats.map((seat) => (
+                <option key={seat.id} value={seat.id}>
+                  {seat.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <div className="space-y-2">
           <Label htmlFor="sop-department">Department</Label>

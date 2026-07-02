@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { RocksWorkspace } from "@/components/rocks/rocks-workspace";
 import {
+  attachMilestonesToRocks,
   getOrgMembersForRocks,
   getOrgTeamsForRocks,
   getRocksForOrg,
@@ -25,11 +26,12 @@ export default async function CompanyRocksPage({
     return null;
   }
 
-  const [rocks, teams, members] = await Promise.all([
+  const [rocksRaw, teams, members] = await Promise.all([
     getRocksForOrg(access.orgId, { rockType: "company" }),
     getOrgTeamsForRocks(access.orgId),
     getOrgMembersForRocks(access.orgId),
   ]);
+  const rocks = await attachMilestonesToRocks(access.orgId, rocksRaw);
 
   const canCreate =
     access.role !== "viewer" && canManageOrg(access.role);

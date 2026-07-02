@@ -7,6 +7,7 @@ import {
   markAllInboxRead,
   markInboxRead,
 } from "@/features/inbox/actions";
+import { acknowledgeCascade } from "@/features/cascades/actions";
 import type { InboxItem } from "@/features/inbox/queries";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +70,33 @@ export function InboxWorkspace({
     });
   }
 
+  function handleAcknowledgeCascade(item: InboxItem) {
+    if (!item.source_id) return;
+
+    startTransition(async () => {
+      const result = await acknowledgeCascade({
+        organizationId,
+        orgSlug,
+        cascadeId: item.source_id!,
+        inboxItemId: item.id,
+      });
+
+      if (!result.success) {
+        showErrorToast(result.error);
+        return;
+      }
+
+      showSuccessToast("Cascade acknowledged");
+      setItems((current) =>
+        current.map((row) =>
+          row.id === item.id
+            ? { ...row, read_at: new Date().toISOString() }
+            : row,
+        ),
+      );
+    });
+  }
+
   function handleArchive(itemId: string) {
     startTransition(async () => {
       const result = await archiveInboxItem({ organizationId, itemId });
@@ -98,6 +126,8 @@ export function InboxWorkspace({
           <option value="issue">Issues</option>
           <option value="rock">Rocks</option>
           <option value="assignment">Assignments</option>
+          <option value="cascade">Cascades</option>
+          <option value="people_review">People reviews</option>
         </select>
         <Button
           type="button"
@@ -157,6 +187,17 @@ export function InboxWorkspace({
                   </div>
                 </div>
                 <div className="flex gap-1">
+                  {item.source_type === "cascade" && item.source_id && !item.read_at ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="default"
+                      disabled={isPending}
+                      onClick={() => handleAcknowledgeCascade(item)}
+                    >
+                      Acknowledge
+                    </Button>
+                  ) : null}
                   {!item.read_at ? (
                     <Button
                       type="button"

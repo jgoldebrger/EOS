@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { initialMilestoneSchema } from "@/features/rocks/milestone-schema";
 
 const quarterSchema = z
   .string()
@@ -39,6 +40,7 @@ const rockBaseSchema = z.object({
     .max(100, "Progress must be at most 100")
     .optional(),
   rockType: rockTypeSchema.optional(),
+  initialMilestones: z.array(initialMilestoneSchema).max(20).optional(),
 });
 
 export const createRockSchema = rockBaseSchema;

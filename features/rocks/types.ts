@@ -1,7 +1,7 @@
 import type { Tables, RockStatusDb } from "@/types/database";
 
 export type Rock = Tables<"rocks">;
-
+export type RockMilestone = Tables<"rock_milestones">;
 export interface RockOwner {
   userId: string;
   label: string;
@@ -11,6 +11,7 @@ export interface RockOwner {
 export interface RockWithOwner extends Rock {
   owner: RockOwner;
   teamName: string | null;
+  milestones?: RockMilestone[];
 }
 
 export interface RockFilters {

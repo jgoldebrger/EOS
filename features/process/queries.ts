@@ -16,10 +16,11 @@ export type {
 export interface ProcessListFilters {
   search?: string;
   includeArchived?: boolean;
+  accountabilitySeatId?: string | null;
 }
 
 const LIST_COLUMNS =
-  "id, title, content, content_format, category, parent_id, team_id, archived_at, updated_at, created_at";
+  "id, title, content, content_format, category, parent_id, team_id, accountability_seat_id, archived_at, updated_at, created_at";
 
 function mapListRow(
   row: Record<string, unknown>,
@@ -34,6 +35,7 @@ function mapListRow(
     category: (row.category as string) ?? "General",
     parent_id: (row.parent_id as string | null) ?? null,
     team_id: (row.team_id as string | null) ?? null,
+    accountability_seat_id: (row.accountability_seat_id as string | null) ?? null,
     archived_at: (row.archived_at as string | null) ?? null,
     updated_at: row.updated_at as string,
     created_at: row.created_at as string,
@@ -112,6 +114,7 @@ function applyListFilters<
     is: (column: string, value: null) => T;
     not: (column: string, operator: string, value: null) => T;
     ilike: (column: string, pattern: string) => T;
+    eq: (column: string, value: string) => T;
   },
 >(query: T, filters?: ProcessListFilters): T {
   if (!filters?.includeArchived) {
@@ -119,6 +122,9 @@ function applyListFilters<
   }
   if (filters?.search?.trim()) {
     query = query.ilike("title", `%${filters.search.trim()}%`);
+  }
+  if (filters?.accountabilitySeatId) {
+    query = query.eq("accountability_seat_id", filters.accountabilitySeatId);
   }
   return query;
 }

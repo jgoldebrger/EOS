@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { createHeadline } from "@/features/headlines/actions";
+import { sendCascades } from "@/features/cascades/actions";
+import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 import { EditHeadlineSheet, type HeadlineItem } from "@/components/headlines/edit-headline-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,18 +14,22 @@ import { Megaphone, Pencil } from "lucide-react";
 
 interface HeadlinesWorkspaceProps {
   organizationId: string;
+  orgSlug: string;
   teamId: string;
   canCreate: boolean;
   headlines: HeadlineItem[];
+  targetTeams?: Array<{ id: string; name: string }>;
   variant?: "page" | "meeting";
   meetingId?: string;
 }
 
 export function HeadlinesWorkspace({
   organizationId,
+  orgSlug,
   teamId,
   canCreate,
   headlines: initial,
+  targetTeams = [],
   variant = "page",
   meetingId,
 }: HeadlinesWorkspaceProps) {
@@ -77,6 +83,31 @@ export function HeadlinesWorkspace({
   function openEdit(headline: HeadlineItem) {
     setEditHeadline(headline);
     setEditOpen(true);
+  }
+
+  async function handleSendCascade(headline: HeadlineItem) {
+    const targetTeamIds = targetTeams.map((team) => team.id);
+    if (targetTeamIds.length === 0) {
+      showErrorToast("No downstream teams to cascade to");
+      return;
+    }
+
+    const result = await sendCascades({
+      organizationId,
+      orgSlug,
+      sourceTeamId: teamId,
+      sourceType: "headline",
+      sourceId: headline.id,
+      sourceLabel: headline.title,
+      targetTeamIds,
+    });
+
+    if (!result.success) {
+      showErrorToast("Could not send cascade", result.error);
+      return;
+    }
+
+    showSuccessToast(`Cascade sent to ${result.deliveredCount ?? targetTeamIds.length} team(s)`);
   }
 
   return (
@@ -171,16 +202,28 @@ export function HeadlinesWorkspace({
                     {h.is_cascading ? <Badge variant="outline">Cascade</Badge> : null}
                   </div>
                   {canCreate ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
-                      onClick={() => openEdit(h)}
-                      aria-label="Edit headline"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      {h.is_cascading && targetTeams.length > 0 ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void handleSendCascade(h)}
+                        >
+                          Send cascade
+                        </Button>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => openEdit(h)}
+                        aria-label="Edit headline"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
                   ) : null}
                 </div>
               </CardHeader>

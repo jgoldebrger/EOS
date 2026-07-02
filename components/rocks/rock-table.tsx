@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { updateRockStatus } from "@/features/rocks/actions";
 import { formatQuarterLabel } from "@/features/rocks/utils";
 import type { RockWithOwner } from "@/features/rocks/types";
@@ -9,8 +10,10 @@ import { DataTable } from "@/components/data-table/data-table";
 import { OwnerAvatar } from "@/components/shared/owner-avatar";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { RockAtRiskIndicator } from "@/components/rocks/rock-at-risk-indicator";
+import { RockMilestonesPanel } from "@/components/rocks/rock-milestones-panel";
 import { RockProgress } from "@/components/rocks/rock-progress";
 import { showErrorToast } from "@/components/feedback/toast";
+import { Button } from "@/components/ui/button";
 import { canManageOrg } from "@/lib/permissions/checks";
 import type { OrgRole } from "@/types/domain";
 
@@ -21,6 +24,7 @@ interface RockTableProps {
   isTeamLeader: boolean;
   rocks: RockWithOwner[];
   canCreate: boolean;
+  variant?: "page" | "meeting";
 }
 
 const STATUS_OPTIONS = [
@@ -54,8 +58,10 @@ export function RockTable({
   isTeamLeader,
   rocks,
   canCreate,
+  variant = "page",
 }: RockTableProps) {
   const [, startTransition] = useTransition();
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const handleStatusChange = useCallback(
     (rock: RockWithOwner, status: string) => {
@@ -74,21 +80,84 @@ export function RockTable({
     [organizationId],
   );
 
+  function toggleExpanded(rockId: string) {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(rockId)) {
+        next.delete(rockId);
+      } else {
+        next.add(rockId);
+      }
+      return next;
+    });
+  }
+
   const columns = useMemo<ColumnDef<RockWithOwner>[]>(
     () => [
       {
+        id: "expand",
+        header: "",
+        cell: ({ row }) => {
+          if (variant === "meeting") return null;
+          const expanded = expandedIds.has(row.original.id);
+          return (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => toggleExpanded(row.original.id)}
+              aria-label={expanded ? "Collapse milestones" : "Expand milestones"}
+            >
+              {expanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </Button>
+          );
+        },
+        enableSorting: false,
+      },
+      {
         accessorKey: "title",
         header: "Rock",
-        cell: ({ row }) => (
-          <div className="space-y-1">
-            <p className="font-medium">{row.original.title}</p>
-            {row.original.success_definition && (
-              <p className="line-clamp-1 text-xs text-muted-foreground">
-                {row.original.success_definition}
-              </p>
-            )}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const editable = canEditRock(
+            row.original,
+            orgRole,
+            currentUserId,
+            isTeamLeader,
+          );
+          const milestones = row.original.milestones ?? [];
+          const showInline = variant === "meeting" || expandedIds.has(row.original.id);
+
+          return (
+            <div className="space-y-2">
+              <div className="space-y-1">
+                <p className="font-medium">{row.original.title}</p>
+                {row.original.success_definition && (
+                  <p className="line-clamp-1 text-xs text-muted-foreground">
+                    {row.original.success_definition}
+                  </p>
+                )}
+              </div>
+              {showInline ? (
+                <RockMilestonesPanel
+                  organizationId={organizationId}
+                  rockId={row.original.id}
+                  milestones={milestones}
+                  canEdit={editable}
+                  compact={variant === "meeting"}
+                />
+              ) : milestones.length > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {milestones.filter((m) => m.completed_at).length}/{milestones.length} milestones
+                </p>
+              ) : null}
+            </div>
+          );
+        },
       },
       {
         id: "owner",
@@ -173,7 +242,7 @@ export function RockTable({
         ),
       },
     ],
-    [orgRole, currentUserId, isTeamLeader, handleStatusChange],
+    [orgRole, currentUserId, isTeamLeader, handleStatusChange, variant, expandedIds, organizationId],
   );
 
   return (
@@ -190,7 +259,7 @@ export function RockTable({
             </p>
           ) : undefined
         }
-        pageSize={15}
+        pageSize={variant === "meeting" ? 10 : 15}
       />
     </div>
   );

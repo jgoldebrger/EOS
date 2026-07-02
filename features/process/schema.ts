@@ -37,6 +37,7 @@ export const updateProcessPageSchema = processPageScopeSchema.extend({
   title: z.string().trim().min(1).max(200).optional(),
   category: z.string().trim().min(1).max(100).optional(),
   parentId: z.string().uuid().nullable().optional(),
+  accountabilitySeatId: z.string().uuid().nullable().optional(),
   contentMarkdown: z.string().max(500_000).optional(),
   sopDocument: sopDocumentSchema.optional(),
   tagIds: z.array(z.string().uuid()).optional(),

@@ -271,6 +271,7 @@ export async function updateProcessPage(
     title,
     category,
     parentId,
+    accountabilitySeatId,
     contentMarkdown,
     sopDocument,
     tagIds,
@@ -294,6 +295,9 @@ export async function updateProcessPage(
   if (title !== undefined) updates.title = title;
   if (category !== undefined) updates.category = category;
   if (parentId !== undefined) updates.parent_id = parentId;
+  if (accountabilitySeatId !== undefined) {
+    updates.accountability_seat_id = accountabilitySeatId;
+  }
   if (contentMarkdown !== undefined) updates.content = contentMarkdown;
   if (sopDocument !== undefined) {
     const doc = sopDocumentSchema.parse(sopDocument);

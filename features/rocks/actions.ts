@@ -8,6 +8,7 @@ import {
   updateRockSchema,
   updateRockStatusSchema,
 } from "@/features/rocks/schema";
+import { createRockMilestone } from "@/features/rocks/milestone-actions";
 import type { CreateRockResult, RockActionResult } from "@/features/rocks/types";
 import { canEditResource, canManageOrg, canManageTeam } from "@/lib/permissions/checks";
 import { AUDIT_ACTIONS } from "@/types/domain";
@@ -156,6 +157,18 @@ export async function createRock(input: unknown): Promise<CreateRockResult> {
       success: false,
       error: "Unable to create rock. Please try again.",
     };
+  }
+
+  if (parsed.data.initialMilestones?.length) {
+    for (const [index, milestone] of parsed.data.initialMilestones.entries()) {
+      await createRockMilestone({
+        organizationId: parsed.data.organizationId,
+        rockId: rock.id,
+        title: milestone.title,
+        dueDate: milestone.dueDate ?? null,
+        sortOrder: index,
+      });
+    }
   }
 
   await writeAudit(

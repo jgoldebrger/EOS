@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getProcessPageById } from "@/features/process/queries";
+import { getSeatsForOrg } from "@/features/accountability/queries";
 import { canManageOrg } from "@/lib/permissions/checks";
 import { SopEditorShell } from "@/components/process/sop-editor-shell";
 import { getTeamPageContext } from "@/lib/team-page-context";
@@ -12,6 +13,7 @@ export default async function TeamProcessEditPage({
   const { orgSlug, teamSlug, pageId } = await params;
   const ctx = await getTeamPageContext(orgSlug, teamSlug);
   const page = await getProcessPageById(ctx.orgId, pageId);
+  const seats = await getSeatsForOrg(ctx.orgId);
 
   if (!page || page.team_id !== ctx.teamId) {
     notFound();
@@ -33,6 +35,8 @@ export default async function TeamProcessEditPage({
       teamSlug={teamSlug}
       initialTitle={page.title}
       initialDocument={page.sop_document}
+      initialAccountabilitySeatId={page.accountability_seat_id}
+      seats={seats.map((seat) => ({ id: seat.id, title: seat.title }))}
       readOnly={false}
       backHref={base}
     />

@@ -7,6 +7,7 @@ import {
 import type {
   RockFilters,
   RockMemberOption,
+  RockMilestone,
   RockTeamOption,
   RockWithOwner,
 } from "@/features/rocks/types";
@@ -48,7 +49,7 @@ export async function getRocksForOrg(
 
   const ownerProfiles = await resolveOwnerProfiles(rocks.map((row) => row.owner_id));
 
-  return rocks.map((row) => {
+  const mapped = rocks.map((row) => {
     const { teams: teamJoin, ...rock } = row;
     const team = teamJoin as { name: string } | null;
     const ownerId = rock.owner_id;
@@ -64,6 +65,8 @@ export async function getRocksForOrg(
       },
     };
   });
+
+  return attachMilestonesToRocks(organizationId, mapped);
 }
 
 export async function getRockById(
@@ -89,7 +92,7 @@ export async function getRockById(
   const { teams: teamJoin, ...rock } = row;
   const team = teamJoin as { name: string } | null;
 
-  return {
+  const rockWithOwner: RockWithOwner = {
     ...rock,
     teamName: team?.name ?? null,
     owner: {
@@ -98,6 +101,9 @@ export async function getRockById(
       email: ownerProfile?.email ?? null,
     },
   };
+
+  const [withMilestones] = await attachMilestonesToRocks(organizationId, [rockWithOwner]);
+  return withMilestones ?? null;
 }
 
 export async function getOrgTeamsForRocks(
@@ -116,6 +122,51 @@ export async function getOrgTeamsForRocks(
   }
 
   return data;
+}
+
+export async function getMilestonesForRocks(
+  organizationId: string,
+  rockIds: string[],
+): Promise<Map<string, RockMilestone[]>> {
+  const result = new Map<string, RockMilestone[]>();
+  if (rockIds.length === 0) {
+    return result;
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("rock_milestones")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .in("rock_id", rockIds)
+    .order("sort_order", { ascending: true });
+
+  if (error || !data) {
+    return result;
+  }
+
+  for (const row of data) {
+    const list = result.get(row.rock_id) ?? [];
+    list.push(row);
+    result.set(row.rock_id, list);
+  }
+
+  return result;
+}
+
+export async function attachMilestonesToRocks(
+  organizationId: string,
+  rocks: RockWithOwner[],
+): Promise<RockWithOwner[]> {
+  const milestoneMap = await getMilestonesForRocks(
+    organizationId,
+    rocks.map((rock) => rock.id),
+  );
+
+  return rocks.map((rock) => ({
+    ...rock,
+    milestones: milestoneMap.get(rock.id) ?? [],
+  }));
 }
 
 export async function getOrgMembersForRocks(

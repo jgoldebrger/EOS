@@ -15,6 +15,7 @@ export interface ProcessPageListItem {
   category: string;
   parent_id: string | null;
   team_id: string | null;
+  accountability_seat_id: string | null;
   archived_at: string | null;
   updated_at: string;
   created_at: string;

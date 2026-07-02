@@ -14,6 +14,8 @@ interface SopEditorShellProps {
   teamSlug?: string;
   initialTitle: string;
   initialDocument: SopDocument | null;
+  initialAccountabilitySeatId?: string | null;
+  seats?: Array<{ id: string; title: string }>;
   readOnly: boolean;
   backHref: string;
 }
@@ -26,6 +28,8 @@ export function SopEditorShell({
   teamSlug,
   initialTitle,
   initialDocument,
+  initialAccountabilitySeatId,
+  seats,
   readOnly,
   backHref,
 }: SopEditorShellProps) {
@@ -50,6 +54,8 @@ export function SopEditorShell({
         teamSlug={teamSlug}
         initialTitle={initialTitle}
         initialDocument={initialDocument}
+        initialAccountabilitySeatId={initialAccountabilitySeatId}
+        seats={seats}
         readOnly={readOnly}
       />
     </div>
