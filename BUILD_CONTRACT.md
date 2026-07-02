@@ -63,7 +63,8 @@ Stubs: `lib/permissions/checks.ts`
 | done | 025 | Project pages + EOS links |
 | done | 026 | Project table grants |
 | done | 027 | Transport TMS core (loads, stops, carriers, routes, analyses) |
-| **Next available** | **028** | — |
+| done | 028 | Scorecard: team members can create/reassign measurables (L10) |
+| **Next available** | **029** | — |
 
 Team workspace routes: `/org/[orgSlug]/teams/[teamSlug]/{overview,agendas,rocks,scorecard,todos,headlines,issues,process}`
 

@@ -13,7 +13,7 @@ import {
   getTagsForOrg,
 } from "@/features/scorecard/queries";
 import { getPeriodColumns, type PeriodType } from "@/features/scorecard/utils";
-import { canManageOrg } from "@/lib/permissions/checks";
+import { canManageTeamScorecard } from "@/lib/permissions/checks";
 
 async function TeamScorecardContent({
   orgSlug,
@@ -58,7 +58,11 @@ async function TeamScorecardContent({
   ]);
 
   const isTeamLeader = access.teamRole === "leader";
-  const canManageMetrics = canManageOrg(access.role) || isTeamLeader;
+  const isOnTeam = access.teamRole === "leader" || access.teamRole === "member";
+  const canManageMetrics = canManageTeamScorecard(
+    access.role,
+    isOnTeam ? access.teamRole : null,
+  );
 
   return (
     <div className="space-y-6 p-8">

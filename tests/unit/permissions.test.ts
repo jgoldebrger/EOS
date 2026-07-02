@@ -3,7 +3,9 @@ import {
   canEditResource,
   canManageOrg,
   canManageTeam,
+  canManageTeamScorecard,
   canViewResource,
+  isOrgContributor,
 } from "@/lib/permissions/checks";
 
 describe("permission checks", () => {
@@ -56,6 +58,36 @@ describe("permission checks", () => {
 
     it("denies viewer", () => {
       expect(canEditResource("viewer", "issues")).toBe(false);
+    });
+  });
+
+  describe("isOrgContributor", () => {
+    it("allows owner, admin, and member", () => {
+      expect(isOrgContributor("owner")).toBe(true);
+      expect(isOrgContributor("admin")).toBe(true);
+      expect(isOrgContributor("member")).toBe(true);
+    });
+
+    it("denies viewer", () => {
+      expect(isOrgContributor("viewer")).toBe(false);
+    });
+  });
+
+  describe("canManageTeamScorecard", () => {
+    it("allows org admins even without team membership", () => {
+      expect(canManageTeamScorecard("owner", null)).toBe(true);
+      expect(canManageTeamScorecard("admin", null)).toBe(true);
+    });
+
+    it("allows team leaders and members", () => {
+      expect(canManageTeamScorecard("member", "leader")).toBe(true);
+      expect(canManageTeamScorecard("member", "member")).toBe(true);
+    });
+
+    it("denies viewers and non-members", () => {
+      expect(canManageTeamScorecard("viewer", "member")).toBe(false);
+      expect(canManageTeamScorecard("member", null)).toBe(false);
+      expect(canManageTeamScorecard("member", "viewer")).toBe(false);
     });
   });
 });

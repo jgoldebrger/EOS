@@ -37,7 +37,11 @@ import {
 } from "@/features/scorecard/formula";
 import { getWeekStart, getLastNWeeks, getWeekStartForDate } from "@/features/scorecard/utils";
 import { getChildSeatAssigneeUserIds, getDirectReportAssigneeUserIds } from "@/features/accountability/utils";
-import { canManageOrg, canManageTeam } from "@/lib/permissions/checks";
+import {
+  canManageOrg,
+  canManageTeam,
+  isOrgContributor,
+} from "@/lib/permissions/checks";
 import { AUDIT_ACTIONS } from "@/types/domain";
 import type { OrgRole, TeamRole } from "@/types/domain";
 import type { Json, TablesUpdate } from "@/types/database";
@@ -99,25 +103,30 @@ const getTeamRoleForUser = cache(
 );
 
 async function canManageMetric(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  _supabase: Awaited<ReturnType<typeof createClient>>,
   orgRole: OrgRole,
   userId: string,
   teamId: string | null | undefined,
+  ownerId?: string | null,
 ): Promise<boolean> {
+  if (!isOrgContributor(orgRole)) {
+    return false;
+  }
+
   if (canManageOrg(orgRole)) {
     return true;
   }
 
-  if (!teamId) {
-    return false;
+  if (teamId) {
+    const teamRole = await getTeamRoleForUser(teamId, userId);
+    return teamRole !== null;
   }
 
-  const teamRole = await getTeamRoleForUser(teamId, userId);
-  if (!teamRole) {
-    return false;
+  if (orgRole === "member") {
+    return true;
   }
 
-  return canManageTeam(orgRole, teamRole);
+  return ownerId === userId;
 }
 
 async function canEditMetricFromRow(
@@ -713,9 +722,12 @@ export async function createScorecardCategory(
   }
 
   const teamId = parsed.data.teamId ?? null;
-  const allowed = teamId
-    ? await canManageMetric(actor.supabase, actor.orgRole, actor.user.id, teamId)
-    : canManageOrg(actor.orgRole);
+  const allowed = await canManageMetric(
+    actor.supabase,
+    actor.orgRole,
+    actor.user.id,
+    teamId,
+  );
 
   if (!allowed) {
     return {
@@ -817,9 +829,12 @@ export async function createTag(input: unknown): Promise<CreateTagResult> {
   }
 
   const teamId = parsed.data.teamId ?? null;
-  const allowed = teamId
-    ? await canManageMetric(actor.supabase, actor.orgRole, actor.user.id, teamId)
-    : canManageOrg(actor.orgRole);
+  const allowed = await canManageMetric(
+    actor.supabase,
+    actor.orgRole,
+    actor.user.id,
+    teamId,
+  );
 
   if (!allowed) {
     return {
@@ -935,7 +950,7 @@ export async function setMetricTags(input: unknown): Promise<ScorecardActionResu
 
   const { data: metric } = await actor.supabase
     .from("scorecard_metrics")
-    .select("team_id")
+    .select("team_id, owner_id")
     .eq("id", parsed.data.metricId)
     .eq("organization_id", parsed.data.organizationId)
     .maybeSingle();
@@ -949,6 +964,7 @@ export async function setMetricTags(input: unknown): Promise<ScorecardActionResu
     actor.orgRole,
     actor.user.id,
     metric.team_id,
+    metric.owner_id,
   );
 
   if (!allowed) {
@@ -1160,7 +1176,7 @@ export async function updateMetric(input: unknown): Promise<ScorecardActionResul
 
   const { data: existing } = await actor.supabase
     .from("scorecard_metrics")
-    .select("team_id")
+    .select("team_id, owner_id")
     .eq("id", parsed.data.metricId)
     .eq("organization_id", parsed.data.organizationId)
     .maybeSingle();
@@ -1175,6 +1191,7 @@ export async function updateMetric(input: unknown): Promise<ScorecardActionResul
     actor.orgRole,
     actor.user.id,
     teamId,
+    existing.owner_id,
   );
 
   if (!allowed) {
