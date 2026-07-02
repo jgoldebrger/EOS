@@ -40,7 +40,7 @@ export function ScorecardAnalyzeButton({
         metrics: metrics.map((metric) => ({
           metricId: metric.id,
           name: metric.name,
-          targetRule: metric.target_rule,
+          targetRule: metric.target_rule ?? metric.target_operator ?? "exact",
           weeks: (valuesByMetric[metric.id] ?? weeks.map((periodStart) => ({
             periodStart,
             actual: null,

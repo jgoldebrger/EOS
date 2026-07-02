@@ -15,6 +15,8 @@ All functions use [`@supabase/server`](https://github.com/supabase/server) with 
 
 Shared helpers: [`_shared/edge-utils.ts`](./_shared/edge-utils.ts)
 
+All `auth: 'user'` functions set `verify_jwt = false` in `config.toml` so Supabase platform JWT (legacy HS256) does not block `@supabase/server` JWKS verification for publishable-key sessions.
+
 Deploy:
 
 ```bash

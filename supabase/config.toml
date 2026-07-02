@@ -382,7 +382,29 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
-# Edge Functions using @supabase/server — disable platform JWT check for non-user auth
+# Edge Functions using @supabase/server verify JWT in the handler (JWKS).
+# Disable the platform HS256 gate so publishable-key / ES256 sessions work.
+[functions.analyze-scorecard]
+verify_jwt = false
+
+[functions.dedupe-issues]
+verify_jwt = false
+
+[functions.extract-todos]
+verify_jwt = false
+
+[functions.summarize-meeting]
+verify_jwt = false
+
+[functions.validate-sso-membership]
+verify_jwt = false
+
+[functions.optimize-routes]
+verify_jwt = false
+
+[functions.run-transport-analysis]
+verify_jwt = false
+
 [functions.discover-sso-provider]
 verify_jwt = false
 

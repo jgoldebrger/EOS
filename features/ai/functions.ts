@@ -43,6 +43,46 @@ function mapSuggestionRow(row: {
   return parsed.success ? parsed.data : null;
 }
 
+function mapAiFunctionError(code: string): string {
+  switch (code) {
+    case "openai_not_configured":
+      return "OpenAI is not configured. Add OPENAI_API_KEY in Supabase → Edge Functions → Secrets.";
+    case "openai_request_failed":
+      return "OpenAI request failed. Check your API key and billing.";
+    case "access_denied":
+      return "You do not have permission to run this AI action.";
+    case "invalid_input":
+      return "Invalid input for the AI request.";
+    case "ai_run_failed":
+      return "Could not save the AI run. Try again.";
+    case "unauthorized":
+      return "Sign in again to use AI features.";
+    default:
+      return code;
+  }
+}
+
+async function readFunctionErrorBody(error: unknown): Promise<string | null> {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "context" in error &&
+    typeof (error as { context?: Response }).context?.json === "function"
+  ) {
+    try {
+      const body = (await (error as { context: Response }).context.json()) as {
+        error?: unknown;
+      };
+      if (typeof body.error === "string") {
+        return mapAiFunctionError(body.error);
+      }
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 async function invokeAiFunction<T>(
   functionName: string,
   body: Record<string, unknown>,
@@ -53,7 +93,11 @@ async function invokeAiFunction<T>(
   });
 
   if (error) {
-    return { success: false, error: error.message };
+    const detail = await readFunctionErrorBody(error);
+    return {
+      success: false,
+      error: detail ?? error.message ?? "AI request failed",
+    };
   }
 
   if (!data || typeof data !== "object") {
