@@ -1,11 +1,8 @@
 import { after } from "next/server";
 import { ScorecardMetricTable } from "@/components/scorecard/scorecard-metric-table";
-import { getValuesForMetrics } from "@/features/scorecard/queries";
+import { getValuesForMetrics, getBrokenFormulaReferencesForMetrics } from "@/features/scorecard/queries";
 import { collectFormulaParseErrors } from "@/features/scorecard/formula";
-import {
-  findBrokenFormulaReferencesForMetrics,
-  syncFormulaMetricValues,
-} from "@/features/scorecard/actions";
+import { syncFormulaMetricValues } from "@/features/scorecard/actions";
 import type {
   ScorecardCategory,
   ScorecardMemberOption,
@@ -54,7 +51,7 @@ export async function ScorecardMetricTableSection({
 
   const brokenRefsByMetricId =
     formulaMetricIds.length > 0
-      ? await findBrokenFormulaReferencesForMetrics({
+      ? await getBrokenFormulaReferencesForMetrics({
           organizationId: tableProps.organizationId,
           metrics: formulaMetrics.map((metric) => ({
             id: metric.id,

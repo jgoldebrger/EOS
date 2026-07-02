@@ -730,9 +730,9 @@ export function formatPeriodLabel(periodStart: string, periodType: PeriodType): 
   const date = new Date(`${periodStart}T00:00:00`);
   switch (periodType) {
     case "weekly":
-      return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     case "monthly":
-      return date.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+      return date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
     case "quarterly": {
       const q = Math.floor(date.getMonth() / 3) + 1;
       return `Q${q} ${date.getFullYear()}`;

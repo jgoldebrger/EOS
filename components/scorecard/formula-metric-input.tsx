@@ -5,9 +5,9 @@ import {
   previewFormula,
   resolveFormulaMetricLabels,
   searchFormulaMetrics,
-  type FormulaBrokenRef,
   type FormulaMetricSearchResult,
 } from "@/features/scorecard/actions";
+import type { FormulaBrokenRef } from "@/features/scorecard/types";
 import {
   buildLabelToTokenMap,
   formatFormulaForDisplay,

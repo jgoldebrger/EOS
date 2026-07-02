@@ -78,6 +78,13 @@ export interface ScorecardMemberOption {
   label: string;
 }
 
+export interface FormulaBrokenRef {
+  metricId: string;
+  organizationId: string;
+  name: string | null;
+  reason: "missing" | "archived";
+}
+
 export type ScorecardActionResult =
   | { success: true }
   | { success: false; error: string };

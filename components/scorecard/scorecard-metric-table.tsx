@@ -45,7 +45,7 @@ import {
 import { cn } from "@/lib/utils";
 import { canManageOrg } from "@/lib/permissions/checks";
 import type { OrgRole } from "@/types/domain";
-import type { FormulaBrokenRef } from "@/features/scorecard/actions";
+import type { FormulaBrokenRef } from "@/features/scorecard/types";
 import {
   DropdownMenu,
   DropdownMenuContent,

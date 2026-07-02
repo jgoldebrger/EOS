@@ -5,6 +5,7 @@ import { ScorecardPageHeader } from "@/components/scorecard/scorecard-page-heade
 import { ScorecardMetricTableSection } from "@/components/scorecard/scorecard-metric-table-section";
 import { ScorecardToolbar } from "@/components/scorecard/scorecard-toolbar";
 import { TableLoadingSkeleton } from "@/components/shared/loading-skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   getCategoriesForOrg,
   getMetricsForOrg,
@@ -66,14 +67,23 @@ async function TeamScorecardContent({
 
   return (
     <div className="space-y-6 p-8">
-      <ScorecardToolbar
-        organizationId={access.orgId}
-        orgSlug={orgSlug}
-        teamSlug={teamSlug}
-        teamId={access.teamId}
-        categories={categories}
-        canManageMetrics={canManageMetrics}
-      />
+      <Suspense
+        fallback={
+          <div className="space-y-4">
+            <Skeleton className="h-9 w-full max-w-lg" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+        }
+      >
+        <ScorecardToolbar
+          organizationId={access.orgId}
+          orgSlug={orgSlug}
+          teamSlug={teamSlug}
+          teamId={access.teamId}
+          categories={categories}
+          canManageMetrics={canManageMetrics}
+        />
+      </Suspense>
       <ScorecardPageHeader
         organizationId={access.orgId}
         orgSlug={orgSlug}
@@ -115,6 +125,8 @@ async function TeamScorecardContent({
     </div>
   );
 }
+
+export const maxDuration = 60;
 
 export default async function TeamScorecardPage({
   params,

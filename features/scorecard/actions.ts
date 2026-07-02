@@ -20,6 +20,7 @@ import type {
   CreateCategoryResult,
   CreateMetricResult,
   CreateTagResult,
+  FormulaBrokenRef,
   ScorecardActionResult,
 } from "@/features/scorecard/types";
 import {
@@ -441,12 +442,7 @@ export async function resolveFormulaMetricLabels(input: {
   });
 }
 
-export interface FormulaBrokenRef {
-  metricId: string;
-  organizationId: string;
-  name: string | null;
-  reason: "missing" | "archived";
-}
+export type { FormulaBrokenRef } from "@/features/scorecard/types";
 
 export async function findBrokenFormulaReferences(input: {
   organizationId: string;
@@ -463,76 +459,10 @@ export async function findBrokenFormulaReferencesForMetrics(input: {
   organizationId: string;
   metrics: Array<{ id: string; formula: string | null }>;
 }): Promise<Record<string, FormulaBrokenRef[]>> {
-  const formulaMetrics = input.metrics.filter((metric) => metric.formula?.trim());
-  if (formulaMetrics.length === 0) {
-    return {};
-  }
-
-  const actor = await getActorContext(input.organizationId);
-  if ("error" in actor) {
-    return {};
-  }
-
-  const refsByMetricId = new Map<string, MetricRef[]>();
-  const refKeys = new Map<string, MetricRef>();
-
-  for (const metric of formulaMetrics) {
-    const refs = parseMetricRefsFromFormula(metric.formula!);
-    refsByMetricId.set(metric.id, refs);
-    for (const ref of refs) {
-      refKeys.set(metricRefKey(ref.organizationId, ref.metricId), ref);
-    }
-  }
-
-  const metricIds = [...new Set([...refKeys.values()].map((ref) => ref.metricId))];
-  if (metricIds.length === 0) {
-    return {};
-  }
-
-  const { data: referencedRows } = await actor.supabase
-    .from("scorecard_metrics")
-    .select("id, organization_id, name, archived_at")
-    .in("id", metricIds);
-
-  const rowByKey = new Map(
-    (referencedRows ?? []).map((row) => [
-      metricRefKey(row.organization_id, row.id),
-      row,
-    ]),
+  const { getBrokenFormulaReferencesForMetrics } = await import(
+    "@/features/scorecard/queries"
   );
-
-  const result: Record<string, FormulaBrokenRef[]> = {};
-
-  for (const metric of formulaMetrics) {
-    const broken: FormulaBrokenRef[] = [];
-
-    for (const ref of refsByMetricId.get(metric.id) ?? []) {
-      const key = metricRefKey(ref.organizationId, ref.metricId);
-      const referenced = rowByKey.get(key);
-
-      if (!referenced) {
-        broken.push({
-          metricId: ref.metricId,
-          organizationId: ref.organizationId,
-          name: null,
-          reason: "missing",
-        });
-      } else if (referenced.archived_at) {
-        broken.push({
-          metricId: ref.metricId,
-          organizationId: ref.organizationId,
-          name: referenced.name,
-          reason: "archived",
-        });
-      }
-    }
-
-    if (broken.length > 0) {
-      result[metric.id] = broken;
-    }
-  }
-
-  return result;
+  return getBrokenFormulaReferencesForMetrics(input);
 }
 
 export type FormulaPreviewResult =

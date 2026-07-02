@@ -7,8 +7,8 @@ import {
   findBrokenFormulaReferences,
   setMetricTags,
   updateMetric,
-  type FormulaBrokenRef,
 } from "@/features/scorecard/actions";
+import type { FormulaBrokenRef } from "@/features/scorecard/types";
 import type {
   ScorecardCategory,
   ScorecardGridRow,
