@@ -13,12 +13,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { endMeeting } from "@/features/meetings/actions";
+import { getL10HubHref } from "@/features/meetings/utils";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 
 interface EndMeetingDialogProps {
   organizationId: string;
   meetingId: string;
   orgSlug: string;
+  teamSlug?: string;
   canEdit: boolean;
 }
 
@@ -26,6 +28,7 @@ export function EndMeetingDialog({
   organizationId,
   meetingId,
   orgSlug,
+  teamSlug,
   canEdit,
 }: EndMeetingDialogProps) {
   const router = useRouter();
@@ -47,7 +50,9 @@ export function EndMeetingDialog({
 
       showSuccessToast("Meeting ended");
       setOpen(false);
-      router.push(`/org/${orgSlug}/meetings`);
+      router.push(
+        teamSlug ? getL10HubHref(orgSlug, teamSlug) : `/org/${orgSlug}/meetings`,
+      );
       router.refresh();
     });
   }
@@ -64,7 +69,7 @@ export function EndMeetingDialog({
           <DialogTitle>End this meeting?</DialogTitle>
           <DialogDescription>
             The meeting will be marked completed. You can review notes and
-            decisions from the meetings list.
+            decisions from the L10 hub.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

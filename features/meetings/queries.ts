@@ -42,6 +42,49 @@ export async function getMeetingsForOrg(
   return data.map((row) => mapMeetingListRow(row));
 }
 
+export async function getMeetingsForTeam(
+  organizationId: string,
+  teamId: string,
+): Promise<MeetingListItem[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("meetings")
+    .select("*, teams(name)")
+    .eq("organization_id", organizationId)
+    .eq("team_id", teamId)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data.map((row) => mapMeetingListRow(row));
+}
+
+export async function getInProgressMeetingForTeam(
+  organizationId: string,
+  teamId: string,
+): Promise<MeetingListItem | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("meetings")
+    .select("*, teams(name)")
+    .eq("organization_id", organizationId)
+    .eq("team_id", teamId)
+    .eq("status", "in_progress")
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return mapMeetingListRow(data);
+}
+
 export async function getMeetingById(
   organizationId: string,
   meetingId: string,

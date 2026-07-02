@@ -72,6 +72,7 @@ interface ScorecardMetricTableProps {
   periodType?: PeriodType;
   brokenRefsByMetricId?: Record<string, FormulaBrokenRef[]>;
   parseErrorsByMetricId?: Record<string, string>;
+  variant?: "page" | "meeting";
 }
 
 function buildGridRows(
@@ -440,6 +441,7 @@ export function ScorecardMetricTable({
   periodType = "weekly",
   brokenRefsByMetricId = {},
   parseErrorsByMetricId = {},
+  variant = "page",
 }: ScorecardMetricTableProps) {
   const [selectedRow, setSelectedRow] = useState<ScorecardGridRow | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -480,12 +482,14 @@ export function ScorecardMetricTable({
 
   return (
     <div className="space-y-4">
-      <ScorecardAnalyzeButton
-        organizationId={organizationId}
-        metrics={metrics}
-        weeks={weeks}
-        valuesByMetric={valuesByMetric}
-      />
+      {variant === "page" ? (
+        <ScorecardAnalyzeButton
+          organizationId={organizationId}
+          metrics={metrics}
+          weeks={weeks}
+          valuesByMetric={valuesByMetric}
+        />
+      ) : null}
       <MetricDetailSheet
         row={selectedRow}
         open={detailOpen}

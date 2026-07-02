@@ -13,6 +13,9 @@ import {
   formatTimerDisplay,
   getDefaultL10Agenda,
   getFirstSectionKey,
+  getL10HubHref,
+  getL10MeetingHref,
+  getMeetingHref,
   getSectionByKey,
   getSectionElapsedSeconds,
   getSectionRemainingSeconds,
@@ -110,6 +113,31 @@ describe("isUpcomingMeeting", () => {
     expect(isUpcomingMeeting("scheduled")).toBe(true);
     expect(isUpcomingMeeting("in_progress")).toBe(true);
     expect(isUpcomingMeeting("completed")).toBe(false);
+  });
+});
+
+describe("L10 route helpers", () => {
+  it("builds team L10 hub and meeting hrefs", () => {
+    expect(getL10HubHref("acme", "leadership")).toBe(
+      "/org/acme/teams/leadership/l10",
+    );
+    expect(getL10MeetingHref("acme", "leadership", meetingId)).toBe(
+      `/org/acme/teams/leadership/l10/${meetingId}`,
+    );
+  });
+
+  it("routes team meetings to team L10 URLs", () => {
+    const teams = new Map([["team-1", "leadership"]]);
+    expect(
+      getMeetingHref(
+        "acme",
+        { id: meetingId, team_id: "team-1" },
+        teams,
+      ),
+    ).toBe(`/org/acme/teams/leadership/l10/${meetingId}`);
+    expect(
+      getMeetingHref("acme", { id: meetingId, team_id: null }, teams),
+    ).toBe(`/org/acme/meetings/${meetingId}`);
   });
 });
 

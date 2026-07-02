@@ -22,8 +22,11 @@ interface IssuesPageHeaderProps {
   teams: IssueTeamOption[];
   members: IssueMemberOption[];
   defaultOwnerId: string;
+  defaultTeamId?: string;
+  linkedMeetingId?: string;
   filters: IssueFilters;
   onFiltersChange: (filters: IssueFilters) => void;
+  meetingMode?: boolean;
 }
 
 const selectClassName =
@@ -35,25 +38,40 @@ export function IssuesPageHeader({
   teams,
   members,
   defaultOwnerId,
+  defaultTeamId,
+  linkedMeetingId,
   filters,
   onFiltersChange,
+  meetingMode = false,
 }: IssuesPageHeaderProps) {
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Issues"
-        description="Prioritized IDS list — Identify, Discuss, and Solve what is blocking progress."
-        actions={
-          canCreate ? (
-            <CreateIssueDialog
-              organizationId={organizationId}
-              teams={teams}
-              members={members}
-              defaultOwnerId={defaultOwnerId}
-            />
-          ) : undefined
-        }
+  const createAction =
+    canCreate ? (
+      <CreateIssueDialog
+        organizationId={organizationId}
+        teams={teams}
+        members={members}
+        defaultOwnerId={defaultOwnerId}
+        defaultTeamId={defaultTeamId}
+        linkedMeetingId={linkedMeetingId}
       />
+    ) : null;
+
+  return (
+    <div className={meetingMode ? "space-y-3" : "space-y-6"}>
+      {meetingMode ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Identify, discuss, and solve issues.
+          </p>
+          {createAction}
+        </div>
+      ) : (
+        <PageHeader
+          title="Issues"
+          description="Prioritized IDS list — Identify, Discuss, and Solve what is blocking progress."
+          actions={createAction}
+        />
+      )}
 
       <div
         className="flex flex-wrap items-end gap-3"
@@ -112,32 +130,34 @@ export function IssuesPageHeader({
           </select>
         </div>
 
-        <div className="space-y-1">
-          <label
-            htmlFor="issues-filter-team"
-            className="text-xs font-medium text-muted-foreground"
-          >
-            Team
-          </label>
-          <select
-            id="issues-filter-team"
-            className={selectClassName}
-            value={filters.teamId ?? ""}
-            onChange={(event) =>
-              onFiltersChange({
-                ...filters,
-                teamId: event.target.value || undefined,
-              })
-            }
-          >
-            <option value="">All teams</option>
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!meetingMode ? (
+          <div className="space-y-1">
+            <label
+              htmlFor="issues-filter-team"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              Team
+            </label>
+            <select
+              id="issues-filter-team"
+              className={selectClassName}
+              value={filters.teamId ?? ""}
+              onChange={(event) =>
+                onFiltersChange({
+                  ...filters,
+                  teamId: event.target.value || undefined,
+                })
+              }
+            >
+              <option value="">All teams</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <div className="flex items-center gap-2 pb-1">
           <input

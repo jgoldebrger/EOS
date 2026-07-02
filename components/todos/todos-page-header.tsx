@@ -23,6 +23,7 @@ interface TodosPageHeaderProps {
   defaultOwnerId: string;
   filters: TodoFilters;
   onFiltersChange: (filters: TodoFilters) => void;
+  meetingMode?: boolean;
 }
 
 const selectClassName =
@@ -36,23 +37,32 @@ export function TodosPageHeader({
   defaultOwnerId,
   filters,
   onFiltersChange,
+  meetingMode = false,
 }: TodosPageHeaderProps) {
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Todos"
-        description="7-day accountable actions — due this week or overdue stay visible until done."
-        actions={
-          canCreate ? (
-            <CreateTodoDialog
-              organizationId={organizationId}
-              teams={teams}
-              members={members}
-              defaultOwnerId={defaultOwnerId}
-            />
-          ) : undefined
-        }
+  const createAction =
+    canCreate ? (
+      <CreateTodoDialog
+        organizationId={organizationId}
+        teams={teams}
+        members={members}
+        defaultOwnerId={defaultOwnerId}
       />
+    ) : null;
+
+  return (
+    <div className={meetingMode ? "space-y-3" : "space-y-6"}>
+      {meetingMode ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">Review 7-day action items.</p>
+          {createAction}
+        </div>
+      ) : (
+        <PageHeader
+          title="Todos"
+          description="7-day accountable actions — due this week or overdue stay visible until done."
+          actions={createAction}
+        />
+      )}
 
       <div
         className="flex flex-wrap items-end gap-3"

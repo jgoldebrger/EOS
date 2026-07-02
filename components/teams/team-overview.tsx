@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getTeamNavHref } from "@/components/layout/team-nav-config";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface TeamOverviewProps {
   orgSlug: string;
@@ -15,7 +16,6 @@ export function TeamOverview({ orgSlug, teamSlug, teamName }: TeamOverviewProps)
     { label: "Rocks", segment: "rocks", description: "Quarterly priorities" },
     { label: "Issues", segment: "issues", description: "IDS issue list" },
     { label: "To-Dos", segment: "todos", description: "7-day accountable tasks" },
-    { label: "Agendas", segment: "agendas", description: "L10 and team meetings" },
     { label: "Headlines", segment: "headlines", description: "Customer & employee wins" },
     { label: "People", segment: "people", description: "Team members and roles" },
     { label: "Process", segment: "process", description: "SOPs and procedures" },
@@ -23,11 +23,16 @@ export function TeamOverview({ orgSlug, teamSlug, teamName }: TeamOverviewProps)
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-medium">Team overview</h2>
-        <p className="text-sm text-muted-foreground">
-          Quick access to {teamName} operating tools.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-medium">Team overview</h2>
+          <p className="text-sm text-muted-foreground">
+            Quick access to {teamName} operating tools.
+          </p>
+        </div>
+        <Button asChild data-testid="team-run-l10-button">
+          <Link href={getTeamNavHref(orgSlug, teamSlug, "l10")}>Run L10</Link>
+        </Button>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {tabs.map((tab) => (

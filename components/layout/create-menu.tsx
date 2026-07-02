@@ -68,9 +68,9 @@ export function CreateMenu({ teamSlug }: CreateMenuProps) {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href={`${base("agendas")}?create=meeting`}>
+              <Link href={`${base("l10")}?create=meeting`}>
                 <Video className="mr-2 h-4 w-4" />
-                Meeting
+                L10 Meeting
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>

@@ -66,7 +66,13 @@ Stubs: `lib/permissions/checks.ts`
 | done | 028 | Scorecard: team members can create/reassign measurables (L10) |
 | **Next available** | **029** | — |
 
-Team workspace routes: `/org/[orgSlug]/teams/[teamSlug]/{overview,agendas,rocks,scorecard,todos,headlines,issues,process}`
+Team workspace routes: `/org/[orgSlug]/teams/[teamSlug]/{overview,l10,rocks,scorecard,todos,headlines,issues,process,people}`
+
+Team L10 routes:
+- Hub: `/org/[orgSlug]/teams/[teamSlug]/l10`
+- Live meeting: `/org/[orgSlug]/teams/[teamSlug]/l10/[meetingId]`
+- Legacy `/teams/.../agendas` redirects to `/l10`
+- Org `/meetings/[meetingId]` redirects to team L10 when `team_id` is set
 
 Global nav routes: `/org/[orgSlug]/{home,inbox,activity,reports,teams,people,company,projects,transport}`
 

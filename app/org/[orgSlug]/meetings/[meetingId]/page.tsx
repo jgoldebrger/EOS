@@ -1,7 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
 import { LiveMeetingShell } from "@/components/meetings/live-meeting-shell";
-import { getMeetingById } from "@/features/meetings/queries";
+import { getMeetingById, getOrgTeamsForMeetings } from "@/features/meetings/queries";
+import { getL10MeetingHref } from "@/features/meetings/utils";
 import { canEditResource } from "@/lib/permissions/checks";
 
 export default async function MeetingDetailPage({
@@ -16,6 +17,14 @@ export default async function MeetingDetailPage({
 
   if (!meeting) {
     notFound();
+  }
+
+  if (meeting.team_id) {
+    const teams = await getOrgTeamsForMeetings(access.orgId);
+    const team = teams.find((row) => row.id === meeting.team_id);
+    if (team) {
+      redirect(getL10MeetingHref(orgSlug, team.slug, meetingId));
+    }
   }
 
   const canEdit = canEditResource(access.role, "meetings");

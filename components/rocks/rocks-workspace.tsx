@@ -21,6 +21,7 @@ interface RocksWorkspaceProps {
   rocks: RockWithOwner[];
   teams: RockTeamOption[];
   members: RockMemberOption[];
+  variant?: "page" | "meeting";
 }
 
 export function RocksWorkspace({
@@ -32,6 +33,7 @@ export function RocksWorkspace({
   rocks,
   teams,
   members,
+  variant = "page",
 }: RocksWorkspaceProps) {
   const defaultQuarter = getCurrentQuarter();
   const [filters, setFilters] = useState<RockFilters>({ quarter: defaultQuarter });
@@ -53,7 +55,7 @@ export function RocksWorkspace({
   }, [rocks, filters]);
 
   return (
-    <div className="space-y-8">
+    <div className={variant === "meeting" ? "space-y-4" : "space-y-8"}>
       <RocksPageHeader
         organizationId={organizationId}
         canCreate={canCreate}
@@ -64,6 +66,7 @@ export function RocksWorkspace({
         quarters={quarters}
         filters={filters}
         onFiltersChange={setFilters}
+        meetingMode={variant === "meeting"}
       />
       <RockTable
         organizationId={organizationId}

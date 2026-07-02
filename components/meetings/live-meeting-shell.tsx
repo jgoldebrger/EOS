@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,7 @@ import {
   updateActiveSection,
 } from "@/features/meetings/actions";
 import type { MeetingWithNotes } from "@/features/meetings/types";
-import { getSectionByKey } from "@/features/meetings/utils";
+import { getL10HubHref, getSectionByKey } from "@/features/meetings/utils";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 
 interface LiveMeetingShellProps {
@@ -25,6 +26,8 @@ interface LiveMeetingShellProps {
   orgSlug: string;
   meeting: MeetingWithNotes;
   canEdit: boolean;
+  teamSlug?: string;
+  sectionPanel?: React.ReactNode;
 }
 
 export function LiveMeetingShell({
@@ -32,6 +35,8 @@ export function LiveMeetingShell({
   orgSlug,
   meeting: initialMeeting,
   canEdit,
+  teamSlug,
+  sectionPanel,
 }: LiveMeetingShellProps) {
   const router = useRouter();
   const meeting = initialMeeting;
@@ -85,8 +90,9 @@ export function LiveMeetingShell({
           (payload) => {
             const nextKey = (payload.new as { active_section_key?: string | null })
               .active_section_key;
-            if (nextKey) {
+            if (nextKey && nextKey !== activeSectionKey) {
               setActiveSectionKey(nextKey);
+              router.refresh();
             }
           },
         )
@@ -103,7 +109,7 @@ export function LiveMeetingShell({
         void supabase.removeChannel(channel);
       }
     };
-  }, [meeting.id, meeting.status]);
+  }, [meeting.id, meeting.status, activeSectionKey, router]);
 
   const activeSection = activeSectionKey
     ? getSectionByKey(meeting.agenda, activeSectionKey)
@@ -134,10 +140,21 @@ export function LiveMeetingShell({
           setActiveSectionKey(
             meeting.active_section_key ?? meeting.agenda[0]?.key ?? null,
           );
+          return;
         }
+
+        router.refresh();
       });
     },
-    [canEdit, meeting.active_section_key, meeting.id, meeting.status, organizationId],
+    [
+      canEdit,
+      meeting.active_section_key,
+      meeting.agenda,
+      meeting.id,
+      meeting.status,
+      organizationId,
+      router,
+    ],
   );
 
   function handleStartMeeting() {
@@ -157,6 +174,9 @@ export function LiveMeetingShell({
     });
   }
 
+  const exitHref =
+    teamSlug != null ? getL10HubHref(orgSlug, teamSlug) : `/org/${orgSlug}/meetings`;
+
   if (meeting.status === "scheduled") {
     return (
       <div className="space-y-6" data-testid="meeting-scheduled-view">
@@ -169,15 +189,22 @@ export function LiveMeetingShell({
               Ready to start your L10 meeting.
             </p>
           </div>
-          {canEdit ? (
-            <Button
-              onClick={handleStartMeeting}
-              disabled={isPending}
-              data-testid="start-meeting-button"
-            >
-              {isPending ? "Starting…" : "Start meeting"}
-            </Button>
-          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {teamSlug ? (
+              <Button variant="outline" asChild>
+                <Link href={exitHref}>Back to L10 hub</Link>
+              </Button>
+            ) : null}
+            {canEdit ? (
+              <Button
+                onClick={handleStartMeeting}
+                disabled={isPending}
+                data-testid="start-meeting-button"
+              >
+                {isPending ? "Starting…" : "Start meeting"}
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <Card>
@@ -201,13 +228,20 @@ export function LiveMeetingShell({
   if (meeting.status === "completed" || meeting.status === "cancelled") {
     return (
       <div className="space-y-6" data-testid="meeting-completed-view">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {meeting.title}
-          </h1>
-          <Badge variant="secondary" className="mt-2">
-            {meeting.status === "completed" ? "Completed" : "Cancelled"}
-          </Badge>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {meeting.title}
+            </h1>
+            <Badge variant="secondary" className="mt-2">
+              {meeting.status === "completed" ? "Completed" : "Cancelled"}
+            </Badge>
+          </div>
+          {teamSlug ? (
+            <Button variant="outline" asChild>
+              <Link href={exitHref}>Back to L10 hub</Link>
+            </Button>
+          ) : null}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -256,12 +290,20 @@ export function LiveMeetingShell({
             {realtimeConnected ? " · synced" : " · local mode"}
           </p>
         </div>
-        <EndMeetingDialog
-          organizationId={organizationId}
-          meetingId={meeting.id}
-          orgSlug={orgSlug}
-          canEdit={canEdit}
-        />
+        <div className="flex flex-wrap gap-2">
+          {teamSlug ? (
+            <Button variant="outline" asChild data-testid="l10-exit-button">
+              <Link href={exitHref}>Exit L10</Link>
+            </Button>
+          ) : null}
+          <EndMeetingDialog
+            organizationId={organizationId}
+            meetingId={meeting.id}
+            orgSlug={orgSlug}
+            teamSlug={teamSlug}
+            canEdit={canEdit}
+          />
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
@@ -289,7 +331,13 @@ export function LiveMeetingShell({
             </div>
           ) : null}
 
-          <MeetingSectionEmbed orgSlug={orgSlug} sectionKey={activeSectionKey ?? ""} />
+          {sectionPanel ?? (
+            <MeetingSectionEmbed
+              orgSlug={orgSlug}
+              teamSlug={teamSlug}
+              sectionKey={activeSectionKey ?? ""}
+            />
+          )}
 
           {activeSectionKey ? (
             <MeetingNotesEditor

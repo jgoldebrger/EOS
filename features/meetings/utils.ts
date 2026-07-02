@@ -112,3 +112,29 @@ export function meetingStatusLabel(status: string): string {
 export function isUpcomingMeeting(status: string): boolean {
   return status === "scheduled" || status === "in_progress";
 }
+
+export function getL10HubHref(orgSlug: string, teamSlug: string): string {
+  return `/org/${orgSlug}/teams/${teamSlug}/l10`;
+}
+
+export function getL10MeetingHref(
+  orgSlug: string,
+  teamSlug: string,
+  meetingId: string,
+): string {
+  return `/org/${orgSlug}/teams/${teamSlug}/l10/${meetingId}`;
+}
+
+export function getMeetingHref(
+  orgSlug: string,
+  meeting: { id: string; team_id: string | null },
+  teamSlugById: Map<string, string>,
+): string {
+  if (meeting.team_id) {
+    const teamSlug = teamSlugById.get(meeting.team_id);
+    if (teamSlug) {
+      return getL10MeetingHref(orgSlug, teamSlug, meeting.id);
+    }
+  }
+  return `/org/${orgSlug}/meetings/${meeting.id}`;
+}

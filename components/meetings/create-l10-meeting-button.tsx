@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,32 +15,58 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { createMeeting } from "@/features/meetings/actions";
 import type { MeetingTeamOption } from "@/features/meetings/types";
+import { getL10MeetingHref } from "@/features/meetings/utils";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 
 interface CreateL10MeetingButtonProps {
   organizationId: string;
   orgSlug: string;
-  teams: MeetingTeamOption[];
+  teams?: MeetingTeamOption[];
+  teamId?: string;
+  teamSlug?: string;
+  defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  triggerLabel?: string;
 }
 
 export function CreateL10MeetingButton({
   organizationId,
   orgSlug,
-  teams,
+  teams = [],
+  teamId: fixedTeamId,
+  teamSlug: fixedTeamSlug,
+  defaultOpen = false,
+  onOpenChange,
+  triggerLabel = "Start L10",
 }: CreateL10MeetingButtonProps) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [title, setTitle] = useState("L10 Meeting");
-  const [teamId, setTeamId] = useState<string>("");
+  const [teamId, setTeamId] = useState<string>(fixedTeamId ?? "");
   const [isPending, startTransition] = useTransition();
 
+  useEffect(() => {
+    setOpen(defaultOpen);
+  }, [defaultOpen]);
+
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    onOpenChange?.(next);
+  }
+
   function handleCreate() {
+    const resolvedTeamId = fixedTeamId ?? teamId;
+    if (!resolvedTeamId) {
+      showErrorToast("Select a team for this L10 meeting.");
+      return;
+    }
+
     startTransition(async () => {
       const result = await createMeeting({
         organizationId,
         title: title.trim() || "L10 Meeting",
         meetingType: "l10",
-        teamId: teamId || null,
+        teamId: resolvedTeamId,
       });
 
       if (!result.success) {
@@ -48,21 +74,29 @@ export function CreateL10MeetingButton({
         return;
       }
 
+      const teamSlug =
+        fixedTeamSlug ?? teams.find((team) => team.id === resolvedTeamId)?.slug;
+
       showSuccessToast("L10 meeting created");
-      setOpen(false);
-      router.push(`/org/${orgSlug}/meetings/${result.meetingId}`);
+      handleOpenChange(false);
+
+      if (teamSlug) {
+        router.push(getL10MeetingHref(orgSlug, teamSlug, result.meetingId));
+      } else {
+        router.push(`/org/${orgSlug}/meetings/${result.meetingId}`);
+      }
       router.refresh();
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button data-testid="create-l10-meeting-button">Create L10</Button>
+        <Button data-testid="create-l10-meeting-button">{triggerLabel}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Schedule L10 Meeting</DialogTitle>
+          <DialogTitle>Start L10 Meeting</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
@@ -74,16 +108,16 @@ export function CreateL10MeetingButton({
               data-testid="create-meeting-title"
             />
           </div>
-          {teams.length > 0 ? (
+          {fixedTeamId ? null : teams.length > 0 ? (
             <div className="space-y-2">
-              <Label htmlFor="meeting-team">Team (optional)</Label>
+              <Label htmlFor="meeting-team">Team</Label>
               <select
                 id="meeting-team"
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 value={teamId}
                 onChange={(event) => setTeamId(event.target.value)}
               >
-                <option value="">All teams</option>
+                <option value="">Select team</option>
                 {teams.map((team) => (
                   <option key={team.id} value={team.id}>
                     {team.name}

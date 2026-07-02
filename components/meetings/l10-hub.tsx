@@ -1,37 +1,42 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
-import { CreateL10MeetingButton } from "@/components/meetings/create-l10-meeting-button";
 import { PageHeader } from "@/components/shared/page-header";
-import type { MeetingListItem, MeetingTeamOption } from "@/features/meetings/types";
+import { CreateL10MeetingButton } from "@/components/meetings/create-l10-meeting-button";
+import type { MeetingListItem } from "@/features/meetings/types";
 import {
-  getMeetingHref,
+  getL10MeetingHref,
   isUpcomingMeeting,
   meetingStatusLabel,
 } from "@/features/meetings/utils";
 
-interface MeetingsListPageProps {
+interface L10HubProps {
   organizationId: string;
   orgSlug: string;
+  teamSlug: string;
+  teamId: string;
+  teamName: string;
   canEdit: boolean;
   meetings: MeetingListItem[];
-  teams: MeetingTeamOption[];
+  inProgressMeeting: MeetingListItem | null;
 }
 
-function MeetingRow({
+function MeetingHistoryRow({
   meeting,
   orgSlug,
-  teams,
+  teamSlug,
 }: {
   meeting: MeetingListItem;
   orgSlug: string;
-  teams: MeetingTeamOption[];
+  teamSlug: string;
 }) {
-  const teamSlugById = new Map(teams.map((team) => [team.id, team.slug]));
-  const href = getMeetingHref(orgSlug, meeting, teamSlugById);
+  const href = getL10MeetingHref(orgSlug, teamSlug, meeting.id);
   const dateLabel = meeting.started_at
     ? new Date(meeting.started_at).toLocaleString()
     : new Date(meeting.created_at).toLocaleString();
@@ -40,14 +45,11 @@ function MeetingRow({
     <Link
       href={href}
       className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
-      data-testid="meeting-list-item"
+      data-testid="l10-meeting-history-item"
     >
       <div className="space-y-1">
         <p className="font-medium">{meeting.title}</p>
-        <p className="text-sm text-muted-foreground">
-          {dateLabel}
-          {meeting.teamName ? ` · ${meeting.teamName}` : ""}
-        </p>
+        <p className="text-sm text-muted-foreground">{dateLabel}</p>
       </div>
       <Badge variant={meeting.status === "in_progress" ? "default" : "secondary"}>
         {meetingStatusLabel(meeting.status)}
@@ -56,34 +58,69 @@ function MeetingRow({
   );
 }
 
-export function MeetingsListPage({
+export function L10Hub({
   organizationId,
   orgSlug,
+  teamSlug,
+  teamId,
+  teamName,
   canEdit,
   meetings,
-  teams,
-}: MeetingsListPageProps) {
+  inProgressMeeting,
+}: L10HubProps) {
+  const searchParams = useSearchParams();
+  const [createOpen, setCreateOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("create") === "meeting") {
+      setCreateOpen(true);
+    }
+  }, [searchParams]);
+
   const upcoming = meetings.filter((m) => isUpcomingMeeting(m.status));
   const past = meetings.filter((m) => !isUpcomingMeeting(m.status));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-testid="l10-hub">
       <PageHeader
-        title="Meetings"
-        description="Run Level 10 meetings with a structured agenda, section notes, and decisions."
+        title="L10"
+        description={`Run Level 10 meetings for ${teamName} — scorecard, rocks, issues, and more in one place.`}
         actions={
           canEdit ? (
             <CreateL10MeetingButton
               organizationId={organizationId}
               orgSlug={orgSlug}
-              teams={teams}
-              triggerLabel="Create L10"
+              teamId={teamId}
+              teamSlug={teamSlug}
+              defaultOpen={createOpen}
+              onOpenChange={setCreateOpen}
             />
           ) : undefined
         }
       />
 
-      <div className="grid gap-8 lg:grid-cols-2" data-testid="meetings-list">
+      {inProgressMeeting ? (
+        <Card className="border-primary/40 bg-primary/5" data-testid="l10-resume-banner">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Meeting in progress</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">
+              {inProgressMeeting.title} started{" "}
+              {inProgressMeeting.started_at
+                ? new Date(inProgressMeeting.started_at).toLocaleString()
+                : "recently"}
+            </p>
+            <Button asChild data-testid="l10-resume-button">
+              <Link href={getL10MeetingHref(orgSlug, teamSlug, inProgressMeeting.id)}>
+                Resume L10
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <div className="grid gap-8 lg:grid-cols-2" data-testid="l10-meetings-list">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Upcoming & active</CardTitle>
@@ -91,20 +128,20 @@ export function MeetingsListPage({
           <CardContent className="space-y-3">
             {upcoming.length === 0 ? (
               <EmptyState
-                title="No upcoming meetings"
+                title="No upcoming L10 meetings"
                 description={
                   canEdit
-                    ? "Create an L10 to get started."
+                    ? "Start an L10 to walk through the agenda with your team."
                     : "No scheduled meetings yet."
                 }
               />
             ) : (
               upcoming.map((meeting) => (
-                <MeetingRow
+                <MeetingHistoryRow
                   key={meeting.id}
                   meeting={meeting}
                   orgSlug={orgSlug}
-                  teams={teams}
+                  teamSlug={teamSlug}
                 />
               ))
             )}
@@ -119,15 +156,15 @@ export function MeetingsListPage({
             {past.length === 0 ? (
               <EmptyState
                 title="No past meetings"
-                description="Completed meetings will appear here."
+                description="Completed L10 meetings will appear here."
               />
             ) : (
               past.map((meeting) => (
-                <MeetingRow
+                <MeetingHistoryRow
                   key={meeting.id}
                   meeting={meeting}
                   orgSlug={orgSlug}
-                  teams={teams}
+                  teamSlug={teamSlug}
                 />
               ))
             )}

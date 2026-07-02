@@ -4,36 +4,38 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
+import { getTeamNavHref } from "@/components/layout/team-nav-config";
 
 interface MeetingSectionEmbedProps {
   orgSlug: string;
   sectionKey: string;
+  teamSlug?: string;
 }
 
-const SECTION_ROUTES: Record<string, { label: string; path: string; hint: string }> = {
+const SECTION_ROUTES: Record<string, { label: string; segment: string; hint: string }> = {
   scorecard: {
     label: "Scorecard",
-    path: "scorecard",
+    segment: "scorecard",
     hint: "Review weekly metrics and status.",
   },
   rocks: {
     label: "Rocks",
-    path: "rocks",
+    segment: "rocks",
     hint: "Check 90-day priorities and progress.",
   },
   todos: {
     label: "To-Dos",
-    path: "todos",
+    segment: "todos",
     hint: "Review open 7-day action items.",
   },
   issues: {
     label: "Issues",
-    path: "issues",
+    segment: "issues",
     hint: "Identify, Discuss, and Solve top issues.",
   },
   headlines: {
     label: "Headlines",
-    path: "dashboard",
+    segment: "headlines",
     hint: "Share customer and employee headlines.",
   },
 };
@@ -41,6 +43,7 @@ const SECTION_ROUTES: Record<string, { label: string; path: string; hint: string
 export function MeetingSectionEmbed({
   orgSlug,
   sectionKey,
+  teamSlug,
 }: MeetingSectionEmbedProps) {
   const config = SECTION_ROUTES[sectionKey];
 
@@ -48,7 +51,9 @@ export function MeetingSectionEmbed({
     return null;
   }
 
-  const href = `/org/${orgSlug}/${config.path}`;
+  const href = teamSlug
+    ? getTeamNavHref(orgSlug, teamSlug, config.segment)
+    : `/org/${orgSlug}/${config.segment}`;
 
   return (
     <Card data-testid={`section-embed-${sectionKey}`}>

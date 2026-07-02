@@ -27,6 +27,7 @@ interface RocksPageHeaderProps {
   quarters: string[];
   filters: RockFilters;
   onFiltersChange: (filters: RockFilters) => void;
+  meetingMode?: boolean;
 }
 
 const selectClassName =
@@ -42,24 +43,33 @@ export function RocksPageHeader({
   quarters,
   filters,
   onFiltersChange,
+  meetingMode = false,
 }: RocksPageHeaderProps) {
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Rocks"
-        description="Quarterly priorities with status, confidence, and progress tracking."
-        actions={
-          canCreate ? (
-            <CreateRockDialog
-              organizationId={organizationId}
-              teams={teams}
-              members={members}
-              defaultOwnerId={defaultOwnerId}
-              defaultQuarter={defaultQuarter}
-            />
-          ) : undefined
-        }
+  const createAction =
+    canCreate ? (
+      <CreateRockDialog
+        organizationId={organizationId}
+        teams={teams}
+        members={members}
+        defaultOwnerId={defaultOwnerId}
+        defaultQuarter={defaultQuarter}
       />
+    ) : null;
+
+  return (
+    <div className={meetingMode ? "space-y-3" : "space-y-6"}>
+      {meetingMode ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">Review quarterly priorities.</p>
+          {createAction}
+        </div>
+      ) : (
+        <PageHeader
+          title="Rocks"
+          description="Quarterly priorities with status, confidence, and progress tracking."
+          actions={createAction}
+        />
+      )}
 
       <div
         className="flex flex-wrap items-end gap-3"

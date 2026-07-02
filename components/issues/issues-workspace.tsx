@@ -20,6 +20,9 @@ interface IssuesWorkspaceProps {
   issues: IssueWithLinks[];
   teams: IssueTeamOption[];
   members: IssueMemberOption[];
+  defaultTeamId?: string;
+  linkedMeetingId?: string;
+  variant?: "page" | "meeting";
 }
 
 export function IssuesWorkspace({
@@ -31,6 +34,9 @@ export function IssuesWorkspace({
   issues,
   teams,
   members,
+  defaultTeamId,
+  linkedMeetingId,
+  variant = "page",
 }: IssuesWorkspaceProps) {
   const [filters, setFilters] = useState<IssueFilters>({});
 
@@ -56,15 +62,18 @@ export function IssuesWorkspace({
   );
 
   return (
-    <div className="space-y-8">
+    <div className={variant === "meeting" ? "space-y-4" : "space-y-8"}>
       <IssuesPageHeader
         organizationId={organizationId}
         canCreate={canCreate}
         teams={teams}
         members={members}
         defaultOwnerId={currentUserId}
+        defaultTeamId={defaultTeamId}
+        linkedMeetingId={linkedMeetingId}
         filters={filters}
         onFiltersChange={setFilters}
+        meetingMode={variant === "meeting"}
       />
       <IssueTable
         organizationId={organizationId}

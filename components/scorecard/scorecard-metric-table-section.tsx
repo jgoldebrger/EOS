@@ -32,12 +32,14 @@ interface ScorecardMetricTableSectionProps {
   weeks: string[];
   groupBy: "owner" | "team" | "none";
   periodType: PeriodType;
+  variant?: "page" | "meeting";
 }
 
 export async function ScorecardMetricTableSection({
   metrics,
   weeks,
   periodType,
+  variant = "page",
   ...tableProps
 }: ScorecardMetricTableSectionProps) {
   const valuesByMetric = await getValuesForMetrics(
@@ -90,6 +92,7 @@ export async function ScorecardMetricTableSection({
       valuesByMetric={valuesByMetric}
       brokenRefsByMetricId={brokenRefsByMetricId}
       parseErrorsByMetricId={parseErrorsByMetricId}
+      variant={variant}
     />
   );
 }

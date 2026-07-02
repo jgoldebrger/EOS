@@ -33,6 +33,8 @@ interface CreateIssueDialogProps {
   teams: IssueTeamOption[];
   members: IssueMemberOption[];
   defaultOwnerId: string;
+  defaultTeamId?: string;
+  linkedMeetingId?: string;
   triggerLabel?: string;
 }
 
@@ -41,6 +43,8 @@ export function CreateIssueDialog({
   teams,
   members,
   defaultOwnerId,
+  defaultTeamId,
+  linkedMeetingId,
   triggerLabel = "Add issue",
 }: CreateIssueDialogProps) {
   const [open, setOpen] = useState(false);
@@ -53,7 +57,8 @@ export function CreateIssueDialog({
       ownerId: defaultOwnerId,
       title: "",
       description: "",
-      teamId: null,
+      teamId: defaultTeamId ?? null,
+      linkedMeetingId: linkedMeetingId ?? null,
       priority: 0,
       status: "open",
     },
@@ -63,9 +68,10 @@ export function CreateIssueDialog({
     setIsSubmitting(true);
     const result = await createIssue({
       ...values,
-      teamId: values.teamId || null,
+      teamId: values.teamId || defaultTeamId || null,
       description: values.description || null,
       ownerId: values.ownerId || defaultOwnerId,
+      linkedMeetingId: values.linkedMeetingId ?? linkedMeetingId ?? null,
     });
     setIsSubmitting(false);
 
@@ -80,7 +86,8 @@ export function CreateIssueDialog({
       ownerId: defaultOwnerId,
       title: "",
       description: "",
-      teamId: null,
+      teamId: defaultTeamId ?? null,
+      linkedMeetingId: linkedMeetingId ?? null,
       priority: 0,
       status: "open",
     });

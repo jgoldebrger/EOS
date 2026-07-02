@@ -20,6 +20,7 @@ interface HeadlinesWorkspaceProps {
     headline_type: string;
     created_at: string;
   }>;
+  variant?: "page" | "meeting";
 }
 
 export function HeadlinesWorkspace({
@@ -27,6 +28,7 @@ export function HeadlinesWorkspace({
   teamId,
   canCreate,
   headlines: initial,
+  variant = "page",
 }: HeadlinesWorkspaceProps) {
   const [headlines, setHeadlines] = useState(initial);
   const [title, setTitle] = useState("");
@@ -56,7 +58,12 @@ export function HeadlinesWorkspace({
   }
 
   return (
-    <div className="space-y-6">
+    <div className={variant === "meeting" ? "space-y-4" : "space-y-6"}>
+      {variant === "meeting" ? (
+        <p className="text-sm text-muted-foreground">
+          Share customer and employee headlines.
+        </p>
+      ) : null}
       {canCreate && (
         <div className="flex flex-wrap gap-2">
           <Input

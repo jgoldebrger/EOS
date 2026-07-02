@@ -43,12 +43,40 @@ test.describe("meetings page (authenticated)", () => {
   test("live meeting shows agenda panel", async ({ page }) => {
     await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
+    const teamSlug = process.env.E2E_TEAM_SLUG ?? "leadership";
     const meetingId = process.env.E2E_MEETING_ID ?? "55555555-5555-5555-5555-555555555555";
 
-    await page.goto(`/org/${orgSlug}/meetings/${meetingId}`);
+    await page.goto(`/org/${orgSlug}/teams/${teamSlug}/l10/${meetingId}`);
 
     await expect(page.getByTestId("live-meeting-shell")).toBeVisible();
     await expect(page.getByTestId("meeting-agenda-panel")).toBeVisible();
     await expect(page.getByTestId("agenda-section-issues")).toBeVisible();
+  });
+
+  test("team L10 hub renders", async ({ page }) => {
+    await signInAsAdmin(page);
+    const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
+    const teamSlug = process.env.E2E_TEAM_SLUG ?? "leadership";
+
+    await page.goto(`/org/${orgSlug}/teams/${teamSlug}/l10`);
+
+    await expect(page.getByTestId("l10-hub")).toBeVisible();
+    await expect(page.getByTestId("create-l10-meeting-button")).toBeVisible();
+  });
+
+  test("scorecard section embeds inline grid in live L10", async ({ page }) => {
+    await signInAsAdmin(page);
+    const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
+    const teamSlug = process.env.E2E_TEAM_SLUG ?? "leadership";
+    const meetingId = process.env.E2E_MEETING_ID ?? "55555555-5555-5555-5555-555555555555";
+
+    await page.goto(`/org/${orgSlug}/teams/${teamSlug}/l10/${meetingId}`);
+    await page.getByTestId("agenda-section-scorecard").click();
+
+    await expect(page.getByTestId("l10-section-scorecard")).toBeVisible();
+    await expect(page.getByTestId("section-embed-scorecard")).toHaveCount(0);
+    await expect(
+      page.getByTestId("scorecard-metric-table").or(page.getByTestId("scorecard-empty-state")),
+    ).toBeVisible();
   });
 });

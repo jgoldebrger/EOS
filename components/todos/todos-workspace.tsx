@@ -21,6 +21,7 @@ interface TodosWorkspaceProps {
   todos: TodoWithOwner[];
   teams: TodoTeamOption[];
   members: TodoMemberOption[];
+  variant?: "page" | "meeting";
 }
 
 export function TodosWorkspace({
@@ -32,6 +33,7 @@ export function TodosWorkspace({
   todos,
   teams,
   members,
+  variant = "page",
 }: TodosWorkspaceProps) {
   const [filters, setFilters] = useState<TodoFilters>({ sevenDayOnly: true });
 
@@ -48,7 +50,7 @@ export function TodosWorkspace({
   }, [todos, filters]);
 
   return (
-    <div className="space-y-8">
+    <div className={variant === "meeting" ? "space-y-4" : "space-y-8"}>
       <TodosPageHeader
         organizationId={organizationId}
         canCreate={canEdit}
@@ -57,6 +59,7 @@ export function TodosWorkspace({
         defaultOwnerId={currentUserId}
         filters={filters}
         onFiltersChange={setFilters}
+        meetingMode={variant === "meeting"}
       />
       <TodoList
         organizationId={organizationId}
