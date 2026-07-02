@@ -33,6 +33,13 @@ export const removeTeamMemberSchema = z.object({
   memberId: z.string().uuid("Invalid member"),
 });
 
+export const updateTeamMemberRoleSchema = z.object({
+  teamId: z.string().uuid("Invalid team"),
+  organizationId: z.string().uuid("Invalid organization"),
+  memberId: z.string().uuid("Invalid member"),
+  teamRole: z.enum(["leader", "member", "viewer"]),
+});
+
 export type CreateTeamInput = z.infer<typeof createTeamSchema>;
 
 export function teamSlugFromName(name: string): string {

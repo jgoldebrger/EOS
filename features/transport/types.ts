@@ -28,7 +28,7 @@ export interface TransportMemberOption {
   label: string;
 }
 
-export interface TransportStopWithMeta extends TransportStop {}
+export type TransportStopWithMeta = TransportStop;
 
 export interface TransportLoadWithMeta extends TransportLoad {
   loadLabel: string;

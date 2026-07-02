@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { resolveUserEmails } from "@/lib/users/resolve-emails";
-
 import { getProjectsForOrg } from "@/features/projects/queries";
 
 export interface ActivityEntry {
@@ -14,19 +13,54 @@ export interface ActivityEntry {
   actorName: string;
 }
 
+export interface TeamReportRow {
+  teamId: string;
+  teamName: string;
+  openIssues: number;
+  activeRocks: number;
+  doneRocks: number;
+}
+
 export async function getActivityForOrg(
   organizationId: string,
-  limit = 50,
+  options?: {
+    limit?: number;
+    teamId?: string;
+    entityType?: string;
+    action?: string;
+  },
 ): Promise<ActivityEntry[]> {
+  const limit = options?.limit ?? 50;
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from("audit_logs")
     .select("id, action, entity_type, entity_id, metadata, created_at, actor_id")
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  const rows = data ?? [];
+  if (options?.entityType) {
+    query = query.eq("entity_type", options.entityType);
+  }
+  if (options?.action) {
+    query = query.eq("action", options.action);
+  }
+
+  const { data } = await query;
+  let rows = data ?? [];
+
+  if (options?.teamId) {
+    rows = rows.filter((row) => {
+      const metadata = row.metadata;
+      return (
+        typeof metadata === "object" &&
+        metadata !== null &&
+        !Array.isArray(metadata) &&
+        (metadata as Record<string, unknown>).teamId === options.teamId
+      );
+    });
+  }
+
   const actorIds = rows
     .map((row) => row.actor_id)
     .filter((id): id is string => Boolean(id));
@@ -38,6 +72,31 @@ export async function getActivityForOrg(
       ? (resolved.get(row.actor_id)?.displayName ?? row.actor_id.slice(0, 8))
       : "System",
   }));
+}
+
+export function getActivityDeepLink(
+  orgSlug: string,
+  entityType: string,
+  entityId: string | null,
+): string | null {
+  if (!entityId) return null;
+  const base = `/org/${orgSlug}`;
+  switch (entityType) {
+    case "rocks":
+      return `${base}/rocks`;
+    case "issues":
+      return `${base}/issues`;
+    case "todos":
+      return `${base}/todos`;
+    case "meetings":
+      return `${base}/meetings/${entityId}`;
+    case "vto_sections":
+      return `${base}/vto`;
+    case "org_members":
+      return `${base}/people`;
+    default:
+      return `${base}/activity`;
+  }
 }
 
 export async function getPeopleForOrg(organizationId: string) {
@@ -106,4 +165,51 @@ export async function getReportsSummary(organizationId: string) {
     openTodos: todos.count ?? 0,
     metrics: metrics.count ?? 0,
   };
+}
+
+export async function getTeamReportBreakdown(
+  organizationId: string,
+): Promise<TeamReportRow[]> {
+  const supabase = await createClient();
+  const { data: teams } = await supabase
+    .from("teams")
+    .select("id, name")
+    .eq("organization_id", organizationId)
+    .order("name", { ascending: true });
+
+  const rows: TeamReportRow[] = [];
+  for (const team of teams ?? []) {
+    const [issues, rocks, doneRocks] = await Promise.all([
+      supabase
+        .from("issues")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .eq("team_id", team.id)
+        .eq("status", "open"),
+      supabase
+        .from("rocks")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .eq("team_id", team.id)
+        .is("archived_at", null)
+        .neq("status", "done"),
+      supabase
+        .from("rocks")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .eq("team_id", team.id)
+        .eq("status", "done")
+        .is("archived_at", null),
+    ]);
+
+    rows.push({
+      teamId: team.id,
+      teamName: team.name,
+      openIssues: issues.count ?? 0,
+      activeRocks: rocks.count ?? 0,
+      doneRocks: doneRocks.count ?? 0,
+    });
+  }
+
+  return rows;
 }

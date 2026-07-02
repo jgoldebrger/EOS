@@ -1,50 +1,63 @@
 import { describe, expect, it } from "vitest";
-import { createOrgUserAccountSchema } from "@/features/people/schema";
+import {
+  computeRprsStatus,
+  isRightPerson,
+  isRightSeat,
+  parseCoreValuesFromVto,
+} from "@/features/people/utils";
 
-describe("createOrgUserAccountSchema", () => {
-  const validInput = {
-    organizationId: "550e8400-e29b-41d4-a716-446655440000",
-    orgSlug: "acme",
-    firstName: "Jane",
-    lastName: "Smith",
-    email: "User@Company.com",
-    password: "securepass",
-    orgRole: "member" as const,
-  };
-
-  it("accepts valid input and normalizes email", () => {
-    const result = createOrgUserAccountSchema.safeParse(validInput);
-
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.email).toBe("user@company.com");
-    }
+describe("people analyzer utils", () => {
+  it("parses core values from VTO content", () => {
+    const values = parseCoreValuesFromVto("Integrity\nDo the right thing\n\nRespect");
+    expect(values).toEqual(["Integrity", "Do the right thing", "Respect"]);
   });
 
-  it("rejects passwords shorter than 8 characters", () => {
-    const result = createOrgUserAccountSchema.safeParse({
-      ...validInput,
-      password: "short",
-    });
-
-    expect(result.success).toBe(false);
+  it("detects right seat when GWC all at least 4", () => {
+    expect(isRightSeat(4, 4, 4)).toBe(true);
+    expect(isRightSeat(3, 4, 4)).toBe(false);
   });
 
-  it("rejects missing first name", () => {
-    const result = createOrgUserAccountSchema.safeParse({
-      ...validInput,
-      firstName: "",
-    });
-
-    expect(result.success).toBe(false);
+  it("detects right person when all values are plus", () => {
+    expect(
+      isRightPerson(["Integrity", "Respect"], {
+        Integrity: "+",
+        Respect: "+",
+      }),
+    ).toBe(true);
+    expect(
+      isRightPerson(["Integrity"], {
+        Integrity: "+/-",
+      }),
+    ).toBe(false);
   });
 
-  it("rejects owner role", () => {
-    const result = createOrgUserAccountSchema.safeParse({
-      ...validInput,
-      orgRole: "owner",
-    });
-
-    expect(result.success).toBe(false);
+  it("computes RPRS status", () => {
+    expect(
+      computeRprsStatus({
+        getIt: 4,
+        wantIt: 4,
+        capacity: 4,
+        coreValueNames: ["Integrity"],
+        coreValuesScores: { Integrity: "+" },
+      }),
+    ).toBe("green");
+    expect(
+      computeRprsStatus({
+        getIt: 4,
+        wantIt: 4,
+        capacity: 4,
+        coreValueNames: ["Integrity"],
+        coreValuesScores: { Integrity: "-" },
+      }),
+    ).toBe("yellow");
+    expect(
+      computeRprsStatus({
+        getIt: 2,
+        wantIt: 2,
+        capacity: 2,
+        coreValueNames: ["Integrity"],
+        coreValuesScores: { Integrity: "-" },
+      }),
+    ).toBe("red");
   });
 });

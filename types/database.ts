@@ -1019,6 +1019,7 @@ export interface Database {
           created_at: string;
           updated_at: string;
           created_by: string | null;
+          metadata: Json;
         };
         Insert: {
           id?: string;
@@ -1034,6 +1035,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
+          metadata?: Json;
         };
         Update: {
           id?: string;
@@ -1049,6 +1051,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
+          metadata?: Json;
         };
         Relationships: [
           {

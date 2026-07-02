@@ -5,6 +5,7 @@ import type { OrgAccessContext } from "@/lib/auth/require-org-access";
 
 export interface OrgContextValue extends OrgAccessContext {
   orgName: string;
+  inboxUnreadCount: number;
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null);

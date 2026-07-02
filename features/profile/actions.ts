@@ -48,3 +48,36 @@ export async function updateProfile(input: unknown): Promise<UpdateProfileResult
 
   return { success: true };
 }
+
+export async function updateNotificationPreferences(
+  input: unknown,
+): Promise<UpdateProfileResult> {
+  const { updateNotificationPreferencesSchema } = await import("@/features/profile/schema");
+  const parsed = updateNotificationPreferencesSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid preferences" };
+  }
+
+  const user = await getServerSessionUser();
+  if (!user) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({
+    data: {
+      notification_preferences: {
+        emailAssignments: parsed.data.emailAssignments,
+        emailL10Recap: parsed.data.emailL10Recap,
+        emailWeeklyDigest: parsed.data.emailWeeklyDigest,
+      },
+    },
+  });
+
+  if (error) {
+    return { success: false, error: toSafeAuthError(error) };
+  }
+
+  revalidatePath(`/org/${parsed.data.orgSlug}/profile`);
+  return { success: true };
+}

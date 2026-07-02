@@ -514,6 +514,7 @@ export async function upsertPeopleReview(input: unknown): Promise<PeopleActionRe
       get_it: parsed.data.getIt,
       want_it: parsed.data.wantIt,
       capacity: parsed.data.capacity,
+      core_values_scores: parsed.data.coreValuesScores ?? {},
       notes: parsed.data.notes ?? "",
       quarter: parsed.data.quarter,
     } as never,
@@ -525,5 +526,81 @@ export async function upsertPeopleReview(input: unknown): Promise<PeopleActionRe
   }
 
   revalidatePath("/");
+  return { success: true };
+}
+
+export async function updateOrgMemberRole(input: unknown): Promise<PeopleActionResult> {
+  const { updateOrgMemberRoleSchema } = await import("@/features/people/schema");
+  const parsed = updateOrgMemberRoleSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid request" };
+  }
+
+  const access = await assertCanManageOrgMembers(parsed.data.organizationId);
+  if (!access.ok) {
+    return { success: false, error: access.error };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("organization_members")
+    .update({ org_role: parsed.data.orgRole })
+    .eq("organization_id", parsed.data.organizationId)
+    .eq("user_id", parsed.data.userId);
+
+  if (error) {
+    return { success: false, error: "Could not update member role" };
+  }
+
+  await logAuditEvent(supabase, {
+    organizationId: parsed.data.organizationId,
+    actorId: access.userId,
+    action: AUDIT_ACTIONS.UPDATE,
+    entityType: "org_members",
+    entityId: parsed.data.userId,
+    metadata: { orgRole: parsed.data.orgRole },
+  });
+
+  revalidatePeoplePath(parsed.data.orgSlug);
+  return { success: true };
+}
+
+export async function removeOrgMember(input: unknown): Promise<PeopleActionResult> {
+  const { removeOrgMemberSchema } = await import("@/features/people/schema");
+  const parsed = removeOrgMemberSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid request" };
+  }
+
+  if (parsed.data.userId === (await getServerSessionUser())?.id) {
+    return { success: false, error: "You cannot remove yourself" };
+  }
+
+  const access = await assertCanManageOrgMembers(parsed.data.organizationId);
+  if (!access.ok) {
+    return { success: false, error: access.error };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("organization_members")
+    .delete()
+    .eq("organization_id", parsed.data.organizationId)
+    .eq("user_id", parsed.data.userId);
+
+  if (error) {
+    return { success: false, error: "Could not remove member" };
+  }
+
+  await logAuditEvent(supabase, {
+    organizationId: parsed.data.organizationId,
+    actorId: access.userId,
+    action: AUDIT_ACTIONS.DELETE,
+    entityType: "org_members",
+    entityId: parsed.data.userId,
+    metadata: {},
+  });
+
+  revalidatePeoplePath(parsed.data.orgSlug);
   return { success: true };
 }

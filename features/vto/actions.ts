@@ -417,3 +417,81 @@ export async function restoreSnapshot(input: unknown): Promise<VtoActionResult> 
 
   return { success: true };
 }
+
+export async function pinVtoLink(
+  input: import("@/features/vto/schema").PinVtoLinkInput,
+): Promise<VtoActionResult> {
+  const { pinVtoLinkSchema } = await import("@/features/vto/schema");
+  const parsed = pinVtoLinkSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid link" };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  const denied = requireAdmin(actor.orgRole);
+  if (denied) {
+    return denied;
+  }
+
+  const { error } = await actor.supabase.from("vto_links" as never).upsert(
+    {
+      organization_id: parsed.data.organizationId,
+      entity_type: parsed.data.entityType,
+      entity_id: parsed.data.entityId,
+      section_key: parsed.data.sectionKey,
+    } as never,
+    { onConflict: "organization_id,entity_type,entity_id,section_key" },
+  );
+
+  if (error) {
+    return { success: false, error: "Could not pin to V/TO" };
+  }
+
+  const slug = await getOrgSlug(actor.supabase, parsed.data.organizationId);
+  if (slug) {
+    await revalidateVto(slug);
+  }
+
+  return { success: true };
+}
+
+export async function unpinVtoLink(
+  input: import("@/features/vto/schema").UnpinVtoLinkInput,
+): Promise<VtoActionResult> {
+  const { unpinVtoLinkSchema } = await import("@/features/vto/schema");
+  const parsed = unpinVtoLinkSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid link" };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  const denied = requireAdmin(actor.orgRole);
+  if (denied) {
+    return denied;
+  }
+
+  const { error } = await actor.supabase
+    .from("vto_links" as never)
+    .delete()
+    .eq("id", parsed.data.linkId)
+    .eq("organization_id", parsed.data.organizationId);
+
+  if (error) {
+    return { success: false, error: "Could not unpin" };
+  }
+
+  const slug = await getOrgSlug(actor.supabase, parsed.data.organizationId);
+  if (slug) {
+    await revalidateVto(slug);
+  }
+
+  return { success: true };
+}

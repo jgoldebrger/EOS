@@ -13,7 +13,7 @@ import type {
   MeetingWithNotes,
   L10AgendaTemplate,
 } from "@/features/meetings/types";
-import { getDefaultL10Agenda, resolveL10AgendaFromSettings } from "@/features/meetings/utils";
+import { getDefaultL10Agenda, resolveL10AgendaFromSettings, parseSeguePrompts, parseCascadingMessageTemplates } from "@/features/meetings/utils";
 
 function mapMeetingListRow(row: Record<string, unknown>): MeetingListItem {
   const { teams: teamJoin, ...meeting } = row as unknown as {
@@ -174,6 +174,81 @@ export async function getOrgL10AgendaTemplate(
   }
 
   return resolveL10AgendaFromSettings(data.settings);
+}
+
+export async function getOrgSeguePrompts(organizationId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("organizations")
+    .select("settings")
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  return parseSeguePrompts(data?.settings);
+}
+
+export async function getOrgCascadingTemplates(organizationId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("organizations")
+    .select("settings")
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  return parseCascadingMessageTemplates(data?.settings);
+}
+
+export interface TeamRatingTrendPoint {
+  meetingId: string;
+  title: string;
+  endedAt: string;
+  averageRating: number;
+  ratingCount: number;
+}
+
+export async function getTeamMeetingRatingTrend(
+  organizationId: string,
+  teamId: string,
+  limit = 8,
+): Promise<TeamRatingTrendPoint[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("meetings")
+    .select("id, title, ended_at, metadata")
+    .eq("organization_id", organizationId)
+    .eq("team_id", teamId)
+    .eq("status", "completed")
+    .order("ended_at", { ascending: false })
+    .limit(limit);
+
+  return (data ?? [])
+    .map((meeting) => {
+      const metadata =
+        typeof meeting.metadata === "object" &&
+        meeting.metadata !== null &&
+        !Array.isArray(meeting.metadata)
+          ? (meeting.metadata as Record<string, unknown>)
+          : {};
+      const ratings = Array.isArray(metadata.ratings)
+        ? (metadata.ratings as Array<{ rating?: number }>)
+        : [];
+      const numeric = ratings
+        .map((entry) => entry.rating)
+        .filter((value): value is number => typeof value === "number");
+      const averageRating =
+        numeric.length > 0
+          ? Math.round((numeric.reduce((sum, value) => sum + value, 0) / numeric.length) * 10) / 10
+          : 0;
+
+      return {
+        meetingId: meeting.id,
+        title: meeting.title,
+        endedAt: meeting.ended_at ?? "",
+        averageRating,
+        ratingCount: numeric.length,
+      };
+    })
+    .reverse();
 }
 
 export interface MeetingRecapData {

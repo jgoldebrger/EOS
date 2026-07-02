@@ -64,6 +64,9 @@ export function PeopleList({
                       Reports to {member.managerName}
                     </p>
                   ) : null}
+                  {member.seatTitle ? (
+                    <p className="text-xs text-muted-foreground">Seat: {member.seatTitle}</p>
+                  ) : null}
                 </div>
               </div>
               <div className="flex items-center gap-3">

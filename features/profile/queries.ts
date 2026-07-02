@@ -11,6 +11,11 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   displayName: string;
+  notificationPreferences: {
+    emailAssignments: boolean;
+    emailL10Recap: boolean;
+    emailWeeklyDigest: boolean;
+  };
 }
 
 export async function getCurrentUserProfile(): Promise<UserProfile | null> {
@@ -20,6 +25,11 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
   }
 
   const { firstName, lastName } = parseNameFromMetadata(user.user_metadata);
+  const prefs =
+    typeof user.user_metadata?.notification_preferences === "object" &&
+    user.user_metadata.notification_preferences !== null
+      ? (user.user_metadata.notification_preferences as Record<string, unknown>)
+      : {};
 
   return {
     userId: user.id,
@@ -31,6 +41,11 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
       email: user.email,
       userMetadata: user.user_metadata,
     }),
+    notificationPreferences: {
+      emailAssignments: prefs.emailAssignments === true,
+      emailL10Recap: prefs.emailL10Recap === true,
+      emailWeeklyDigest: prefs.emailWeeklyDigest === true,
+    },
   };
 }
 

@@ -25,7 +25,7 @@ import { useSelectedTeam } from "@/features/teams/components/team-context";
 
 export function TopNav() {
   const pathname = usePathname();
-  const { orgSlug, orgName } = useOrgContext();
+  const { orgSlug, orgName, inboxUnreadCount } = useOrgContext();
   const selectedTeam = useSelectedTeam();
 
   return (
@@ -53,7 +53,7 @@ export function TopNav() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors md:px-3 md:text-sm",
+                  "relative flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors md:px-3 md:text-sm",
                   active
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -61,6 +61,14 @@ export function TopNav() {
               >
                 <Icon className="hidden h-3.5 w-3.5 sm:block" aria-hidden />
                 {item.label}
+                {item.segment === "inbox" && inboxUnreadCount > 0 ? (
+                  <span
+                    className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
+                    data-testid="inbox-unread-badge"
+                  >
+                    {inboxUnreadCount > 99 ? "99+" : inboxUnreadCount}
+                  </span>
+                ) : null}
               </Link>
             );
           })}

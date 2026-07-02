@@ -44,6 +44,18 @@ export const bootstrapVtoSchema = z.object({
   organizationId,
 });
 
+export const pinVtoLinkSchema = z.object({
+  organizationId,
+  entityType: z.enum(["rock", "issue", "metric"]),
+  entityId: z.string().uuid(),
+  sectionKey: z.string().min(1).max(100),
+});
+
+export const unpinVtoLinkSchema = z.object({
+  organizationId,
+  linkId: z.string().uuid(),
+});
+
 export type UpdateSectionInput = z.infer<typeof updateSectionSchema>;
 export type ToggleSectionVisibilityInput = z.infer<
   typeof toggleSectionVisibilitySchema
@@ -51,3 +63,5 @@ export type ToggleSectionVisibilityInput = z.infer<
 export type CreateSnapshotInput = z.infer<typeof createSnapshotSchema>;
 export type RestoreSnapshotInput = z.infer<typeof restoreSnapshotSchema>;
 export type BootstrapVtoInput = z.infer<typeof bootstrapVtoSchema>;
+export type PinVtoLinkInput = z.infer<typeof pinVtoLinkSchema>;
+export type UnpinVtoLinkInput = z.infer<typeof unpinVtoLinkSchema>;

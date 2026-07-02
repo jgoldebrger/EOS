@@ -210,3 +210,53 @@ export function getMeetingHref(
   }
   return `/org/${orgSlug}/meetings/${meeting.id}`;
 }
+
+export const DEFAULT_SEGUE_PROMPTS = [
+  "What's the best thing that happened to you personally since last meeting?",
+  "What's the best thing that happened in the business since last meeting?",
+  "What are you most grateful for right now?",
+  "Share a win from your team this week.",
+] as const;
+
+export const DEFAULT_CASCADING_MESSAGES = [
+  "Customer headlines to share downstream",
+  "Employee headlines to share downstream",
+  "Key decisions from IDS",
+  "Rocks status changes",
+  "Process or policy updates",
+] as const;
+
+export function parseSeguePrompts(settings: unknown): string[] {
+  if (typeof settings !== "object" || settings === null || Array.isArray(settings)) {
+    return [...DEFAULT_SEGUE_PROMPTS];
+  }
+  const raw = (settings as Record<string, unknown>).l10SeguePrompts;
+  if (!Array.isArray(raw)) {
+    return [...DEFAULT_SEGUE_PROMPTS];
+  }
+  const prompts = raw.filter(
+    (item): item is string => typeof item === "string" && item.trim().length > 0,
+  );
+  return prompts.length > 0 ? prompts : [...DEFAULT_SEGUE_PROMPTS];
+}
+
+export function parseCascadingMessageTemplates(settings: unknown): string[] {
+  if (typeof settings !== "object" || settings === null || Array.isArray(settings)) {
+    return [...DEFAULT_CASCADING_MESSAGES];
+  }
+  const raw = (settings as Record<string, unknown>).l10CascadingMessages;
+  if (!Array.isArray(raw)) {
+    return [...DEFAULT_CASCADING_MESSAGES];
+  }
+  const items = raw.filter(
+    (item): item is string => typeof item === "string" && item.trim().length > 0,
+  );
+  return items.length > 0 ? items : [...DEFAULT_CASCADING_MESSAGES];
+}
+
+export function getSeguePromptForIndex(prompts: string[], index: number): string {
+  if (prompts.length === 0) {
+    return DEFAULT_SEGUE_PROMPTS[0];
+  }
+  return prompts[index % prompts.length] ?? prompts[0];
+}

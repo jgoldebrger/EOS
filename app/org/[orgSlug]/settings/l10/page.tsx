@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { L10AgendaSettingsForm } from "@/components/meetings/l10-agenda-settings-form";
-import { getOrgL10AgendaTemplate } from "@/features/meetings/queries";
+import { SeguePromptsSettingsForm } from "@/components/meetings/segue-prompts-settings-form";
+import { getOrgL10AgendaTemplate, getOrgSeguePrompts } from "@/features/meetings/queries";
 import { formatSectionDuration, getTotalAgendaMinutes } from "@/features/meetings/utils";
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
 import { canManageOrg } from "@/lib/permissions/checks";
@@ -21,7 +22,10 @@ export default async function L10AgendaSettingsPage({
 }) {
   const { orgSlug } = await params;
   const access = await requireOrgAccess(orgSlug);
-  const agenda = await getOrgL10AgendaTemplate(access.orgId);
+  const [agenda, seguePrompts] = await Promise.all([
+    getOrgL10AgendaTemplate(access.orgId),
+    getOrgSeguePrompts(access.orgId),
+  ]);
   const canEdit = canManageOrg(access.role);
 
   return (
@@ -55,6 +59,23 @@ export default async function L10AgendaSettingsPage({
             organizationId={access.orgId}
             orgSlug={orgSlug}
             initialAgenda={agenda}
+            canEdit={canEdit}
+          />
+        </CardContent>
+      </Card>
+
+      <Card data-testid="l10-segue-settings-card">
+        <CardHeader>
+          <CardTitle>Segue prompts</CardTitle>
+          <CardDescription>
+            Rotating personal and business best questions for the Segue section.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SeguePromptsSettingsForm
+            organizationId={access.orgId}
+            orgSlug={orgSlug}
+            initialPrompts={seguePrompts}
             canEdit={canEdit}
           />
         </CardContent>

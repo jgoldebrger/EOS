@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { AiApprovalPanel } from "@/components/ai/ai-approval-panel";
 import { DecisionsList } from "@/components/meetings/decisions-list";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,21 @@ export function MeetingRecapView({
   recap,
 }: MeetingRecapViewProps) {
   const { meeting, headlines, todos, issues, pendingSuggestions } = recap;
+  const [copied, setCopied] = useState(false);
+  const recapUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/org/${orgSlug}/teams/${teamSlug}/l10/${meeting.id}/recap`
+      : `/org/${orgSlug}/teams/${teamSlug}/l10/${meeting.id}/recap`;
+
+  async function handleCopyLink() {
+    try {
+      await navigator.clipboard.writeText(recapUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }
 
   return (
     <div className="space-y-8" data-testid="meeting-recap-view">
@@ -34,9 +50,19 @@ export function MeetingRecapView({
             Completed
           </Badge>
         </div>
-        <Button variant="outline" asChild>
-          <Link href={getL10HubHref(orgSlug, teamSlug)}>Back to L10 hub</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCopyLink}
+            data-testid="copy-recap-link"
+          >
+            {copied ? "Link copied" : "Copy recap link"}
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href={getL10HubHref(orgSlug, teamSlug)}>Back to L10 hub</Link>
+          </Button>
+        </div>
       </div>
 
       <Card>

@@ -21,6 +21,8 @@ export interface HeadlineItem {
   body: string;
   headline_type: string;
   created_at: string;
+  is_cascading?: boolean;
+  archived_at?: string | null;
 }
 
 interface EditHeadlineSheetProps {

@@ -231,3 +231,52 @@ export async function getProcessPageVersions(
     created_by: row.created_by,
   }));
 }
+
+export interface ProcessHealthMetrics {
+  totalSeats: number;
+  seatsWithSop: number;
+  documentedPct: number;
+  staleSopCount: number;
+}
+
+export async function getProcessHealthMetrics(
+  organizationId: string,
+): Promise<ProcessHealthMetrics> {
+  const supabase = await createClient();
+  const staleDays = 90;
+  const staleBefore = new Date();
+  staleBefore.setDate(staleBefore.getDate() - staleDays);
+
+  const [seatsResult, pagesResult] = await Promise.all([
+    supabase
+      .from("accountability_seats")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId),
+    supabase
+      .from("process_pages" as never)
+      .select("accountability_seat_id, updated_at, archived_at")
+      .eq("organization_id", organizationId)
+      .is("archived_at", null),
+  ]);
+
+  const totalSeats = seatsResult.count ?? 0;
+  const pages = (pagesResult.data ?? []) as Array<{
+    accountability_seat_id: string | null;
+    updated_at: string;
+    archived_at: string | null;
+  }>;
+  const seatsWithSop = new Set(
+    pages.map((page) => page.accountability_seat_id).filter((id): id is string => Boolean(id)),
+  ).size;
+  const staleSopCount = pages.filter(
+    (page) => page.updated_at && new Date(page.updated_at) < staleBefore,
+  ).length;
+
+  return {
+    totalSeats,
+    seatsWithSop,
+    documentedPct:
+      totalSeats > 0 ? Math.round((seatsWithSop / totalSeats) * 100) : 0,
+    staleSopCount,
+  };
+}

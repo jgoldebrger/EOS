@@ -121,3 +121,23 @@ export type CreateDecisionInput = z.infer<typeof createDecisionSchema>;
 export type EndMeetingInput = z.infer<typeof endMeetingSchema>;
 export type SaveMeetingRatingInput = z.infer<typeof saveMeetingRatingSchema>;
 export type AgendaStepInput = z.infer<typeof agendaStepSchema>;
+
+export const saveCascadingMessagesSchema = z.object({
+  organizationId: z.string().uuid(),
+  meetingId: z.string().uuid(),
+  messages: z.array(
+    z.object({
+      label: z.string().min(1).max(200),
+      completed: z.boolean(),
+    }),
+  ),
+});
+
+export const updateSeguePromptsSchema = z.object({
+  organizationId: z.string().uuid(),
+  orgSlug: z.string().min(1),
+  prompts: z.array(z.string().min(1).max(500)).min(1).max(20),
+});
+
+export type SaveCascadingMessagesInput = z.infer<typeof saveCascadingMessagesSchema>;
+export type UpdateSeguePromptsInput = z.infer<typeof updateSeguePromptsSchema>;

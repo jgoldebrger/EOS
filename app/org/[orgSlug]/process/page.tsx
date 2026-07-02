@@ -1,7 +1,8 @@
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
 import { canManageOrg } from "@/lib/permissions/checks";
-import { getProcessPagesForOrg } from "@/features/process/queries";
+import { getProcessPagesForOrg, getProcessHealthMetrics } from "@/features/process/queries";
 import { ProcessWorkspace } from "@/components/process/process-workspace";
+import { ProcessHealthBanner } from "@/components/process/process-health-banner";
 
 export default async function OrgProcessPage({
   params,
@@ -10,11 +11,15 @@ export default async function OrgProcessPage({
 }) {
   const { orgSlug } = await params;
   const access = await requireOrgAccess(orgSlug);
-  const pages = await getProcessPagesForOrg(access.orgId, { includeArchived: true });
+  const [pages, health] = await Promise.all([
+    getProcessPagesForOrg(access.orgId, { includeArchived: true }),
+    getProcessHealthMetrics(access.orgId),
+  ]);
   const base = `/org/${orgSlug}/process`;
 
   return (
     <div className="mx-auto max-w-4xl p-8">
+      <ProcessHealthBanner metrics={health} />
       <ProcessWorkspace
         organizationId={access.orgId}
         orgSlug={orgSlug}

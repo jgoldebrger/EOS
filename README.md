@@ -4,10 +4,20 @@ Business Operating System for EOS practitioners — Strety-style team workspaces
 
 ## Navigation (Strety-style)
 
-- **Global top nav:** Home, Inbox, Activity, Reports, Teams, People, Company, Projects, Transport
-- **Team workspace:** `/org/[slug]/teams/[teamSlug]/` with Overview, L10, Rocks, Scorecards, To-Dos, Headlines, Issues, Process
+- **Global top nav:** Home, Inbox (unread badge), Activity, Reports, Teams, People, Process, Company, Projects, Transport
+- **Company hub:** V/TO, Accountability, Process/SOPs, Company Rocks, Meetings, People Analyzer
+- **Team workspace:** `/org/[slug]/teams/[teamSlug]/` with Overview (L10 rating trend), L10, Rocks, Scorecards, To-Dos, Headlines, Issues, Process, People
+- **Settings:** Members (role admin), Audit log, L10 agenda + segue prompts, Security
 - **Global search:** `Ctrl+K` / `Cmd+K`
 - Legacy routes (`/scorecard`, `/rocks`, etc.) redirect to your first team workspace
+
+### Permissions (coarse)
+
+| Role | Capabilities |
+|------|----------------|
+| Admin | Full org settings, V/TO edit, member management, all team tools |
+| Member | Create/edit traction tools, run L10, People Analyzer reviews |
+| Viewer | Read-only access to shared workspaces |
 
 ## Prerequisites
 
@@ -107,7 +117,7 @@ See [BUILD_CONTRACT.md](./BUILD_CONTRACT.md) for route prefixes, role enums, mig
 
 All org features live under `/org/[orgSlug]/`:
 
-- `dashboard` — org home
+- `home` — org home (summary cards, my work, team pulse)
 - `scorecard`, `rocks`, `issues`, `todos` — traction tools
 - `meetings` — L10 and meeting runner
 - `accountability` — accountability chart

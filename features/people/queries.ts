@@ -1,6 +1,9 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveUserEmails } from "@/lib/users/resolve-emails";
+import type { CoreValueRating } from "@/features/people/utils";
+import { parseCoreValuesFromVto } from "@/features/people/utils";
+import { getVtoSections } from "@/features/vto/queries";
 
 export interface OrgPersonWithManager {
   userId: string;
@@ -8,6 +11,7 @@ export interface OrgPersonWithManager {
   reportsToUserId: string | null;
   displayName: string;
   managerName: string | null;
+  seatTitle: string | null;
 }
 
 export async function getOrgPeopleWithManagers(
@@ -29,6 +33,7 @@ const getOrgPeopleWithManagersCached = cache(
       return [];
     }
 
+    const seatByUser = await getSeatTitlesByUser(organizationId);
     const userIds = data.flatMap((row) =>
       [row.user_id, row.reports_to_user_id].filter((id): id is string => Boolean(id)),
     );
@@ -46,6 +51,7 @@ const getOrgPeopleWithManagersCached = cache(
         reportsToUserId: row.reports_to_user_id,
         displayName: person?.displayName ?? row.user_id.slice(0, 8),
         managerName: manager?.displayName ?? null,
+        seatTitle: seatByUser.get(row.user_id) ?? null,
       };
     });
   },
@@ -73,13 +79,44 @@ export interface PeopleReviewRow {
   id: string;
   subjectUserId: string;
   reviewerUserId: string;
+  seatId: string | null;
+  seatTitle: string | null;
   getIt: number;
   wantIt: number;
   capacity: number;
+  coreValuesScores: Record<string, CoreValueRating>;
   notes: string;
   quarter: string;
   subjectName: string;
   reviewerName: string;
+}
+
+export async function getCoreValuesForOrg(organizationId: string): Promise<string[]> {
+  const sections = await getVtoSections(organizationId);
+  const coreValuesSection = sections.find((section) => section.section_key === "core_values");
+  if (!coreValuesSection?.content) {
+    return [];
+  }
+  return parseCoreValuesFromVto(coreValuesSection.content);
+}
+
+export async function getSeatTitlesByUser(
+  organizationId: string,
+): Promise<Map<string, string>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("accountability_seats")
+    .select("title, assigned_user_id")
+    .eq("organization_id", organizationId)
+    .not("assigned_user_id", "is", null);
+
+  const result = new Map<string, string>();
+  for (const seat of data ?? []) {
+    if (seat.assigned_user_id) {
+      result.set(seat.assigned_user_id, seat.title);
+    }
+  }
+  return result;
 }
 
 export async function getPeopleReviewsForOrg(
@@ -101,12 +138,26 @@ export async function getPeopleReviewsForOrg(
     id: string;
     subject_user_id: string;
     reviewer_user_id: string;
+    seat_id: string | null;
     get_it: number;
     want_it: number;
     capacity: number;
+    core_values_scores: Record<string, CoreValueRating> | null;
     notes: string;
     quarter: string;
   }>;
+
+  const seatIds = rows.map((row) => row.seat_id).filter((id): id is string => Boolean(id));
+  const seatTitles = new Map<string, string>();
+  if (seatIds.length > 0) {
+    const { data: seats } = await supabase
+      .from("accountability_seats")
+      .select("id, title")
+      .in("id", seatIds);
+    for (const seat of seats ?? []) {
+      seatTitles.set(seat.id, seat.title);
+    }
+  }
 
   const userIds = rows.flatMap((row) => [row.subject_user_id, row.reviewer_user_id]);
   const resolved = await resolveUserEmails(userIds);
@@ -115,9 +166,12 @@ export async function getPeopleReviewsForOrg(
     id: row.id,
     subjectUserId: row.subject_user_id,
     reviewerUserId: row.reviewer_user_id,
+    seatId: row.seat_id,
+    seatTitle: row.seat_id ? (seatTitles.get(row.seat_id) ?? null) : null,
     getIt: row.get_it,
     wantIt: row.want_it,
     capacity: row.capacity,
+    coreValuesScores: row.core_values_scores ?? {},
     notes: row.notes,
     quarter: row.quarter,
     subjectName:

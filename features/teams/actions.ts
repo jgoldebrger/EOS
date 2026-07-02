@@ -255,6 +255,50 @@ export async function addTeamMember(
   return { success: true };
 }
 
+export async function updateTeamMemberRole(
+  input: unknown,
+): Promise<TeamMemberMutationResult> {
+  const { updateTeamMemberRoleSchema } = await import("@/features/teams/schema");
+  const parsed = updateTeamMemberRoleSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid request",
+    };
+  }
+
+  const { teamId, organizationId, memberId, teamRole } = parsed.data;
+  const access = await assertCanManageTeamMembers(organizationId, teamId);
+
+  if (!access.ok) {
+    return { success: false, error: access.error };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("team_members")
+    .update({ team_role: teamRole })
+    .eq("id", memberId)
+    .eq("team_id", teamId);
+
+  if (error) {
+    return { success: false, error: "Could not update team role" };
+  }
+
+  await logAuditEvent(supabase, {
+    organizationId,
+    actorId: access.userId,
+    action: AUDIT_ACTIONS.UPDATE,
+    entityType: "team_members",
+    entityId: memberId,
+    metadata: { teamRole },
+  });
+
+  await revalidateTeamPeoplePaths(supabase, teamId);
+  return { success: true };
+}
+
 export async function removeTeamMember(
   input: unknown,
 ): Promise<TeamMemberMutationResult> {

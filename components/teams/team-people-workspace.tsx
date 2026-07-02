@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, UserMinus } from "lucide-react";
-import { addTeamMember, removeTeamMember } from "@/features/teams/actions";
+import { addTeamMember, removeTeamMember, updateTeamMemberRole } from "@/features/teams/actions";
 import type { OrgMemberOption, TeamMemberPerson } from "@/features/teams/types";
 import type { TeamRole } from "@/types/domain";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
@@ -93,6 +93,21 @@ export function TeamPeopleWorkspace({
     }
 
     showSuccessToast("Person removed from team");
+    router.refresh();
+  }
+
+  async function handleRoleChange(memberId: string, teamRole: TeamRole) {
+    const result = await updateTeamMemberRole({
+      teamId,
+      organizationId,
+      memberId,
+      teamRole,
+    });
+    if (!result.success) {
+      showErrorToast("Could not update role", result.error);
+      return;
+    }
+    showSuccessToast("Team role updated");
     router.refresh();
   }
 
@@ -188,9 +203,24 @@ export function TeamPeopleWorkspace({
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <Badge variant="secondary" className="capitalize">
-                    {TEAM_ROLE_LABELS[member.teamRole]}
-                  </Badge>
+                  {canManage ? (
+                    <select
+                      className="h-8 rounded-md border px-2 text-xs capitalize"
+                      value={member.teamRole}
+                      onChange={(e) =>
+                        handleRoleChange(member.id, e.target.value as TeamRole)
+                      }
+                      aria-label={`Role for ${member.displayName}`}
+                    >
+                      <option value="leader">Leader</option>
+                      <option value="member">Member</option>
+                      <option value="viewer">Viewer</option>
+                    </select>
+                  ) : (
+                    <Badge variant="secondary" className="capitalize">
+                      {TEAM_ROLE_LABELS[member.teamRole]}
+                    </Badge>
+                  )}
                   {canManage && (
                     <Button
                       type="button"

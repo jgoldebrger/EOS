@@ -33,6 +33,7 @@ export async function createHeadline(input: unknown) {
       body: parsed.data.body ?? "",
       headline_type: parsed.data.headlineType,
       meeting_id: parsed.data.meetingId ?? null,
+      is_cascading: parsed.data.isCascading ?? false,
       created_by: user.id,
     } as never)
     .select("id")
@@ -74,6 +75,9 @@ export async function updateHeadline(input: unknown) {
   if (parsed.data.body !== undefined) updates.body = parsed.data.body;
   if (parsed.data.headlineType !== undefined) {
     updates.headline_type = parsed.data.headlineType;
+  }
+  if (parsed.data.isCascading !== undefined) {
+    updates.is_cascading = parsed.data.isCascading;
   }
 
   const { error } = await supabase

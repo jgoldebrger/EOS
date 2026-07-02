@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronRight, Clock, ShieldCheck } from "lucide-react";
+import { ChevronRight, Clock, ShieldCheck, Users } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -78,6 +78,79 @@ export default async function SettingsPage({
             <p className="text-muted-foreground">
               Contact an organization owner or admin to change workspace settings.
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card data-testid="org-members-settings-link">
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="size-5" />
+              Members
+            </CardTitle>
+            <CardDescription>Roles, invites, and membership.</CardDescription>
+          </div>
+          <ChevronRight className="size-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline">
+            <Link href={`/org/${orgSlug}/settings/members`}>
+              {canEdit ? "Manage members" : "View members"}
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      {canEdit ? (
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div className="space-y-1">
+              <CardTitle>Audit log</CardTitle>
+              <CardDescription>Organization configuration and security events.</CardDescription>
+            </div>
+            <ChevronRight className="size-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline">
+              <Link href={`/org/${orgSlug}/settings/audit`}>View audit log</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle>Members</CardTitle>
+            <CardDescription>Change roles and remove organization members.</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {canEdit ? (
+            <Button asChild variant="outline">
+              <Link href={`/org/${orgSlug}/settings/members`}>Manage members</Link>
+            </Button>
+          ) : (
+            <p className="text-sm text-muted-foreground">Admin access required.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle>Audit log</CardTitle>
+            <CardDescription>Review admin and security-related events.</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {canEdit ? (
+            <Button asChild variant="outline">
+              <Link href={`/org/${orgSlug}/settings/audit`}>View audit log</Link>
+            </Button>
+          ) : (
+            <p className="text-sm text-muted-foreground">Admin access required.</p>
           )}
         </CardContent>
       </Card>

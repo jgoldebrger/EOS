@@ -51,6 +51,22 @@ export default async function CompanyPage({
             </CardHeader>
           </Card>
         </Link>
+        <Link href={`${base}/meetings`}>
+          <Card className="transition-colors hover:bg-muted/50">
+            <CardHeader>
+              <CardTitle>Meetings</CardTitle>
+              <CardDescription>L10 meetings and recaps across teams</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+        <Link href={`${base}/people/analyzer`}>
+          <Card className="transition-colors hover:bg-muted/50">
+            <CardHeader>
+              <CardTitle>People Analyzer</CardTitle>
+              <CardDescription>Right Person / Right Seat quarterly reviews</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
       </div>
     </div>
   );

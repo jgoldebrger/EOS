@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createHeadline } from "@/features/headlines/actions";
 import { EditHeadlineSheet, type HeadlineItem } from "@/components/headlines/edit-headline-sheet";
 import { Button } from "@/components/ui/button";
@@ -31,8 +31,19 @@ export function HeadlinesWorkspace({
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [type, setType] = useState<"customer" | "employee">("customer");
+  const [isCascading, setIsCascading] = useState(false);
+  const [filter, setFilter] = useState<"active" | "cascading" | "archived">("active");
   const [editHeadline, setEditHeadline] = useState<HeadlineItem | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+
+  const visibleHeadlines = useMemo(() => {
+    return headlines.filter((headline) => {
+      if (filter === "archived") return Boolean(headline.archived_at);
+      if (headline.archived_at) return false;
+      if (filter === "cascading") return headline.is_cascading;
+      return true;
+    });
+  }, [headlines, filter]);
 
   async function handleCreate() {
     if (!title.trim()) return;
@@ -43,6 +54,7 @@ export function HeadlinesWorkspace({
       body: body.trim() || undefined,
       headlineType: type,
       meetingId: meetingId ?? null,
+      isCascading,
     });
     if (result.success) {
       setHeadlines([
@@ -51,12 +63,14 @@ export function HeadlinesWorkspace({
           title: title.trim(),
           body: body.trim(),
           headline_type: type,
+          is_cascading: isCascading,
           created_at: new Date().toISOString(),
         },
         ...headlines,
       ]);
       setTitle("");
       setBody("");
+      setIsCascading(false);
     }
   }
 
@@ -66,12 +80,39 @@ export function HeadlinesWorkspace({
   }
 
   return (
-    <div className={variant === "meeting" ? "space-y-4" : "space-y-6"}>
+    <div className={variant === "meeting" ? "space-y-4" : "space-y-6"} data-testid="headlines-workspace">
       {variant === "meeting" ? (
         <p className="text-sm text-muted-foreground">
           Share customer and employee headlines.
         </p>
-      ) : null}
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={filter === "active" ? "default" : "outline"}
+            onClick={() => setFilter("active")}
+          >
+            Active
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={filter === "cascading" ? "default" : "outline"}
+            onClick={() => setFilter("cascading")}
+          >
+            Cascading
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={filter === "archived" ? "default" : "outline"}
+            onClick={() => setFilter("archived")}
+          >
+            Archived
+          </Button>
+        </div>
+      )}
       {canCreate && (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
@@ -91,6 +132,14 @@ export function HeadlinesWorkspace({
               <option value="customer">Customer</option>
               <option value="employee">Employee</option>
             </select>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={isCascading}
+                onChange={(e) => setIsCascading(e.target.checked)}
+              />
+              Cascade
+            </label>
             <Button onClick={handleCreate}>Add headline</Button>
           </div>
           <textarea
@@ -102,7 +151,7 @@ export function HeadlinesWorkspace({
           />
         </div>
       )}
-      {headlines.length === 0 ? (
+      {visibleHeadlines.length === 0 ? (
         <EmptyState
           icon={<Megaphone className="h-6 w-6" />}
           title="No headlines"
@@ -110,15 +159,16 @@ export function HeadlinesWorkspace({
         />
       ) : (
         <div className="space-y-3">
-          {headlines.map((h) => (
+          {visibleHeadlines.map((h) => (
             <Card key={h.id}>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <CardTitle className="text-base">{h.title}</CardTitle>
                     <Badge variant="secondary" className="capitalize">
                       {h.headline_type}
                     </Badge>
+                    {h.is_cascading ? <Badge variant="outline">Cascade</Badge> : null}
                   </div>
                   {canCreate ? (
                     <Button

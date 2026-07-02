@@ -13,6 +13,8 @@ import { MeetingNotesEditor } from "@/components/meetings/meeting-notes-editor";
 import { DecisionsList } from "@/components/meetings/decisions-list";
 import { EndMeetingDialog } from "@/components/meetings/end-meeting-dialog";
 import { MeetingRatingDialog } from "@/components/meetings/meeting-rating-dialog";
+import { SeguePromptCard } from "@/components/meetings/segue-prompt-card";
+import { CascadingMessagesChecklist } from "@/components/meetings/cascading-messages-checklist";
 import { AiSummaryPanel } from "@/components/ai/ai-summary-panel";
 import type { AiSuggestion } from "@/features/ai/schema";
 import {
@@ -20,7 +22,7 @@ import {
   updateActiveSection,
 } from "@/features/meetings/actions";
 import type { MeetingWithNotes } from "@/features/meetings/types";
-import { getL10HubHref, getSectionByKey, getSectionRemainingSeconds, isSectionOvertime, formatTimerDisplay } from "@/features/meetings/utils";
+import { getL10HubHref, getSectionByKey, getSectionRemainingSeconds, isSectionOvertime, formatTimerDisplay, parseCascadingMessageTemplates } from "@/features/meetings/utils";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 
 interface LiveMeetingShellProps {
@@ -31,6 +33,8 @@ interface LiveMeetingShellProps {
   teamSlug?: string;
   sectionPanel?: React.ReactNode;
   pendingSuggestions?: AiSuggestion[];
+  seguePrompts?: string[];
+  cascadingTemplates?: string[];
 }
 
 export function LiveMeetingShell({
@@ -41,6 +45,8 @@ export function LiveMeetingShell({
   teamSlug,
   sectionPanel,
   pendingSuggestions = [],
+  seguePrompts = [],
+  cascadingTemplates = [],
 }: LiveMeetingShellProps) {
   const router = useRouter();
   const meeting = initialMeeting;
@@ -153,6 +159,17 @@ export function LiveMeetingShell({
     activeSectionKey === "conclude" &&
     meeting.status === "in_progress" &&
     !ratingDismissed;
+
+  const meetingMetadata =
+    typeof meeting.metadata === "object" &&
+    meeting.metadata !== null &&
+    !Array.isArray(meeting.metadata)
+      ? (meeting.metadata as Record<string, unknown>)
+      : {};
+
+  const initialCascadingMessages = Array.isArray(meetingMetadata.cascadingMessages)
+    ? (meetingMetadata.cascadingMessages as Array<{ label: string; completed: boolean }>)
+    : undefined;
 
   const handleSelectSection = useCallback(
     (sectionKey: string) => {
@@ -423,6 +440,10 @@ export function LiveMeetingShell({
             </div>
           ) : null}
 
+          {activeSectionKey === "segue" && seguePrompts.length > 0 ? (
+            <SeguePromptCard prompts={seguePrompts} />
+          ) : null}
+
           {sectionPanel ?? (
             <MeetingSectionEmbed
               orgSlug={orgSlug}
@@ -439,6 +460,16 @@ export function LiveMeetingShell({
               sectionKey={activeSectionKey}
               sectionLabel={activeSection?.label ?? activeSectionKey}
               initialContent={noteForSection?.content ?? ""}
+              canEdit={canEdit}
+            />
+          ) : null}
+
+          {activeSectionKey === "conclude" ? (
+            <CascadingMessagesChecklist
+              organizationId={organizationId}
+              meetingId={meeting.id}
+              templates={cascadingTemplates.length > 0 ? cascadingTemplates : parseCascadingMessageTemplates(null)}
+              initialMessages={initialCascadingMessages}
               canEdit={canEdit}
             />
           ) : null}

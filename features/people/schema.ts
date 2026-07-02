@@ -59,6 +59,8 @@ export type CreateOrgUserAccountInput = z.infer<typeof createOrgUserAccountSchem
 
 const gwcScoreSchema = z.number().int().min(1).max(5);
 
+const coreValueRatingSchema = z.enum(["+", "+/-", "-"]);
+
 export const upsertPeopleReviewSchema = z.object({
   organizationId: z.string().uuid(),
   subjectUserId: z.string().uuid(),
@@ -67,8 +69,22 @@ export const upsertPeopleReviewSchema = z.object({
   getIt: gwcScoreSchema,
   wantIt: gwcScoreSchema,
   capacity: gwcScoreSchema,
+  coreValuesScores: z.record(z.string(), coreValueRatingSchema).optional(),
   notes: z.string().max(2000).optional(),
   quarter: z.string().min(1).max(20),
 });
 
 export type UpsertPeopleReviewInput = z.infer<typeof upsertPeopleReviewSchema>;
+
+export const updateOrgMemberRoleSchema = z.object({
+  organizationId: z.string().uuid(),
+  orgSlug: z.string().trim().min(1),
+  userId: z.string().uuid(),
+  orgRole: z.enum(["admin", "member", "viewer"]),
+});
+
+export const removeOrgMemberSchema = z.object({
+  organizationId: z.string().uuid(),
+  orgSlug: z.string().trim().min(1),
+  userId: z.string().uuid(),
+});

@@ -3,6 +3,7 @@ import { UserRound } from "lucide-react";
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
 import { getCurrentUserProfile } from "@/features/profile/queries";
 import { ProfileForm } from "@/components/profile/profile-form";
+import { NotificationPreferencesForm } from "@/components/profile/notification-preferences-form";
 import {
   Card,
   CardContent,
@@ -45,6 +46,21 @@ export default async function ProfilePage({
         </CardHeader>
         <CardContent>
           <ProfileForm orgSlug={orgSlug} profile={profile} />
+        </CardContent>
+      </Card>
+
+      <Card data-testid="notification-preferences-card">
+        <CardHeader>
+          <CardTitle>Notifications</CardTitle>
+          <CardDescription>
+            Choose which email notifications you receive (in-app inbox always on).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <NotificationPreferencesForm
+            orgSlug={orgSlug}
+            preferences={profile.notificationPreferences}
+          />
         </CardContent>
       </Card>
     </div>

@@ -412,7 +412,7 @@ class Parser {
   }
 
   private parseComparison(): FormulaAst | { error: string } {
-    let left = this.parseTerm();
+    const left = this.parseTerm();
     if ("error" in left) {
       return left;
     }

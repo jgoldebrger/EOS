@@ -1,5 +1,5 @@
-import { DashboardSummaryCards } from "@/components/dashboard/dashboard-summary-cards";
-import { getDashboardSummary } from "@/features/dashboard/queries";
+import { HomeDashboard } from "@/components/dashboard/home-dashboard";
+import { getHomeDashboardData } from "@/features/dashboard/queries";
 import { getOrganizationBySlug } from "@/features/organizations/queries";
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
 import { requireUser } from "@/lib/auth/require-user";
@@ -12,9 +12,9 @@ export default async function HomePage({
 }) {
   const { orgSlug } = await params;
   const [access, user] = await Promise.all([requireOrgAccess(orgSlug), requireUser()]);
-  const [org, summary] = await Promise.all([
+  const [org, dashboard] = await Promise.all([
     getOrganizationBySlug(orgSlug),
-    getDashboardSummary(access.orgId, user.id),
+    getHomeDashboardData(access.orgId, user.id, orgSlug),
   ]);
 
   return (
@@ -27,10 +27,10 @@ export default async function HomePage({
           {org?.name ?? "Home"}
         </h1>
         <p className="max-w-2xl text-muted-foreground">
-          Your operating system home — scorecard, rocks, issues, and team workspaces.
+          Your operating system home — my work, team pulse, and company health.
         </p>
       </div>
-      <DashboardSummaryCards orgSlug={orgSlug} summary={summary} />
+      <HomeDashboard orgSlug={orgSlug} data={dashboard} />
     </div>
   );
 }

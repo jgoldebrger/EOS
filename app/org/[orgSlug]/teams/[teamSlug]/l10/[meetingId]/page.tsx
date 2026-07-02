@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { LiveMeetingShell } from "@/components/meetings/live-meeting-shell";
 import { L10SectionPanel } from "@/components/meetings/l10-section-panel";
 import { getPendingSuggestions } from "@/features/ai/queries";
-import { getMeetingById } from "@/features/meetings/queries";
+import { getMeetingById, getOrgCascadingTemplates, getOrgSeguePrompts } from "@/features/meetings/queries";
 import { getFirstSectionKey } from "@/features/meetings/utils";
 import { getTeamPageContext } from "@/lib/team-page-context";
 import { canEditResource } from "@/lib/permissions/checks";
@@ -14,9 +14,11 @@ export default async function TeamL10MeetingPage({
 }) {
   const { orgSlug, teamSlug, meetingId } = await params;
   const ctx = await getTeamPageContext(orgSlug, teamSlug);
-  const [meeting, pendingSuggestions] = await Promise.all([
+  const [meeting, pendingSuggestions, seguePrompts, cascadingTemplates] = await Promise.all([
     getMeetingById(ctx.orgId, meetingId),
     getPendingSuggestions({ organizationId: ctx.orgId, meetingId }),
+    getOrgSeguePrompts(ctx.orgId),
+    getOrgCascadingTemplates(ctx.orgId),
   ]);
 
   if (!meeting || meeting.team_id !== ctx.teamId) {
@@ -37,6 +39,8 @@ export default async function TeamL10MeetingPage({
         meeting={meeting}
         canEdit={canEdit}
         pendingSuggestions={pendingSuggestions}
+        seguePrompts={seguePrompts}
+        cascadingTemplates={cascadingTemplates}
         sectionPanel={
           <L10SectionPanel
             sectionKey={sectionKey}

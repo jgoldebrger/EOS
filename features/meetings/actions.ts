@@ -674,3 +674,103 @@ export async function saveMeetingRating(input: unknown): Promise<MeetingActionRe
 
   return { success: true };
 }
+
+export async function saveCascadingMessages(input: unknown): Promise<MeetingActionResult> {
+  const { saveCascadingMessagesSchema } = await import("@/features/meetings/schema");
+  const parsed = saveCascadingMessagesSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid cascading messages" };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  if (!canEditMeetings(actor.orgRole)) {
+    return { success: false, error: "Permission denied" };
+  }
+
+  const { data: meeting } = await actor.supabase
+    .from("meetings")
+    .select("metadata")
+    .eq("id", parsed.data.meetingId)
+    .eq("organization_id", parsed.data.organizationId)
+    .maybeSingle();
+
+  if (!meeting) {
+    return { success: false, error: "Meeting not found" };
+  }
+
+  const meetingRow = meeting as unknown as { metadata?: unknown };
+  const existingMetadata =
+    typeof meetingRow.metadata === "object" &&
+    meetingRow.metadata !== null &&
+    !Array.isArray(meetingRow.metadata)
+      ? (meetingRow.metadata as Record<string, unknown>)
+      : {};
+
+  const { error } = await actor.supabase
+    .from("meetings")
+    .update({
+      metadata: {
+        ...existingMetadata,
+        cascadingMessages: parsed.data.messages,
+      } as Json,
+    } as { metadata: Json })
+    .eq("id", parsed.data.meetingId)
+    .eq("organization_id", parsed.data.organizationId);
+
+  if (error) {
+    return { success: false, error: "Could not save cascading messages" };
+  }
+
+  const orgSlug = await getOrgSlug(actor.supabase, parsed.data.organizationId);
+  if (orgSlug) {
+    await revalidateMeetings(orgSlug, parsed.data.meetingId);
+  }
+
+  return { success: true };
+}
+
+export async function updateSeguePrompts(input: unknown): Promise<MeetingActionResult> {
+  const { updateSeguePromptsSchema } = await import("@/features/meetings/schema");
+  const parsed = updateSeguePromptsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid prompts" };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  if (!canManageOrg(actor.orgRole)) {
+    return { success: false, error: "Only admins can edit segue prompts" };
+  }
+
+  const { data: org } = await actor.supabase
+    .from("organizations")
+    .select("settings")
+    .eq("id", parsed.data.organizationId)
+    .maybeSingle();
+
+  const currentSettings =
+    typeof org?.settings === "object" && org?.settings !== null && !Array.isArray(org.settings)
+      ? (org.settings as Record<string, unknown>)
+      : {};
+
+  const { error } = await actor.supabase
+    .from("organizations")
+    .update({
+      settings: { ...currentSettings, l10SeguePrompts: parsed.data.prompts } as Json,
+    })
+    .eq("id", parsed.data.organizationId);
+
+  if (error) {
+    return { success: false, error: "Could not save prompts" };
+  }
+
+  await revalidateMeetings(parsed.data.orgSlug);
+  return { success: true };
+}

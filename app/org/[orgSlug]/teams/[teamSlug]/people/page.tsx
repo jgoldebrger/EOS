@@ -3,7 +3,8 @@ import {
   getOrgMembersAvailableForTeam,
   getTeamMembers,
 } from "@/features/teams/queries";
-import { getPeopleReviewsForTeam } from "@/features/people/queries";
+import { getCoreValuesForOrg, getPeopleReviewsForTeam } from "@/features/people/queries";
+import { getSeatsForOrg } from "@/features/accountability/queries";
 import { PeopleAnalyzer } from "@/components/people/people-analyzer";
 import { TeamPeopleWorkspace } from "@/components/teams/team-people-workspace";
 import { getCurrentQuarter } from "@/features/rocks/utils";
@@ -24,16 +25,18 @@ export default async function TeamPeoplePage({
 
   const quarter = getCurrentQuarter();
 
-  const [members, availablePeople, reviews] = await Promise.all([
+  const [members, availablePeople, reviews, coreValues, seats] = await Promise.all([
     getTeamMembers(access.teamId),
     getOrgMembersAvailableForTeam(access.orgId, access.teamId),
     getPeopleReviewsForTeam(access.orgId, access.teamId, quarter),
+    getCoreValuesForOrg(access.orgId),
+    getSeatsForOrg(access.orgId),
   ]);
 
   const canManage = canManageTeam(access.role, access.teamRole);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 p-8">
+    <div className="mx-auto max-w-4xl space-y-8 p-8">
       <TeamPeopleWorkspace
         teamId={access.teamId}
         organizationId={access.orgId}
@@ -42,7 +45,7 @@ export default async function TeamPeoplePage({
         canManage={canManage}
       />
       <div className="space-y-4 border-t pt-8">
-        <h2 className="text-lg font-medium">People Analyzer (GWC)</h2>
+        <h2 className="text-lg font-medium">People Analyzer</h2>
         <PeopleAnalyzer
           organizationId={access.orgId}
           people={members.map((member) => ({
@@ -51,8 +54,16 @@ export default async function TeamPeoplePage({
             reportsToUserId: null,
             displayName: member.displayName,
             managerName: null,
+            seatTitle:
+              seats.find((seat) => seat.assigned_user_id === member.userId)?.title ?? null,
           }))}
           reviews={reviews}
+          coreValues={coreValues}
+          seats={seats.map((seat) => ({
+            id: seat.id,
+            title: seat.title,
+            assignedUserId: seat.assigned_user_id,
+          }))}
           canReview={canManage}
           currentUserId={user?.id ?? ""}
         />
