@@ -1,9 +1,9 @@
 "use client";
 
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, type Resolver } from "react-hook-form";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { Plus } from "lucide-react";
 import { createMetric } from "@/features/scorecard/actions";
 import { createMetricSchema, type CreateMetricInput } from "@/features/scorecard/schema";
@@ -135,29 +135,31 @@ export function CreateMetricDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [localCategories, setLocalCategories] = useState(categories);
-  const [localTags, setLocalTags] = useState(tags);
+  const [addedCategories, setAddedCategories] = useState<ScorecardCategory[]>([]);
+  const localCategories = useMemo(() => {
+    const byId = new Map(categories.map((category) => [category.id, category]));
+    for (const category of addedCategories) {
+      if (!byId.has(category.id)) {
+        byId.set(category.id, category);
+      }
+    }
+    return [...byId.values()];
+  }, [categories, addedCategories]);
+  const [tagOverrides, setTagOverrides] = useState<ScorecardTag[] | null>(null);
+  const localTags = tagOverrides ?? tags;
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    setLocalCategories(categories);
-  }, [categories]);
-
-  useEffect(() => {
-    setLocalTags(tags);
-  }, [tags]);
 
   const form = useForm<CreateMetricInput>({
     resolver: zodResolver(createMetricSchema) as Resolver<CreateMetricInput>,
     defaultValues: getDefaultValues(organizationId, defaultOwnerId, defaultTeamId),
   });
 
-  const valueType = form.watch("valueType");
-  const timeKind = form.watch("timeKind");
-  const targetOperator = form.watch("targetOperator");
-  const entryCadence = form.watch("entryCadence");
-  const datasource = form.watch("datasource");
-  const teamId = form.watch("teamId");
+  const valueType = useWatch({ control: form.control, name: "valueType" });
+  const timeKind = useWatch({ control: form.control, name: "timeKind" });
+  const targetOperator = useWatch({ control: form.control, name: "targetOperator" });
+  const entryCadence = useWatch({ control: form.control, name: "entryCadence" });
+  const datasource = useWatch({ control: form.control, name: "datasource" });
+  const teamId = useWatch({ control: form.control, name: "teamId" });
 
   function applyClockTimeDefaults() {
     form.setValue("targetOperator", "<=");
@@ -166,7 +168,7 @@ export function CreateMetricDialog({
   }
 
   const teamName =
-    teams.find((team) => team.id === (form.watch("teamId") ?? defaultTeamId))?.name ??
+    teams.find((team) => team.id === (teamId ?? defaultTeamId))?.name ??
     "Organization-wide";
 
   async function onSubmit(values: CreateMetricInput) {
@@ -671,7 +673,7 @@ export function CreateMetricDialog({
                           teamId={teamId ?? defaultTeamId}
                           teamSlug={teamSlug}
                           onCreated={(category) => {
-                            setLocalCategories((prev) => [...prev, category]);
+                            setAddedCategories((prev) => [...prev, category]);
                             field.onChange(category.id);
                           }}
                           trigger={
@@ -698,7 +700,7 @@ export function CreateMetricDialog({
                     tags={localTags}
                     selectedTagIds={selectedTagIds}
                     onChange={setSelectedTagIds}
-                    onTagsChange={setLocalTags}
+                    onTagsChange={setTagOverrides}
                   />
                 </div>
 

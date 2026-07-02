@@ -68,7 +68,7 @@ function resolveMappedRole(
   return resolved;
 }
 
-export default {
+const handler = {
   fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
     if (req.method !== "POST") {
       return jsonResponse({ error: "invalid_input", success: false }, 405);
@@ -169,3 +169,5 @@ export default {
     return jsonResponse({ success: true, orgSlug: org.slug });
   }),
 };
+
+export default handler;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, Pencil } from "lucide-react";
 import {
@@ -134,24 +134,21 @@ function MetricDetailContent({
 }: MetricDetailContentProps) {
   const router = useRouter();
   const { metric, weeks } = row;
-  const [localCategories, setLocalCategories] = useState(categories);
-  const [localTags, setLocalTags] = useState(tags);
+  const [addedCategories, setAddedCategories] = useState<ScorecardCategory[]>([]);
+  const localCategories = useMemo(() => {
+    const byId = new Map(categories.map((category) => [category.id, category]));
+    for (const category of addedCategories) {
+      if (!byId.has(category.id)) {
+        byId.set(category.id, category);
+      }
+    }
+    return [...byId.values()];
+  }, [categories, addedCategories]);
+  const [tagOverrides, setTagOverrides] = useState<ScorecardTag[] | null>(null);
+  const localTags = tagOverrides ?? tags;
   const [draftTagIds, setDraftTagIds] = useState(metric.tags.map((tag) => tag.id));
-
-  useEffect(() => {
-    setLocalCategories(categories);
-  }, [categories]);
-
-  useEffect(() => {
-    setLocalTags(tags);
-  }, [tags]);
-
-  useEffect(() => {
-    setDraftTagIds(metric.tags.map((tag) => tag.id));
-  }, [metric.id, metric.tags]);
   const valueType = (metric.value_type ?? "number") as ValueType;
   const timeKind = getTimeKind(metric);
-  const isTime = valueType === "time";
 
   const [name, setName] = useState(metric.name);
   const [description, setDescription] = useState(metric.description ?? "");
@@ -194,17 +191,19 @@ function MetricDetailContent({
   const [draftFormula, setDraftFormula] = useState(metric.formula ?? "");
   const [formulaBrokenRefs, setFormulaBrokenRefs] = useState<FormulaBrokenRef[]>([]);
   const [applyTargetToPastEntries, setApplyTargetToPastEntries] = useState(false);
+  const shouldCheckFormula =
+    metric.datasource === "formula" && !!metric.formula?.trim();
+  const displayedFormulaBrokenRefs = shouldCheckFormula ? formulaBrokenRefs : [];
 
   useEffect(() => {
-    if (metric.datasource !== "formula" || !metric.formula?.trim()) {
-      setFormulaBrokenRefs([]);
+    if (!shouldCheckFormula) {
       return;
     }
 
     let cancelled = false;
     void findBrokenFormulaReferences({
       organizationId,
-      formula: metric.formula,
+      formula: metric.formula!,
     }).then((refs) => {
       if (!cancelled) {
         setFormulaBrokenRefs(refs);
@@ -214,7 +213,7 @@ function MetricDetailContent({
     return () => {
       cancelled = true;
     };
-  }, [organizationId, metric.datasource, metric.formula]);
+  }, [organizationId, shouldCheckFormula, metric.formula]);
 
   const entries = [...weeks].reverse();
 
@@ -805,9 +804,9 @@ function MetricDetailContent({
                       metric.formula_tokens as import("@/features/scorecard/formula").FormulaMetricToken[] | null,
                     ) || "—"}
                   </p>
-                  {formulaBrokenRefs.length > 0 ? (
+                  {displayedFormulaBrokenRefs.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5 pt-1">
-                      {formulaBrokenRefs.map((ref) => (
+                      {displayedFormulaBrokenRefs.map((ref) => (
                         <Badge
                           key={`${ref.organizationId}:${ref.metricId}`}
                           variant="outline"
@@ -848,7 +847,7 @@ function MetricDetailContent({
                   teamId={metric.team_id ?? undefined}
                   teamSlug={teamSlug}
                   onCreated={(category) => {
-                    setLocalCategories((prev) => [...prev, category]);
+                    setAddedCategories((prev) => [...prev, category]);
                     setDraftCategoryId(category.id);
                     saveMetric({
                       organizationId,
@@ -885,7 +884,7 @@ function MetricDetailContent({
                 tags={localTags}
                 selectedTagIds={draftTagIds}
                 onChange={handleSaveTags}
-                onTagsChange={setLocalTags}
+                onTagsChange={setTagOverrides}
               />
             ) : (
               <TagBadges tags={metric.tags} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   clockTimeToInput,
   minutesToTimeInput,
@@ -31,10 +31,14 @@ export function TimeValueInput({
   const parseInput = timeKind === "clock" ? parseClockTimeInput : parseDurationTimeInput;
 
   const [draft, setDraft] = useState(() => toInput(value));
+  const [prevValue, setPrevValue] = useState(value);
+  const [prevTimeKind, setPrevTimeKind] = useState(timeKind);
 
-  useEffect(() => {
+  if (value !== prevValue || timeKind !== prevTimeKind) {
+    setPrevValue(value);
+    setPrevTimeKind(timeKind);
     setDraft(toInput(value));
-  }, [value, timeKind]);
+  }
 
   function commitDraft(nextDraft: string = draft) {
     const trimmed = nextDraft.trim();

@@ -86,16 +86,6 @@ export const saveMeetingRatingSchema = z.object({
   rating: z.number().int().min(1).max(10),
 });
 
-const l10SectionKeySchema = z.enum([
-  "segue",
-  "scorecard",
-  "rocks",
-  "headlines",
-  "todos",
-  "issues",
-  "conclude",
-]);
-
 export const l10AgendaDurationsSchema = z.object({
   organizationId: z.string().uuid("Invalid organization"),
   orgSlug: z.string().min(1, "Invalid organization slug"),

@@ -25,7 +25,7 @@ const inputSchema = z.object({
   ),
 });
 
-export default {
+const handler = {
   fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
     if (req.method !== "POST") {
       return jsonResponse({ error: "method_not_allowed", success: false }, 405);
@@ -92,3 +92,5 @@ export default {
     }
   }),
 };
+
+export default handler;

@@ -6,14 +6,12 @@ import { after } from "next/server";
 import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import {
   createMetricActionSchema,
-  createMetricSchema,
   createScorecardCategorySchema,
   createTagSchema,
   normalizeMetricInput,
   reorderMetricsSchema,
   setMetricTagsSchema,
   updateMetricActionSchema,
-  updateMetricSchema,
   upsertValueSchema,
 } from "@/features/scorecard/schema";
 import type {
@@ -32,7 +30,6 @@ import {
   metricRefKey,
   parseFormula,
   parseFormulaTokens,
-  parseMetricRefsFromFormula,
   type FormulaMetricToken,
   type MetricRef,
 } from "@/features/scorecard/formula";

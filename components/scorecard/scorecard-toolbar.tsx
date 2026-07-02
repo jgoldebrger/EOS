@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Download, Bookmark } from "lucide-react";
 import type { PeriodType } from "@/features/scorecard/utils";
-import type { ScorecardCategory, ScorecardTag } from "@/features/scorecard/types";
+import type { ScorecardCategory } from "@/features/scorecard/types";
 import { CreateCategoryDialog } from "@/components/scorecard/create-category-dialog";
 import { CreateTagDialog } from "@/components/scorecard/create-tag-dialog";
 import { Button } from "@/components/ui/button";

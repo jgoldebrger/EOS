@@ -1,7 +1,6 @@
 import type {
   ProjectCycleStatusDb,
   ProjectDisplayTypeDb,
-  ProjectPageContentFormatDb,
   ProjectPriorityDb,
   ProjectStatusDb,
   ProjectWorkItemStateDb,

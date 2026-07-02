@@ -5,12 +5,6 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  {
-    rules: {
-      // Pre-existing controlled sync patterns; avoid failing CI on legacy effects.
-      "react-hooks/set-state-in-effect": "warn",
-    },
-  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

@@ -9,7 +9,6 @@ import {
   evaluateMetricForRow,
   getDatesInWeek,
   getLastNWeeks,
-  getPeriodColumns,
   rollupDailyValues,
   type PeriodType,
   type RollupMethod,
@@ -917,7 +916,7 @@ function buildPeriodValuesForDate(
 ): Map<string, number | null> {
   const periodValues = new Map<string, number | null>(computedValues);
 
-  for (const [metricId, cells] of Object.entries(result)) {
+  for (const metricId of Object.keys(result)) {
     const metric = metricMap.get(metricId);
     if (!metric?.organization_id) {
       continue;

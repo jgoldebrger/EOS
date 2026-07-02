@@ -15,7 +15,7 @@ const inputSchema = z.object({
   minutes: z.array(z.number().int().min(5).max(120)),
 });
 
-export default {
+const handler = {
   fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
     if (req.method !== "POST") {
       return jsonResponse({ error: "method_not_allowed", success: false }, 405);
@@ -113,3 +113,5 @@ export default {
     }
   }),
 };
+
+export default handler;

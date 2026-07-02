@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -75,13 +75,9 @@ export function L10Hub({
   inProgressMeeting,
 }: L10HubProps) {
   const searchParams = useSearchParams();
-  const [createOpen, setCreateOpen] = useState(false);
-
-  useEffect(() => {
-    if (searchParams.get("create") === "meeting") {
-      setCreateOpen(true);
-    }
-  }, [searchParams]);
+  const [createOpen, setCreateOpen] = useState(
+    () => searchParams.get("create") === "meeting",
+  );
 
   const upcoming = meetings.filter((m) => isUpcomingMeeting(m.status));
   const past = meetings.filter((m) => !isUpcomingMeeting(m.status));

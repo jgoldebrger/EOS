@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -40,17 +40,17 @@ export function CreateL10MeetingButton({
   triggerLabel = "Start L10",
 }: CreateL10MeetingButtonProps) {
   const router = useRouter();
-  const [open, setOpen] = useState(defaultOpen);
+  const isControlled = onOpenChange !== undefined;
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const open = isControlled ? defaultOpen : uncontrolledOpen;
   const [title, setTitle] = useState("L10 Meeting");
   const [teamId, setTeamId] = useState<string>(fixedTeamId ?? "");
   const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    setOpen(defaultOpen);
-  }, [defaultOpen]);
-
   function handleOpenChange(next: boolean) {
-    setOpen(next);
+    if (!isControlled) {
+      setUncontrolledOpen(next);
+    }
     onOpenChange?.(next);
   }
 

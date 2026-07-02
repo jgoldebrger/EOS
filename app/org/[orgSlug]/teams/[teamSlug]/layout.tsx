@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import { requireTeamAccess } from "@/lib/auth/require-team-access";
 import { TeamWorkspaceShell } from "@/components/layout/team-workspace-shell";
 

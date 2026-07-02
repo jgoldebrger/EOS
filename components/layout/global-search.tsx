@@ -53,8 +53,6 @@ export function GlobalSearch() {
 
   useEffect(() => {
     if (!open || query.trim().length < 2) {
-      setProjectResults({ projects: [], workItems: [] });
-      setTransportResults([]);
       return;
     }
 
@@ -72,6 +70,12 @@ export function GlobalSearch() {
 
     return () => window.clearTimeout(handle);
   }, [open, query, orgId]);
+
+  const shouldSearch = open && query.trim().length >= 2;
+  const displayedProjectResults = shouldSearch
+    ? projectResults
+    : { projects: [], workItems: [] };
+  const displayedTransportResults = shouldSearch ? transportResults : [];
 
   const filtered = QUICK_LINKS.filter((link) =>
     link.label.toLowerCase().includes(query.toLowerCase()),
@@ -91,13 +95,13 @@ export function GlobalSearch() {
           autoFocus
         />
         <div className="max-h-64 space-y-3 overflow-y-auto pt-2">
-          {projectResults.projects.length > 0 && (
+          {displayedProjectResults.projects.length > 0 && (
             <div>
               <p className="mb-1 px-3 text-xs font-medium text-muted-foreground">
                 Projects
               </p>
               <ul className="space-y-1">
-                {projectResults.projects.map((project) => (
+                {displayedProjectResults.projects.map((project) => (
                   <li key={project.id}>
                     <button
                       type="button"
@@ -116,13 +120,13 @@ export function GlobalSearch() {
               </ul>
             </div>
           )}
-          {transportResults.length > 0 && (
+          {displayedTransportResults.length > 0 && (
             <div>
               <p className="mb-1 px-3 text-xs font-medium text-muted-foreground">
                 Loads
               </p>
               <ul className="space-y-1">
-                {transportResults.map((load) => (
+                {displayedTransportResults.map((load) => (
                   <li key={load.id}>
                     <button
                       type="button"
@@ -142,13 +146,13 @@ export function GlobalSearch() {
               </ul>
             </div>
           )}
-          {projectResults.workItems.length > 0 && (
+          {displayedProjectResults.workItems.length > 0 && (
             <div>
               <p className="mb-1 px-3 text-xs font-medium text-muted-foreground">
                 Work items
               </p>
               <ul className="space-y-1">
-                {projectResults.workItems.map((item) => (
+                {displayedProjectResults.workItems.map((item) => (
                   <li key={item.id}>
                     <button
                       type="button"

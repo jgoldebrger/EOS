@@ -10,7 +10,6 @@ import {
 } from "@/features/projects/actions";
 import type { ProjectDetail } from "@/features/projects/types";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ProjectLinksPanelProps {

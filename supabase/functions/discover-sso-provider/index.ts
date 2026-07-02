@@ -33,7 +33,7 @@ function normalizeDomain(input: string): string {
   return trimmed.replace(/^\.+|\.+$/g, "");
 }
 
-export default {
+const handler = {
   fetch: withSupabase({ auth: "publishable" }, async (req, ctx) => {
     if (req.method !== "POST") {
       return jsonResponse({ error: "invalid_input" }, 405);
@@ -100,3 +100,5 @@ export default {
     });
   }),
 };
+
+export default handler;

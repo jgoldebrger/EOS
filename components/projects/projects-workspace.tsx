@@ -42,21 +42,21 @@ export function ProjectsWorkspace({
 }: ProjectsWorkspaceProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [createOpen, setCreateOpen] = useState(false);
-  const [filters, setFilters] = useState<ProjectFilters>({});
-  const [isRestoring, startRestore] = useTransition();
-
   const canCreate =
     orgRole === "owner" || orgRole === "admin" || orgRole === "member";
   const canEdit =
     orgRole === "owner" || orgRole === "admin" || orgRole === "member";
+  const wantsCreateProject =
+    searchParams.get("create") === "project" && canCreate;
+  const [createOpen, setCreateOpen] = useState(wantsCreateProject);
+  const [filters, setFilters] = useState<ProjectFilters>({});
+  const [isRestoring, startRestore] = useTransition();
 
   useEffect(() => {
-    if (searchParams.get("create") === "project" && canCreate) {
-      setCreateOpen(true);
+    if (wantsCreateProject) {
       router.replace(`/org/${orgSlug}/projects`, { scroll: false });
     }
-  }, [searchParams, canCreate, orgSlug, router]);
+  }, [wantsCreateProject, orgSlug, router]);
 
   function toggleArchived() {
     const next = !showArchived;

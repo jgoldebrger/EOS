@@ -7,7 +7,6 @@ import {
   formatDisplayTarget,
   formatDisplayTargetFromOperator,
   formatMetricValue,
-  parseTimeInput,
   parseDurationTimeInput,
   parseClockTimeInput,
   minutesToTimeInput,

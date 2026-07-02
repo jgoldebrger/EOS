@@ -41,9 +41,18 @@ function formatVersionDate(value: string): string {
   });
 }
 
-export function SopVersionPanel({
-  open,
-  onOpenChange,
+interface SopVersionListProps {
+  pageId: string;
+  organizationId: string;
+  orgSlug: string;
+  teamId: string | null;
+  teamSlug?: string;
+  readOnly: boolean;
+  onRestored: (document: SopDocument) => void;
+  onClose: () => void;
+}
+
+function SopVersionList({
   pageId,
   organizationId,
   orgSlug,
@@ -51,18 +60,15 @@ export function SopVersionPanel({
   teamSlug,
   readOnly,
   onRestored,
-}: SopVersionPanelProps) {
+  onClose,
+}: SopVersionListProps) {
   const [versions, setVersions] = useState<ProcessPageVersionListItem[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    if (!open) return;
-
     let cancelled = false;
-    setIsLoading(true);
-    setLoadError(null);
 
     void listProcessPageVersions({
       processPageId: pageId,
@@ -81,7 +87,7 @@ export function SopVersionPanel({
     return () => {
       cancelled = true;
     };
-  }, [open, organizationId, pageId]);
+  }, [organizationId, pageId]);
 
   function handleRestore(versionId: string) {
     if (readOnly) return;
@@ -106,10 +112,78 @@ export function SopVersionPanel({
       }
 
       showSuccessToast("Version restored");
-      onOpenChange(false);
+      onClose();
     });
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        Loading versions…
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return <p className="text-sm text-destructive">{loadError}</p>;
+  }
+
+  if (versions.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No saved versions yet. Versions are created when you save changes.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      {versions.map((version) => (
+        <div
+          key={version.id}
+          className="flex items-start justify-between gap-3 rounded-lg border p-3"
+        >
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">v{version.version_number}</Badge>
+              <span className="text-sm font-medium">
+                {formatVersionDate(version.created_at)}
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {version.note ?? "Saved version"}
+            </p>
+          </div>
+          {!readOnly ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isPending}
+              onClick={() => handleRestore(version.id)}
+            >
+              <RotateCcw className="mr-2 size-4" />
+              Restore
+            </Button>
+          ) : null}
+        </div>
+      ))}
+    </>
+  );
+}
+
+export function SopVersionPanel({
+  open,
+  onOpenChange,
+  pageId,
+  organizationId,
+  orgSlug,
+  teamId,
+  teamSlug,
+  readOnly,
+  onRestored,
+}: SopVersionPanelProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-md" data-testid="sop-version-panel">
@@ -124,49 +198,19 @@ export function SopVersionPanel({
         </SheetHeader>
 
         <div className="mt-6 space-y-3">
-          {isLoading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Loading versions…
-            </div>
-          ) : loadError ? (
-            <p className="text-sm text-destructive">{loadError}</p>
-          ) : versions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No saved versions yet. Versions are created when you save changes.
-            </p>
-          ) : (
-            versions.map((version) => (
-              <div
-                key={version.id}
-                className="flex items-start justify-between gap-3 rounded-lg border p-3"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">v{version.version_number}</Badge>
-                    <span className="text-sm font-medium">
-                      {formatVersionDate(version.created_at)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {version.note ?? "Saved version"}
-                  </p>
-                </div>
-                {!readOnly ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isPending}
-                    onClick={() => handleRestore(version.id)}
-                  >
-                    <RotateCcw className="mr-2 size-4" />
-                    Restore
-                  </Button>
-                ) : null}
-              </div>
-            ))
-          )}
+          {open ? (
+            <SopVersionList
+              key={pageId}
+              pageId={pageId}
+              organizationId={organizationId}
+              orgSlug={orgSlug}
+              teamId={teamId}
+              teamSlug={teamSlug}
+              readOnly={readOnly}
+              onRestored={onRestored}
+              onClose={() => onOpenChange(false)}
+            />
+          ) : null}
         </div>
       </SheetContent>
     </Sheet>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   previewFormula,
   resolveFormulaMetricLabels,
@@ -100,8 +100,14 @@ export function FormulaMetricInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const isFocusedRef = useRef(false);
   const resolvedRefsRef = useRef(new Set<string>());
-  const [labelToToken, setLabelToToken] = useState(() =>
-    buildLabelToTokenMap(formulaTokens),
+  const propLabelMap = useMemo(
+    () => buildLabelToTokenMap(formulaTokens),
+    [formulaTokens],
+  );
+  const [extraLabelMap, setExtraLabelMap] = useState(() => new Map<string, string>());
+  const labelToToken = useMemo(
+    () => mergeLabelMaps(propLabelMap, extraLabelMap),
+    [propLabelMap, extraLabelMap],
   );
   const [displayValue, setDisplayValue] = useState(() =>
     formatFormulaForDisplay(value, formulaTokens),
@@ -116,12 +122,6 @@ export function FormulaMetricInput({
     },
     [],
   );
-
-  useEffect(() => {
-    setLabelToToken((current) =>
-      mergeLabelMaps(buildLabelToTokenMap(formulaTokens), current),
-    );
-  }, [formulaTokens]);
 
   useEffect(() => {
     if (isFocusedRef.current) {
@@ -158,7 +158,7 @@ export function FormulaMetricInput({
           );
         }
 
-        setLabelToToken((current) =>
+        setExtraLabelMap((current) =>
           mergeLabelMaps(current, buildLabelToTokenMap(resolved)),
         );
       },
@@ -189,12 +189,10 @@ export function FormulaMetricInput({
     return () => window.clearTimeout(handle);
   }, [organizationId, teamId, open, query]);
 
+  const trimmedValue = value.trim();
+
   useEffect(() => {
-    if (!value.trim()) {
-      setPreviewValue(undefined);
-      setPreviewPeriod(null);
-      setPreviewError(null);
-      setBrokenRefs([]);
+    if (!trimmedValue) {
       return;
     }
 
@@ -215,7 +213,7 @@ export function FormulaMetricInput({
     }, 300);
 
     return () => window.clearTimeout(handle);
-  }, [organizationId, value]);
+  }, [organizationId, trimmedValue, value]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -234,9 +232,9 @@ export function FormulaMetricInput({
   }
 
   function insertMetric(result: FormulaMetricSearchResult) {
-    const nextLabelMap = new Map(labelToToken);
+    const nextLabelMap = new Map(extraLabelMap);
     nextLabelMap.set(result.label, result.token);
-    setLabelToToken(nextLabelMap);
+    setExtraLabelMap(nextLabelMap);
 
     const displayLabel = wrapFormulaDisplayLabel(result.label);
     const nextDisplay = displayValue.trim()
@@ -255,6 +253,12 @@ export function FormulaMetricInput({
         ? "—"
         : null
       : formatMetricValue(previewValue, valueType, resolvedTimeKind);
+
+  const displayedBrokenRefs = trimmedValue ? brokenRefs : [];
+  const displayedPreviewValue = trimmedValue ? previewValue : undefined;
+  const displayedPreviewPeriod = trimmedValue ? previewPeriod : null;
+  const displayedPreviewError = trimmedValue ? previewError : null;
+  const isPreviewLoading = trimmedValue && isPreviewPending;
 
   const suggestedResults = results.filter(
     (result) => result.suggested || result.sameTeam || result.directReport,
@@ -283,9 +287,9 @@ export function FormulaMetricInput({
           onBlur?.();
         }}
       />
-      {brokenRefs.length > 0 ? (
+      {displayedBrokenRefs.length > 0 ? (
         <div className="flex flex-wrap gap-1.5">
-          {brokenRefs.map((ref) => (
+          {displayedBrokenRefs.map((ref) => (
             <Badge
               key={`${ref.organizationId}:${ref.metricId}`}
               variant="outline"
@@ -298,16 +302,16 @@ export function FormulaMetricInput({
           ))}
         </div>
       ) : null}
-      {value.trim() ? (
+      {trimmedValue ? (
         <div className="rounded-md border border-dashed px-3 py-2 text-sm">
-          {isPreviewPending ? (
+          {isPreviewLoading ? (
             <p className="text-muted-foreground">Calculating preview…</p>
-          ) : previewError ? (
-            <p className="text-destructive">{previewError}</p>
-          ) : formattedPreview !== null ? (
+          ) : displayedPreviewError ? (
+            <p className="text-destructive">{displayedPreviewError}</p>
+          ) : formattedPreview !== null && displayedPreviewValue !== undefined ? (
             <p className="text-muted-foreground">
               Preview
-              {previewPeriod ? ` (${formatWeekLabel(previewPeriod)})` : ""}:{" "}
+              {displayedPreviewPeriod ? ` (${formatWeekLabel(displayedPreviewPeriod)})` : ""}:{" "}
               <span className="font-medium text-foreground">{formattedPreview}</span>
             </p>
           ) : null}

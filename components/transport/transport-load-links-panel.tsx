@@ -10,7 +10,6 @@ import {
 } from "@/features/transport/actions";
 import type { TransportLoadWithMeta } from "@/features/transport/types";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface TransportLoadLinksPanelProps {

@@ -41,7 +41,7 @@ const outputSchema = {
   additionalProperties: false,
 };
 
-export default {
+const handler = {
   fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
     if (req.method !== "POST") {
       return jsonResponse({ error: "invalid_input", success: false }, 405);
@@ -139,3 +139,5 @@ export default {
     });
   }),
 };
+
+export default handler;
