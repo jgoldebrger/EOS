@@ -1,6 +1,7 @@
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
 import { getOrgPeopleWithManagers } from "@/features/people/queries";
 import { PeopleList } from "@/components/people/people-list";
+import { PeoplePageTabs } from "@/components/people/people-page-tabs";
 import { AddPersonDialog } from "@/components/people/add-person-dialog";
 import { CreateAccountDialog } from "@/components/people/create-account-dialog";
 import { InvitePersonDialog } from "@/components/people/invite-person-dialog";
@@ -41,6 +42,7 @@ export default async function PeoplePage({
           </>
         }
       />
+      <PeoplePageTabs orgSlug={orgSlug} />
       <PeopleList
         organizationId={access.orgId}
         orgSlug={orgSlug}

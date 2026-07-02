@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { LiveMeetingShell } from "@/components/meetings/live-meeting-shell";
 import { L10SectionPanel } from "@/components/meetings/l10-section-panel";
+import { getPendingSuggestions } from "@/features/ai/queries";
 import { getMeetingById } from "@/features/meetings/queries";
 import { getFirstSectionKey } from "@/features/meetings/utils";
 import { getTeamPageContext } from "@/lib/team-page-context";
@@ -13,7 +14,10 @@ export default async function TeamL10MeetingPage({
 }) {
   const { orgSlug, teamSlug, meetingId } = await params;
   const ctx = await getTeamPageContext(orgSlug, teamSlug);
-  const meeting = await getMeetingById(ctx.orgId, meetingId);
+  const [meeting, pendingSuggestions] = await Promise.all([
+    getMeetingById(ctx.orgId, meetingId),
+    getPendingSuggestions({ organizationId: ctx.orgId, meetingId }),
+  ]);
 
   if (!meeting || meeting.team_id !== ctx.teamId) {
     notFound();
@@ -32,6 +36,7 @@ export default async function TeamL10MeetingPage({
         teamSlug={ctx.teamSlug}
         meeting={meeting}
         canEdit={canEdit}
+        pendingSuggestions={pendingSuggestions}
         sectionPanel={
           <L10SectionPanel
             sectionKey={sectionKey}

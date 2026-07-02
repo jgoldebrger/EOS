@@ -23,13 +23,15 @@ export default async function ActivityPage({
         <ul className="space-y-2">
           {activity.map((entry) => (
             <Card key={entry.id}>
-              <CardContent className="flex items-center justify-between py-3 text-sm">
+              <CardContent className="flex items-center justify-between gap-4 py-3 text-sm">
                 <span>
-                  <span className="font-medium capitalize">{entry.action}</span>
+                  <span className="font-medium">{entry.actorName}</span>
+                  {" "}
+                  <span className="capitalize">{entry.action}</span>
                   {" · "}
                   {entry.entity_type}
                 </span>
-                <time className="text-muted-foreground">
+                <time className="shrink-0 text-muted-foreground">
                   {new Date(entry.created_at).toLocaleString()}
                 </time>
               </CardContent>

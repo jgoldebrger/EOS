@@ -28,6 +28,10 @@ interface RocksPageHeaderProps {
   filters: RockFilters;
   onFiltersChange: (filters: RockFilters) => void;
   meetingMode?: boolean;
+  defaultRockType?: "company" | "team" | "individual";
+  pageTitle?: string;
+  pageDescription?: string;
+  hideTeamFilter?: boolean;
 }
 
 const selectClassName =
@@ -44,6 +48,10 @@ export function RocksPageHeader({
   filters,
   onFiltersChange,
   meetingMode = false,
+  defaultRockType = "team",
+  pageTitle,
+  pageDescription,
+  hideTeamFilter = false,
 }: RocksPageHeaderProps) {
   const createAction =
     canCreate ? (
@@ -53,6 +61,7 @@ export function RocksPageHeader({
         members={members}
         defaultOwnerId={defaultOwnerId}
         defaultQuarter={defaultQuarter}
+        defaultRockType={defaultRockType}
       />
     ) : null;
 
@@ -65,8 +74,11 @@ export function RocksPageHeader({
         </div>
       ) : (
         <PageHeader
-          title="Rocks"
-          description="Quarterly priorities with status, confidence, and progress tracking."
+          title={pageTitle ?? "Rocks"}
+          description={
+            pageDescription ??
+            "Quarterly priorities with status, confidence, and progress tracking."
+          }
           actions={createAction}
         />
       )}
@@ -140,6 +152,7 @@ export function RocksPageHeader({
           </select>
         </div>
 
+        {!hideTeamFilter ? (
         <div className="space-y-1">
           <label htmlFor="rocks-filter-team" className="text-xs font-medium text-muted-foreground">
             Team
@@ -160,6 +173,7 @@ export function RocksPageHeader({
             ))}
           </select>
         </div>
+        ) : null}
       </div>
     </div>
   );

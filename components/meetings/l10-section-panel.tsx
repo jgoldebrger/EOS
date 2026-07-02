@@ -162,6 +162,7 @@ export async function L10SectionPanel({
             canCreate={canCreate}
             headlines={headlines}
             variant="meeting"
+            meetingId={meetingId}
           />
         </div>
       );

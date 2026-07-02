@@ -4,11 +4,15 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createTodo } from "@/features/todos/actions";
 import { archiveIssue, updateIssue } from "@/features/issues/actions";
+import { createHeadline } from "@/features/headlines/actions";
+import { saveMeetingNote } from "@/features/meetings/actions";
 import {
   approveSuggestionSchema,
   dismissSuggestionSchema,
   issueMergeSuggestionPayloadSchema,
   suggestionPayloadSchema,
+  meetingSummaryPayloadSchema,
+  scorecardInsightPayloadSchema,
   todoSuggestionPayloadSchema,
   type AiSuggestion,
 } from "@/features/ai/schema";
@@ -130,6 +134,50 @@ async function applyApprovedSuggestion(
 
       return { success: true, suggestionId: suggestion.id };
     }
+    case "meeting_summary": {
+      const summaryPayload = meetingSummaryPayloadSchema.parse(payload);
+      const sections: string[] = [summaryPayload.summary];
+
+      if (summaryPayload.keyDecisions.length > 0) {
+        sections.push(
+          `Key decisions:\n${summaryPayload.keyDecisions.map((item) => `• ${item}`).join("\n")}`,
+        );
+      }
+      if (summaryPayload.actionItems.length > 0) {
+        sections.push(
+          `Action items:\n${summaryPayload.actionItems.map((item) => `• ${item}`).join("\n")}`,
+        );
+      }
+
+      const noteResult = await saveMeetingNote({
+        organizationId: suggestion.organizationId,
+        meetingId: summaryPayload.meetingId,
+        sectionKey: "conclude",
+        content: sections.join("\n\n"),
+      });
+
+      if (!noteResult.success) {
+        return { success: false, error: noteResult.error };
+      }
+
+      return { success: true, suggestionId: suggestion.id };
+    }
+    case "scorecard_insight": {
+      const insightPayload = scorecardInsightPayloadSchema.parse(payload);
+      const headlineResult = await createHeadline({
+        organizationId: suggestion.organizationId,
+        teamId: null,
+        title: `${insightPayload.metricName}: ${insightPayload.trend}`,
+        body: insightPayload.insight,
+        headlineType: "employee",
+      });
+
+      if (!headlineResult.success) {
+        return { success: false, error: headlineResult.error };
+      }
+
+      return { success: true, suggestionId: suggestion.id };
+    }
     case "issue_merge": {
       const mergePayload = issueMergeSuggestionPayloadSchema.parse(payload);
 
@@ -160,9 +208,7 @@ async function applyApprovedSuggestion(
 
       return { success: true, suggestionId: suggestion.id };
     }
-    case "meeting_summary":
     case "agenda_focus":
-    case "scorecard_insight":
       return { success: true, suggestionId: suggestion.id };
     default:
       return { success: false, error: "Unsupported suggestion type" };

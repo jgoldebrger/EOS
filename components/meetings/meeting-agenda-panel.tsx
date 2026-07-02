@@ -16,6 +16,7 @@ interface MeetingAgendaPanelProps {
   canEdit: boolean;
   onSelectSection: (sectionKey: string) => void;
   now?: Date;
+  durationExtensions?: Record<string, number>;
 }
 
 export function MeetingAgendaPanel({
@@ -25,6 +26,7 @@ export function MeetingAgendaPanel({
   canEdit,
   onSelectSection,
   now = new Date(),
+  durationExtensions = {},
 }: MeetingAgendaPanelProps) {
   return (
     <nav
@@ -33,16 +35,18 @@ export function MeetingAgendaPanel({
       data-testid="meeting-agenda-panel"
     >
       {agenda.map((step) => {
+        const durationMinutes =
+          step.durationMinutes + (durationExtensions[step.key] ?? 0);
         const isActive = step.key === activeSectionKey;
         const remaining = isActive
           ? getSectionRemainingSeconds(
-              step.durationMinutes,
+              durationMinutes,
               sectionStartedAt,
               now,
             )
-          : step.durationMinutes * 60;
+          : durationMinutes * 60;
         const overtime = isActive
-          ? isSectionOvertime(step.durationMinutes, sectionStartedAt, now)
+          ? isSectionOvertime(durationMinutes, sectionStartedAt, now)
           : false;
 
         return (
@@ -75,7 +79,7 @@ export function MeetingAgendaPanel({
             >
               {isActive
                 ? formatTimerDisplay(remaining)
-                : formatSectionDuration(step.durationMinutes)}
+                : formatSectionDuration(durationMinutes)}
             </span>
           </button>
         );

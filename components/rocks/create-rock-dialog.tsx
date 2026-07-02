@@ -35,6 +35,7 @@ interface CreateRockDialogProps {
   members: RockMemberOption[];
   defaultOwnerId: string;
   defaultQuarter?: string;
+  defaultRockType?: CreateRockInput["rockType"];
 }
 
 const ROCK_TYPE_OPTIONS = [
@@ -49,6 +50,7 @@ export function CreateRockDialog({
   members,
   defaultOwnerId,
   defaultQuarter = getCurrentQuarter(),
+  defaultRockType = "team",
 }: CreateRockDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,7 +63,7 @@ export function CreateRockDialog({
       title: "",
       quarter: defaultQuarter,
       teamId: null,
-      rockType: "team",
+      rockType: defaultRockType,
       progress: 0,
       confidence: null,
       dueDate: null,
@@ -92,7 +94,7 @@ export function CreateRockDialog({
       title: "",
       quarter: defaultQuarter,
       teamId: null,
-      rockType: "team",
+      rockType: defaultRockType,
       progress: 0,
       confidence: null,
       dueDate: null,

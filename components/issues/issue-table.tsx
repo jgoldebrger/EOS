@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState, useTransition } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, Pin } from "lucide-react";
 import { updatePriority } from "@/features/issues/actions";
 import type { IssueWithLinks } from "@/features/issues/types";
 import { DataTable } from "@/components/data-table/data-table";
@@ -19,6 +19,9 @@ interface IssueTableProps {
   orgRole: OrgRole;
   issues: IssueWithLinks[];
   canCreate: boolean;
+  meetingMode?: boolean;
+  pinnedIssueIds?: string[];
+  onTogglePin?: (issueId: string) => void;
 }
 
 export function IssueTable({
@@ -27,6 +30,9 @@ export function IssueTable({
   orgRole,
   issues,
   canCreate,
+  meetingMode = false,
+  pinnedIssueIds = [],
+  onTogglePin,
 }: IssueTableProps) {
   const [selectedIssue, setSelectedIssue] = useState<IssueWithLinks | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -64,12 +70,34 @@ export function IssueTable({
         id: "rank",
         header: "#",
         cell: ({ row }) => (
-          <span
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-semibold tabular-nums"
-            data-testid="issue-priority-rank"
-          >
-            {row.original.priorityRank}
-          </span>
+          <div className="flex items-center gap-1">
+            <span
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-semibold tabular-nums"
+              data-testid="issue-priority-rank"
+            >
+              {row.original.priorityRank}
+            </span>
+            {meetingMode && onTogglePin ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                aria-label={
+                  pinnedIssueIds.includes(row.original.id)
+                    ? "Unpin issue"
+                    : "Pin to top 3"
+                }
+                onClick={() => onTogglePin(row.original.id)}
+              >
+                <Pin
+                  className={`h-3.5 w-3.5 ${
+                    pinnedIssueIds.includes(row.original.id) ? "fill-current text-primary" : ""
+                  }`}
+                />
+              </Button>
+            ) : null}
+          </div>
         ),
         enableSorting: false,
       },
@@ -175,7 +203,7 @@ export function IssueTable({
         enableSorting: false,
       },
     ],
-    [canEdit, handlePriorityChange, openIssue],
+    [canEdit, handlePriorityChange, meetingMode, onTogglePin, openIssue, pinnedIssueIds],
   );
 
   return (
@@ -203,6 +231,7 @@ export function IssueTable({
         canEdit={canEdit}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+        meetingMode={meetingMode}
       />
     </>
   );

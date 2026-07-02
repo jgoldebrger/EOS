@@ -36,6 +36,9 @@ export async function getRocksForOrg(
   if (filters.teamId) {
     query = query.eq("team_id", filters.teamId);
   }
+  if (filters.rockType) {
+    query = query.eq("rock_type", filters.rockType);
+  }
 
   const { data: rocks, error } = await query;
 

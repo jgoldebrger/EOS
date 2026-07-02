@@ -64,7 +64,8 @@ Stubs: `lib/permissions/checks.ts`
 | done | 026 | Project table grants |
 | done | 027 | Transport TMS core (loads, stops, carriers, routes, analyses) |
 | done | 028 | Scorecard: team members can create/reassign measurables (L10) |
-| **Next available** | **029** | — |
+| done | 029 | Meeting metadata + People Analyzer GWC reviews |
+| **Next available** | **030** | — |
 
 Team workspace routes: `/org/[orgSlug]/teams/[teamSlug]/{overview,l10,rocks,scorecard,todos,headlines,issues,process,people}`
 

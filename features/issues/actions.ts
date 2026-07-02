@@ -20,6 +20,7 @@ import { AUDIT_ACTIONS } from "@/types/domain";
 import type { OrgRole } from "@/types/domain";
 import type { Json, TablesUpdate } from "@/types/database";
 import { logAuditEvent } from "@/lib/audit";
+import { createInboxItem } from "@/features/inbox/actions";
 
 async function getActorContext(organizationId: string) {
   const supabase = await createClient();
@@ -165,7 +166,7 @@ export async function updateIssue(input: unknown): Promise<IssueActionResult> {
 
   const { data: existing } = await actor.supabase
     .from("issues")
-    .select("id")
+    .select("id, owner_id, title")
     .eq("id", parsed.data.issueId)
     .eq("organization_id", parsed.data.organizationId)
     .maybeSingle();
@@ -224,6 +225,23 @@ export async function updateIssue(input: unknown): Promise<IssueActionResult> {
 
   if (org?.slug) {
     await revalidateIssues(org.slug);
+  }
+
+  if (
+    parsed.data.ownerId !== undefined &&
+    existing &&
+    parsed.data.ownerId &&
+    parsed.data.ownerId !== existing.owner_id &&
+    parsed.data.ownerId !== actor.user.id
+  ) {
+    await createInboxItem({
+      organizationId: parsed.data.organizationId,
+      assigneeId: parsed.data.ownerId,
+      title: `Issue assigned: ${existing.title}`,
+      sourceType: "issue",
+      sourceId: parsed.data.issueId,
+      actionUrl: `/org/${org?.slug ?? ""}/issues`,
+    });
   }
 
   return { success: true };

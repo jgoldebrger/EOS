@@ -12,13 +12,15 @@ import { MeetingSectionEmbed } from "@/components/meetings/meeting-section-embed
 import { MeetingNotesEditor } from "@/components/meetings/meeting-notes-editor";
 import { DecisionsList } from "@/components/meetings/decisions-list";
 import { EndMeetingDialog } from "@/components/meetings/end-meeting-dialog";
+import { MeetingRatingDialog } from "@/components/meetings/meeting-rating-dialog";
 import { AiSummaryPanel } from "@/components/ai/ai-summary-panel";
+import type { AiSuggestion } from "@/features/ai/schema";
 import {
   startMeeting,
   updateActiveSection,
 } from "@/features/meetings/actions";
 import type { MeetingWithNotes } from "@/features/meetings/types";
-import { getL10HubHref, getSectionByKey } from "@/features/meetings/utils";
+import { getL10HubHref, getSectionByKey, getSectionRemainingSeconds, isSectionOvertime, formatTimerDisplay } from "@/features/meetings/utils";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 
 interface LiveMeetingShellProps {
@@ -28,6 +30,7 @@ interface LiveMeetingShellProps {
   canEdit: boolean;
   teamSlug?: string;
   sectionPanel?: React.ReactNode;
+  pendingSuggestions?: AiSuggestion[];
 }
 
 export function LiveMeetingShell({
@@ -37,6 +40,7 @@ export function LiveMeetingShell({
   canEdit,
   teamSlug,
   sectionPanel,
+  pendingSuggestions = [],
 }: LiveMeetingShellProps) {
   const router = useRouter();
   const meeting = initialMeeting;
@@ -48,6 +52,10 @@ export function LiveMeetingShell({
   );
   const [now, setNow] = useState(() => new Date());
   const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [presenceCount, setPresenceCount] = useState(1);
+  const [durationExtensions, setDurationExtensions] = useState<Record<string, number>>({});
+  const [ratingOpen, setRatingOpen] = useState(false);
+  const [ratingDismissed, setRatingDismissed] = useState(false);
   const [isPending, startTransition] = useTransition();
   const prevSectionRef = useRef(activeSectionKey);
 
@@ -96,8 +104,15 @@ export function LiveMeetingShell({
             }
           },
         )
-        .subscribe((status) => {
+        .on("presence", { event: "sync" }, () => {
+          const state = channel?.presenceState() ?? {};
+          setPresenceCount(Math.max(1, Object.keys(state).length));
+        })
+        .subscribe(async (status) => {
           setRealtimeConnected(status === "SUBSCRIBED");
+          if (status === "SUBSCRIBED") {
+            await channel?.track({ online_at: new Date().toISOString() });
+          }
         });
     } catch {
       // Realtime unavailable — leave realtimeConnected at its initial false value.
@@ -115,13 +130,29 @@ export function LiveMeetingShell({
     ? getSectionByKey(meeting.agenda, activeSectionKey)
     : undefined;
 
-  const noteForSection = meeting.notes.find(
-    (note) => note.section_key === activeSectionKey,
-  );
+  const effectiveDurationMinutes =
+    activeSection != null
+      ? activeSection.durationMinutes + (durationExtensions[activeSection.key] ?? 0)
+      : 0;
 
-  const combinedNotes = meeting.notes
-    .map((note) => `[${note.section_key}]\n${note.content}`)
-    .join("\n\n");
+  const sectionOvertime =
+    activeSection != null &&
+    isSectionOvertime(effectiveDurationMinutes, sectionStartedAt, now);
+
+  const sectionRemaining =
+    activeSection != null
+      ? getSectionRemainingSeconds(effectiveDurationMinutes, sectionStartedAt, now)
+      : 0;
+
+  const activeSectionIndex = meeting.agenda.findIndex(
+    (step) => step.key === activeSectionKey,
+  );
+  const nextSectionKey = meeting.agenda[activeSectionIndex + 1]?.key ?? null;
+
+  const showRatingPrompt =
+    activeSectionKey === "conclude" &&
+    meeting.status === "in_progress" &&
+    !ratingDismissed;
 
   const handleSelectSection = useCallback(
     (sectionKey: string) => {
@@ -156,6 +187,27 @@ export function LiveMeetingShell({
       router,
     ],
   );
+
+  function handleSkipSection() {
+    if (!nextSectionKey || !canEdit) return;
+    handleSelectSection(nextSectionKey);
+  }
+
+  function handleExtendSection() {
+    if (!activeSectionKey) return;
+    setDurationExtensions((current) => ({
+      ...current,
+      [activeSectionKey]: (current[activeSectionKey] ?? 0) + 5,
+    }));
+  }
+
+  const noteForSection = meeting.notes.find(
+    (note) => note.section_key === activeSectionKey,
+  );
+
+  const combinedNotes = meeting.notes
+    .map((note) => `[${note.section_key}]\n${note.content}`)
+    .join("\n\n");
 
   function handleStartMeeting() {
     startTransition(async () => {
@@ -288,6 +340,7 @@ export function LiveMeetingShell({
           <p className="text-sm text-muted-foreground">
             Live L10
             {realtimeConnected ? " · synced" : " · local mode"}
+            {presenceCount > 1 ? ` · ${presenceCount} participants` : ""}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -318,16 +371,55 @@ export function LiveMeetingShell({
             canEdit={canEdit}
             onSelectSection={handleSelectSection}
             now={now}
+            durationExtensions={durationExtensions}
           />
         </aside>
 
         <main className="space-y-6">
           {activeSection ? (
-            <div>
-              <h2 className="text-lg font-medium">{activeSection.label}</h2>
-              <p className="text-sm text-muted-foreground">
-                {activeSection.durationMinutes} minute time box
-              </p>
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-medium">{activeSection.label}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {effectiveDurationMinutes} minute time box
+                    {durationExtensions[activeSection.key]
+                      ? ` (+${durationExtensions[activeSection.key]}m extended)`
+                      : ""}
+                  </p>
+                </div>
+                {canEdit ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExtendSection}
+                    >
+                      +5 min
+                    </Button>
+                    {nextSectionKey ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSkipSection}
+                        disabled={isPending}
+                      >
+                        Skip section
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+              {sectionOvertime ? (
+                <div
+                  className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                  data-testid="section-overtime-alert"
+                >
+                  Overtime — {formatTimerDisplay(sectionRemaining)} remaining
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -356,6 +448,7 @@ export function LiveMeetingShell({
             meetingId={meeting.id}
             notes={combinedNotes}
             canUseAi={canEdit}
+            initialSuggestions={pendingSuggestions}
           />
 
           <DecisionsList
@@ -366,6 +459,18 @@ export function LiveMeetingShell({
           />
         </main>
       </div>
+
+      <MeetingRatingDialog
+        organizationId={organizationId}
+        meetingId={meeting.id}
+        open={ratingOpen || showRatingPrompt}
+        onOpenChange={(open) => {
+          setRatingOpen(open);
+          if (!open) {
+            setRatingDismissed(true);
+          }
+        }}
+      />
     </div>
   );
 }

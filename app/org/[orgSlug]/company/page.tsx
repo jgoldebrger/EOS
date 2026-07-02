@@ -43,7 +43,7 @@ export default async function CompanyPage({
             </CardHeader>
           </Card>
         </Link>
-        <Link href={`${base}/rocks?scope=company`}>
+        <Link href={`${base}/company/rocks`}>
           <Card className="transition-colors hover:bg-muted/50">
             <CardHeader>
               <CardTitle>Company Rocks</CardTitle>

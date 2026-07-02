@@ -56,3 +56,19 @@ export const createOrgUserAccountSchema = z.object({
 });
 
 export type CreateOrgUserAccountInput = z.infer<typeof createOrgUserAccountSchema>;
+
+const gwcScoreSchema = z.number().int().min(1).max(5);
+
+export const upsertPeopleReviewSchema = z.object({
+  organizationId: z.string().uuid(),
+  subjectUserId: z.string().uuid(),
+  reviewerUserId: z.string().uuid().optional(),
+  seatId: z.string().uuid().nullable().optional(),
+  getIt: gwcScoreSchema,
+  wantIt: gwcScoreSchema,
+  capacity: gwcScoreSchema,
+  notes: z.string().max(2000).optional(),
+  quarter: z.string().min(1).max(20),
+});
+
+export type UpsertPeopleReviewInput = z.infer<typeof upsertPeopleReviewSchema>;

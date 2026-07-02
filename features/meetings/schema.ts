@@ -80,6 +80,12 @@ export const endMeetingSchema = z.object({
   meetingId: z.string().uuid("Invalid meeting"),
 });
 
+export const saveMeetingRatingSchema = z.object({
+  organizationId: z.string().uuid("Invalid organization"),
+  meetingId: z.string().uuid("Invalid meeting"),
+  rating: z.number().int().min(1).max(10),
+});
+
 const l10SectionKeySchema = z.enum([
   "segue",
   "scorecard",
@@ -113,4 +119,5 @@ export type UpdateActiveSectionInput = z.infer<typeof updateActiveSectionSchema>
 export type SaveNoteInput = z.infer<typeof saveNoteSchema>;
 export type CreateDecisionInput = z.infer<typeof createDecisionSchema>;
 export type EndMeetingInput = z.infer<typeof endMeetingSchema>;
+export type SaveMeetingRatingInput = z.infer<typeof saveMeetingRatingSchema>;
 export type AgendaStepInput = z.infer<typeof agendaStepSchema>;

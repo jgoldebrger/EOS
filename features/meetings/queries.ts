@@ -175,3 +175,54 @@ export async function getOrgL10AgendaTemplate(
 
   return resolveL10AgendaFromSettings(data.settings);
 }
+
+export interface MeetingRecapData {
+  meeting: MeetingWithNotes;
+  headlines: Array<{ id: string; title: string; body: string; headline_type: string }>;
+  todos: Array<{ id: string; title: string; status: string }>;
+  issues: Array<{ id: string; title: string; status: string }>;
+  pendingSuggestions: Awaited<ReturnType<typeof import("@/features/ai/queries").getPendingSuggestions>>;
+}
+
+export async function getMeetingRecapData(
+  organizationId: string,
+  meetingId: string,
+): Promise<MeetingRecapData | null> {
+  const meeting = await getMeetingById(organizationId, meetingId);
+  if (!meeting) {
+    return null;
+  }
+
+  const supabase = await createClient();
+  const { getPendingSuggestions } = await import("@/features/ai/queries");
+
+  const [headlinesResult, todosResult, issuesResult, pendingSuggestions] =
+    await Promise.all([
+      supabase
+        .from("headlines" as never)
+        .select("id, title, body, headline_type")
+        .eq("organization_id", organizationId)
+        .eq("meeting_id", meetingId)
+        .is("archived_at", null),
+      supabase
+        .from("todos")
+        .select("id, title, status")
+        .eq("organization_id", organizationId)
+        .eq("source_type", "meeting")
+        .eq("source_id", meetingId),
+      supabase
+        .from("issues")
+        .select("id, title, status")
+        .eq("organization_id", organizationId)
+        .eq("linked_meeting_id", meetingId),
+      getPendingSuggestions({ organizationId, meetingId }),
+    ]);
+
+  return {
+    meeting,
+    headlines: (headlinesResult.data ?? []) as MeetingRecapData["headlines"],
+    todos: todosResult.data ?? [],
+    issues: issuesResult.data ?? [],
+    pendingSuggestions,
+  };
+}

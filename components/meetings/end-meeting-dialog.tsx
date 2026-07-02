@@ -13,7 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { endMeeting } from "@/features/meetings/actions";
-import { getL10HubHref } from "@/features/meetings/utils";
+import { getL10RecapHref } from "@/features/meetings/utils";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 
 interface EndMeetingDialogProps {
@@ -51,7 +51,9 @@ export function EndMeetingDialog({
       showSuccessToast("Meeting ended");
       setOpen(false);
       router.push(
-        teamSlug ? getL10HubHref(orgSlug, teamSlug) : `/org/${orgSlug}/meetings`,
+        teamSlug
+          ? getL10RecapHref(orgSlug, teamSlug, meetingId)
+          : `/org/${orgSlug}/meetings`,
       );
       router.refresh();
     });

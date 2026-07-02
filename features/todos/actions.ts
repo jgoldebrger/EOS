@@ -13,6 +13,7 @@ import { canEditResource, canManageOrg, canManageTeam } from "@/lib/permissions/
 import { AUDIT_ACTIONS } from "@/types/domain";
 import type { OrgRole, TeamRole } from "@/types/domain";
 import { logAuditEvent } from "@/lib/audit";
+import { createInboxItem } from "@/features/inbox/actions";
 import type { Json, TablesUpdate } from "@/types/database";
 
 async function getActorContext(organizationId: string) {
@@ -194,7 +195,7 @@ export async function updateTodo(input: unknown): Promise<TodoActionResult> {
 
   const { data: existing } = await actor.supabase
     .from("todos")
-    .select("owner_id, team_id")
+    .select("owner_id, team_id, status, title")
     .eq("id", parsed.data.todoId)
     .eq("organization_id", parsed.data.organizationId)
     .maybeSingle();
@@ -266,6 +267,21 @@ export async function updateTodo(input: unknown): Promise<TodoActionResult> {
 
   if (org?.slug) {
     await revalidateTodos(org.slug);
+  }
+
+  if (
+    parsed.data.ownerId !== undefined &&
+    parsed.data.ownerId !== existing.owner_id &&
+    parsed.data.ownerId !== actor.user.id
+  ) {
+    await createInboxItem({
+      organizationId: parsed.data.organizationId,
+      assigneeId: parsed.data.ownerId,
+      title: `To-do assigned: ${existing.title}`,
+      sourceType: "todo",
+      sourceId: parsed.data.todoId,
+      actionUrl: `/org/${org?.slug ?? ""}/todos`,
+    });
   }
 
   return { success: true };

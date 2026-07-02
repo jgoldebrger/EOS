@@ -1,8 +1,23 @@
 import { createClient } from "@/lib/supabase/server";
+import { resolveUserEmails } from "@/lib/users/resolve-emails";
 
 import { getProjectsForOrg } from "@/features/projects/queries";
 
-export async function getActivityForOrg(organizationId: string, limit = 50) {
+export interface ActivityEntry {
+  id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  metadata: unknown;
+  created_at: string;
+  actor_id: string | null;
+  actorName: string;
+}
+
+export async function getActivityForOrg(
+  organizationId: string,
+  limit = 50,
+): Promise<ActivityEntry[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("audit_logs")
@@ -11,7 +26,18 @@ export async function getActivityForOrg(organizationId: string, limit = 50) {
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  return data ?? [];
+  const rows = data ?? [];
+  const actorIds = rows
+    .map((row) => row.actor_id)
+    .filter((id): id is string => Boolean(id));
+  const resolved = await resolveUserEmails(actorIds);
+
+  return rows.map((row) => ({
+    ...row,
+    actorName: row.actor_id
+      ? (resolved.get(row.actor_id)?.displayName ?? row.actor_id.slice(0, 8))
+      : "System",
+  }));
 }
 
 export async function getPeopleForOrg(organizationId: string) {
@@ -29,10 +55,38 @@ export { getProjectsForOrg };
 
 export async function getReportsSummary(organizationId: string) {
   const supabase = await createClient();
-  const [rocks, issues, todos, metrics] = await Promise.all([
-    supabase.from("rocks").select("id", { count: "exact", head: true }).eq("organization_id", organizationId),
-    supabase.from("issues").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "open"),
-    supabase.from("todos").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "open"),
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const weekAgoIso = weekAgo.toISOString();
+
+  const [rocks, doneRocks, issues, solvedIssues, todos, metrics] = await Promise.all([
+    supabase
+      .from("rocks")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .is("archived_at", null),
+    supabase
+      .from("rocks")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .eq("status", "done")
+      .is("archived_at", null),
+    supabase
+      .from("issues")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .eq("status", "open"),
+    supabase
+      .from("issues")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .eq("status", "solved")
+      .gte("updated_at", weekAgoIso),
+    supabase
+      .from("todos")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .eq("status", "open"),
     supabase
       .from("scorecard_metrics")
       .select("id", { count: "exact", head: true })
@@ -40,9 +94,15 @@ export async function getReportsSummary(organizationId: string) {
       .is("archived_at", null),
   ]);
 
+  const activeRocks = rocks.count ?? 0;
+  const completedRocks = doneRocks.count ?? 0;
+  const rockTotal = activeRocks + completedRocks;
+
   return {
-    rocks: rocks.count ?? 0,
+    rocks: activeRocks,
+    rockCompletionPct: rockTotal > 0 ? Math.round((completedRocks / rockTotal) * 100) : 0,
     openIssues: issues.count ?? 0,
+    issuesSolvedThisWeek: solvedIssues.count ?? 0,
     openTodos: todos.count ?? 0,
     metrics: metrics.count ?? 0,
   };

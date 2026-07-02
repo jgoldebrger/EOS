@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Archive, CheckCircle2, Link2 } from "lucide-react";
-import { archiveIssue, solveIssue, updateIssue } from "@/features/issues/actions";
+import { Archive, CheckCircle2, Link2, ListTodo } from "lucide-react";
+import { archiveIssue, convertToTodo, solveIssue, updateIssue } from "@/features/issues/actions";
 import type { IssueWithLinks } from "@/features/issues/types";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
@@ -23,6 +23,7 @@ interface IssueDetailSheetProps {
   canEdit: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  meetingMode?: boolean;
 }
 
 interface IssueDetailContentProps {
@@ -30,6 +31,7 @@ interface IssueDetailContentProps {
   orgSlug: string;
   canEdit: boolean;
   onClose: () => void;
+  meetingMode?: boolean;
 }
 
 function IssueDetailContent({
@@ -37,6 +39,7 @@ function IssueDetailContent({
   orgSlug,
   canEdit,
   onClose,
+  meetingMode = false,
 }: IssueDetailContentProps) {
   const [idsNotes, setIdsNotes] = useState(issue.ids_notes ?? "");
   const [solveOpen, setSolveOpen] = useState(false);
@@ -80,6 +83,23 @@ function IssueDetailContent({
       showSuccessToast("Issue solved");
       setSolveOpen(false);
       onClose();
+    });
+  }
+
+  function handleConvertToTodo() {
+    startTransition(async () => {
+      const result = await convertToTodo({
+        organizationId: issue.organization_id,
+        issueId: issue.id,
+        markDiscussing: meetingMode,
+      });
+
+      if (!result.success) {
+        showErrorToast("Could not create to-do", result.error);
+        return;
+      }
+
+      showSuccessToast("To-do created from issue");
     });
   }
 
@@ -184,6 +204,16 @@ function IssueDetailContent({
           <div className="flex flex-wrap gap-2 border-t pt-4">
             <Button
               type="button"
+              variant="secondary"
+              onClick={handleConvertToTodo}
+              disabled={isPending}
+              data-testid="issue-convert-todo-button"
+            >
+              <ListTodo className="mr-2 h-4 w-4" aria-hidden />
+              Create to-do
+            </Button>
+            <Button
+              type="button"
               onClick={() => setSolveOpen(true)}
               disabled={isPending}
               data-testid="issue-solve-button"
@@ -234,6 +264,7 @@ export function IssueDetailSheet({
   canEdit,
   open,
   onOpenChange,
+  meetingMode = false,
 }: IssueDetailSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -245,6 +276,7 @@ export function IssueDetailSheet({
             orgSlug={orgSlug}
             canEdit={canEdit}
             onClose={() => onOpenChange(false)}
+            meetingMode={meetingMode}
           />
         ) : null}
       </SheetContent>

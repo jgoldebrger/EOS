@@ -189,6 +189,14 @@ export function getL10MeetingHref(
   return `/org/${orgSlug}/teams/${teamSlug}/l10/${meetingId}`;
 }
 
+export function getL10RecapHref(
+  orgSlug: string,
+  teamSlug: string,
+  meetingId: string,
+): string {
+  return `/org/${orgSlug}/teams/${teamSlug}/l10/${meetingId}/recap`;
+}
+
 export function getMeetingHref(
   orgSlug: string,
   meeting: { id: string; team_id: string | null },

@@ -14,7 +14,9 @@ export default async function ReportsPage({
 
   const cards = [
     { label: "Active rocks", value: summary.rocks },
+    { label: "Rock completion", value: `${summary.rockCompletionPct}%` },
     { label: "Open issues", value: summary.openIssues },
+    { label: "Issues solved (7d)", value: summary.issuesSolvedThisWeek },
     { label: "Open to-dos", value: summary.openTodos },
     { label: "Scorecard metrics", value: summary.metrics },
   ];
@@ -22,7 +24,7 @@ export default async function ReportsPage({
   return (
     <div className="mx-auto max-w-4xl space-y-8 p-8">
       <PageHeader title="Reports" description="Organization operating summaries." />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((card) => (
           <Card key={card.label}>
             <CardHeader>

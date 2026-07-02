@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserRound } from "lucide-react";
+import { Settings, UserRound } from "lucide-react";
 import { signOut } from "@/app/auth/actions";
 import {
   GLOBAL_NAV_ITEMS,
@@ -85,6 +85,12 @@ export function TopNav() {
             <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem asChild>
                 <Link href={`/org/${orgSlug}/profile`}>Your profile</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/org/${orgSlug}/settings`}>
+                  <Settings className="mr-2 h-4 w-4" aria-hidden />
+                  Settings
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>

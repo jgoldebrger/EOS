@@ -7,6 +7,7 @@ import {
   createMeetingSchema,
   endMeetingSchema,
   l10AgendaDurationsSchema,
+  saveMeetingRatingSchema,
   saveNoteSchema,
   startMeetingSchema,
   updateActiveSectionSchema,
@@ -601,6 +602,70 @@ export async function endMeeting(input: unknown): Promise<MeetingActionResult> {
     parsed.data.meetingId,
     { status: "completed", ended_at: endedAt } as Json,
   );
+
+  const orgSlug = await getOrgSlug(actor.supabase, parsed.data.organizationId);
+  if (orgSlug) {
+    await revalidateMeetings(orgSlug, parsed.data.meetingId);
+  }
+
+  return { success: true };
+}
+
+export async function saveMeetingRating(input: unknown): Promise<MeetingActionResult> {
+  const parsed = saveMeetingRatingSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid rating",
+    };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  const { data: meeting } = await actor.supabase
+    .from("meetings")
+    .select("metadata" as "id")
+    .eq("id", parsed.data.meetingId)
+    .eq("organization_id", parsed.data.organizationId)
+    .maybeSingle();
+
+  if (!meeting) {
+    return { success: false, error: "Meeting not found" };
+  }
+
+  const meetingRow = meeting as unknown as { metadata?: unknown };
+  const existingMetadata =
+    typeof meetingRow.metadata === "object" &&
+    meetingRow.metadata !== null &&
+    !Array.isArray(meetingRow.metadata)
+      ? (meetingRow.metadata as Record<string, unknown>)
+      : {};
+
+  const ratings = Array.isArray(existingMetadata.ratings)
+    ? [...(existingMetadata.ratings as unknown[])]
+    : [];
+
+  ratings.push({
+    userId: actor.user.id,
+    rating: parsed.data.rating,
+    ratedAt: new Date().toISOString(),
+  });
+
+  const { error } = await actor.supabase
+    .from("meetings")
+    .update({
+      metadata: { ...existingMetadata, ratings } as Json,
+    } as { metadata: Json })
+    .eq("id", parsed.data.meetingId)
+    .eq("organization_id", parsed.data.organizationId);
+
+  if (error) {
+    return { success: false, error: "Unable to save rating" };
+  }
 
   const orgSlug = await getOrgSlug(actor.supabase, parsed.data.organizationId);
   if (orgSlug) {

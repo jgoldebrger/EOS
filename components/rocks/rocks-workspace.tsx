@@ -22,6 +22,7 @@ interface RocksWorkspaceProps {
   teams: RockTeamOption[];
   members: RockMemberOption[];
   variant?: "page" | "meeting";
+  scope?: "company" | "team";
 }
 
 export function RocksWorkspace({
@@ -34,9 +35,13 @@ export function RocksWorkspace({
   teams,
   members,
   variant = "page",
+  scope = "team",
 }: RocksWorkspaceProps) {
   const defaultQuarter = getCurrentQuarter();
-  const [filters, setFilters] = useState<RockFilters>({ quarter: defaultQuarter });
+  const [filters, setFilters] = useState<RockFilters>({
+    quarter: defaultQuarter,
+    ...(scope === "company" ? { rockType: "company" as const } : {}),
+  });
 
   const quarters = useMemo(() => {
     const unique = new Set(rocks.map((rock) => rock.quarter));
@@ -50,6 +55,7 @@ export function RocksWorkspace({
       if (filters.ownerId && rock.owner_id !== filters.ownerId) return false;
       if (filters.status && rock.status !== filters.status) return false;
       if (filters.teamId && rock.team_id !== filters.teamId) return false;
+      if (filters.rockType && rock.rock_type !== filters.rockType) return false;
       return true;
     });
   }, [rocks, filters]);
@@ -67,6 +73,14 @@ export function RocksWorkspace({
         filters={filters}
         onFiltersChange={setFilters}
         meetingMode={variant === "meeting"}
+        defaultRockType={scope === "company" ? "company" : "team"}
+        pageTitle={scope === "company" ? "Company rocks" : undefined}
+        pageDescription={
+          scope === "company"
+            ? "Quarterly company-level priorities visible across the organization."
+            : undefined
+        }
+        hideTeamFilter={scope === "company"}
       />
       <RockTable
         organizationId={organizationId}

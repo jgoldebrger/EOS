@@ -473,3 +473,57 @@ export async function updateReportsTo(input: unknown): Promise<PeopleActionResul
 
   return { success: true };
 }
+
+export async function upsertPeopleReview(input: unknown): Promise<PeopleActionResult> {
+  const { upsertPeopleReviewSchema } = await import("@/features/people/schema");
+  const parsed = upsertPeopleReviewSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid review" };
+  }
+
+  const user = await getServerSessionUser();
+  if (!user) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const supabase = await createClient();
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select("org_role")
+    .eq("organization_id", parsed.data.organizationId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!membership) {
+    return { success: false, error: "No access" };
+  }
+
+  const orgRole = membership.org_role as OrgRole;
+  const reviewerUserId = parsed.data.reviewerUserId ?? user.id;
+
+  if (!canManageOrg(orgRole) && reviewerUserId !== user.id) {
+    return { success: false, error: "Permission denied" };
+  }
+
+  const { error } = await supabase.from("people_reviews" as never).upsert(
+    {
+      organization_id: parsed.data.organizationId,
+      subject_user_id: parsed.data.subjectUserId,
+      reviewer_user_id: reviewerUserId,
+      seat_id: parsed.data.seatId ?? null,
+      get_it: parsed.data.getIt,
+      want_it: parsed.data.wantIt,
+      capacity: parsed.data.capacity,
+      notes: parsed.data.notes ?? "",
+      quarter: parsed.data.quarter,
+    } as never,
+    { onConflict: "organization_id,subject_user_id,reviewer_user_id,quarter" },
+  );
+
+  if (error) {
+    return { success: false, error: "Could not save review" };
+  }
+
+  revalidatePath("/");
+  return { success: true };
+}

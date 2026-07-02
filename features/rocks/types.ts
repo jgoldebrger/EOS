@@ -18,6 +18,7 @@ export interface RockFilters {
   ownerId?: string;
   status?: RockStatusDb;
   teamId?: string;
+  rockType?: Rock["rock_type"];
 }
 
 export interface RockTeamOption {
