@@ -58,7 +58,7 @@ function createEmptySopDocument(pageId: string, title: string): SopDocument {
   };
 }
 
-function applyTeamScope<T extends { is: Function; eq: Function }>(
+function applyTeamScope<T extends { is: (column: string, value: null) => T; eq: (column: string, value: string) => T }>(
   query: T,
   teamId: string | null | undefined,
 ): T {

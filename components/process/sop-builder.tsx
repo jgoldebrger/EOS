@@ -118,6 +118,9 @@ export function SopBuilder({
   const lastSavedSnapshotRef = useRef(
     JSON.stringify(buildInitialDocument(pageId, initialTitle, initialDocument)),
   );
+  const persistSaveRef = useRef<
+    (doc: SopDocument, options?: { showToast?: boolean }) => Promise<void>
+  >(async () => {});
 
   useEffect(() => {
     documentRef.current = document;
@@ -224,7 +227,7 @@ export function SopBuilder({
       if (queued && JSON.stringify(queued) !== JSON.stringify(payloadDoc)) {
         setIsDirty(true);
         setSaveState("idle");
-        void persistSave(queued);
+        void persistSaveRef.current(queued);
         return;
       }
 
@@ -235,7 +238,7 @@ export function SopBuilder({
           clearTimeout(saveTimerRef.current);
         }
         saveTimerRef.current = setTimeout(() => {
-          void persistSave(latest);
+          void persistSaveRef.current(latest);
         }, AUTO_SAVE_DELAY_MS);
         return;
       }
@@ -249,6 +252,10 @@ export function SopBuilder({
     },
     [organizationId, orgSlug, pageId, readOnly, teamId, teamSlug],
   );
+
+  useEffect(() => {
+    persistSaveRef.current = persistSave;
+  });
 
   const scheduleSave = useCallback(
     (doc: SopDocument) => {
