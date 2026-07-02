@@ -5,54 +5,24 @@ import {
   computeRprsStatus,
   type CoreValueRating,
 } from "@/features/people/utils";
+import type {
+  ExecutiveReportsData,
+  L10RatingTrendPoint,
+  RockCompletionByTeam,
+  RprsDistribution,
+  ScorecardRollupRow,
+} from "@/features/reports/types";
 
-export interface ScorecardRollupRow {
-  teamId: string | null;
-  teamName: string;
-  metricCount: number;
-  greenCount: number;
-  yellowCount: number;
-  redCount: number;
-  onTrackPct: number;
-}
-
-export interface L10RatingTrendPoint {
-  teamId: string;
-  teamName: string;
-  meetingDate: string;
-  avgRating: number;
-}
-
-export interface RockCompletionByTeam {
-  teamId: string | null;
-  teamName: string;
-  total: number;
-  done: number;
-  completionPct: number;
-}
-
-export interface IdsThroughput {
-  opened: number;
-  solved: number;
-  solveRatePct: number;
-}
-
-export interface RprsDistribution {
-  green: number;
-  yellow: number;
-  red: number;
-  total: number;
-}
-
-export interface ExecutiveReportsData {
-  quarter: string;
-  scorecardRollup: ScorecardRollupRow[];
-  l10RatingTrend: L10RatingTrendPoint[];
-  rockCompletionByTeam: RockCompletionByTeam[];
-  idsThroughput: IdsThroughput;
-  rprsDistribution: RprsDistribution;
-  cascadeCompletion: Awaited<ReturnType<typeof getCascadeCompletionMetric>>;
-}
+export type {
+  CascadeCompletionMetric,
+  ExecutiveReportsData,
+  IdsThroughput,
+  L10RatingTrendPoint,
+  RockCompletionByTeam,
+  RprsDistribution,
+  ScorecardRollupRow,
+} from "@/features/reports/types";
+export { buildScorecardRollupCsv } from "@/features/reports/csv";
 
 function parseMeetingAvgRating(metadata: unknown): number | null {
   if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) {
@@ -253,17 +223,4 @@ function quarterStartIso(quarter: string): string {
   const q = Number(match[2]);
   const month = (q - 1) * 3;
   return new Date(Date.UTC(year, month, 1)).toISOString();
-}
-
-export function buildScorecardRollupCsv(rows: ScorecardRollupRow[]): string {
-  const header = ["Team", "Metrics", "Green", "Yellow", "Red", "On-track %"];
-  const lines = rows.map((row) => [
-    row.teamName,
-    String(row.metricCount),
-    String(row.greenCount),
-    String(row.yellowCount),
-    String(row.redCount),
-    String(row.onTrackPct),
-  ]);
-  return [header, ...lines].map((line) => line.join(",")).join("\n");
 }

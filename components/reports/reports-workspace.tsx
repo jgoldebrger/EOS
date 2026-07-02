@@ -2,8 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import type { ExecutiveReportsData } from "@/features/reports/queries";
-import { buildScorecardRollupCsv } from "@/features/reports/queries";
+import type { ExecutiveReportsData } from "@/features/reports/types";
+import { buildScorecardRollupCsv } from "@/features/reports/csv";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
