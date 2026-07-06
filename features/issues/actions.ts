@@ -7,6 +7,8 @@ import {
   archiveIssueSchema,
   createIssueSchema,
   prioritizeIssueSchema,
+  reorderIssuesSchema,
+  setIssueParkingLotSchema,
   solveIssueSchema,
   updateIssueSchema,
 } from "@/features/issues/schema";
@@ -418,6 +420,110 @@ export async function updatePriority(input: unknown): Promise<IssueActionResult>
     parsed.data.issueId,
     { priority: parsed.data.priority } as Json,
   );
+
+  const { data: org } = await actor.supabase
+    .from("organizations")
+    .select("slug")
+    .eq("id", parsed.data.organizationId)
+    .single();
+
+  if (org?.slug) {
+    await revalidateIssues(org.slug);
+  }
+
+  return { success: true };
+}
+
+export async function reorderIssues(input: unknown): Promise<IssueActionResult> {
+  const parsed = reorderIssuesSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid reorder request",
+    };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  if (!canEditResource(actor.orgRole, "issues")) {
+    return {
+      success: false,
+      error: "You do not have permission to reorder issues",
+    };
+  }
+
+  const count = parsed.data.issueIds.length;
+  const updates = parsed.data.issueIds.map((issueId, index) => ({
+    issueId,
+    priority: (count - index) * 10,
+  }));
+
+  for (const update of updates) {
+    const { error } = await actor.supabase
+      .from("issues")
+      .update({ priority: update.priority })
+      .eq("id", update.issueId)
+      .eq("organization_id", parsed.data.organizationId);
+
+    if (error) {
+      return {
+        success: false,
+        error: "Unable to reorder issues. Please try again.",
+      };
+    }
+  }
+
+  const { data: org } = await actor.supabase
+    .from("organizations")
+    .select("slug")
+    .eq("id", parsed.data.organizationId)
+    .single();
+
+  if (org?.slug) {
+    await revalidateIssues(org.slug);
+  }
+
+  return { success: true };
+}
+
+export async function setIssueParkingLot(input: unknown): Promise<IssueActionResult> {
+  const parsed = setIssueParkingLotSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid parking lot update",
+    };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  if (!canEditResource(actor.orgRole, "issues")) {
+    return {
+      success: false,
+      error: "You do not have permission to update issues",
+    };
+  }
+
+  const { error } = await actor.supabase
+    .from("issues")
+    .update({ is_parking_lot: parsed.data.isParkingLot })
+    .eq("id", parsed.data.issueId)
+    .eq("organization_id", parsed.data.organizationId);
+
+  if (error) {
+    return {
+      success: false,
+      error: "Unable to update parking lot. Please try again.",
+    };
+  }
 
   const { data: org } = await actor.supabase
     .from("organizations")

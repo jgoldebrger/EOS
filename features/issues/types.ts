@@ -21,6 +21,7 @@ export interface IssueFilters {
   ownerId?: string;
   teamId?: string;
   includeArchived?: boolean;
+  parkingLot?: boolean;
 }
 
 export interface IssueTeamOption {

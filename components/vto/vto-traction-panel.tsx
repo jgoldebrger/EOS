@@ -1,6 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { pinVtoLink, unpinVtoLink } from "@/features/vto/actions";
 import type { VtoTractionData } from "@/features/vto/queries";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
@@ -19,21 +20,70 @@ export function VtoTractionPanel({
   canManage,
   traction,
 }: VtoTractionPanelProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [links, setLinks] = useState(traction.links);
 
-  const pinnedBySection = (sectionKey: string) =>
-    new Set(
-      traction.links
-        .filter((link) => link.sectionKey === sectionKey)
-        .map((link) => link.entityId),
-    );
+  const pinnedBySection = useMemo(
+    () => (sectionKey: string) =>
+      new Set(
+        links
+          .filter((link) => link.sectionKey === sectionKey)
+          .map((link) => link.entityId),
+      ),
+    [links],
+  );
 
   const linkIdByEntity = (entityId: string) =>
-    traction.links.find((link) => link.entityId === entityId)?.id;
+    links.find((link) => link.entityId === entityId)?.id;
 
   function refresh() {
-    startTransition(() => {
-      window.location.reload();
+    router.refresh();
+  }
+
+  function togglePinOptimistic(
+    entityId: string,
+    sectionKey: string,
+    title: string,
+    entityType: "rock" | "issue" | "metric",
+    isPinned: boolean,
+  ) {
+    startTransition(async () => {
+      const linkId = linkIdByEntity(entityId);
+      const previousLinks = links;
+
+      if (isPinned && linkId) {
+        setLinks((current) => current.filter((link) => link.id !== linkId));
+      } else {
+        setLinks((current) => [
+          ...current,
+          {
+            id: `optimistic-${entityId}`,
+            entityId,
+            sectionKey,
+            title,
+            entityType,
+          },
+        ]);
+      }
+
+      const result = isPinned && linkId
+        ? await unpinVtoLink({ organizationId, linkId })
+        : await pinVtoLink({
+            organizationId,
+            entityType,
+            entityId,
+            sectionKey,
+          });
+
+      if (!result.success) {
+        setLinks(previousLinks);
+        showErrorToast("Could not update pin", result.error);
+        return;
+      }
+
+      showSuccessToast(isPinned ? "Unpinned" : "Pinned");
+      refresh();
     });
   }
 
@@ -72,23 +122,13 @@ export function VtoTractionPanel({
                         variant={isPinned ? "secondary" : "outline"}
                         disabled={isPending}
                         onClick={() =>
-                          startTransition(async () => {
-                            const linkId = linkIdByEntity(rock.id);
-                            const result = isPinned && linkId
-                              ? await unpinVtoLink({ organizationId, linkId })
-                              : await pinVtoLink({
-                                  organizationId,
-                                  entityType: "rock",
-                                  entityId: rock.id,
-                                  sectionKey: "quarterly_rocks",
-                                });
-                            if (!result.success) {
-                              showErrorToast("Could not update pin", result.error);
-                              return;
-                            }
-                            showSuccessToast(isPinned ? "Unpinned" : "Pinned");
-                            refresh();
-                          })
+                          togglePinOptimistic(
+                            rock.id,
+                            "quarterly_rocks",
+                            rock.title,
+                            "rock",
+                            isPinned,
+                          )
                         }
                       >
                         {isPinned ? "Pinned" : "Pin"}
@@ -127,23 +167,13 @@ export function VtoTractionPanel({
                         variant={isPinned ? "secondary" : "outline"}
                         disabled={isPending}
                         onClick={() =>
-                          startTransition(async () => {
-                            const linkId = linkIdByEntity(issue.id);
-                            const result = isPinned && linkId
-                              ? await unpinVtoLink({ organizationId, linkId })
-                              : await pinVtoLink({
-                                  organizationId,
-                                  entityType: "issue",
-                                  entityId: issue.id,
-                                  sectionKey: "issues_list",
-                                });
-                            if (!result.success) {
-                              showErrorToast("Could not update pin", result.error);
-                              return;
-                            }
-                            showSuccessToast(isPinned ? "Unpinned" : "Pinned");
-                            refresh();
-                          })
+                          togglePinOptimistic(
+                            issue.id,
+                            "issues_list",
+                            issue.title,
+                            "issue",
+                            isPinned,
+                          )
                         }
                       >
                         {isPinned ? "Pinned" : "Pin"}
@@ -184,23 +214,13 @@ export function VtoTractionPanel({
                         variant={isPinned ? "secondary" : "outline"}
                         disabled={isPending}
                         onClick={() =>
-                          startTransition(async () => {
-                            const linkId = linkIdByEntity(metric.id);
-                            const result = isPinned && linkId
-                              ? await unpinVtoLink({ organizationId, linkId })
-                              : await pinVtoLink({
-                                  organizationId,
-                                  entityType: "metric",
-                                  entityId: metric.id,
-                                  sectionKey: "one_year_plan",
-                                });
-                            if (!result.success) {
-                              showErrorToast("Could not update pin", result.error);
-                              return;
-                            }
-                            showSuccessToast(isPinned ? "Unpinned" : "Pinned");
-                            refresh();
-                          })
+                          togglePinOptimistic(
+                            metric.id,
+                            "one_year_plan",
+                            metric.name,
+                            "metric",
+                            isPinned,
+                          )
                         }
                       >
                         {isPinned ? "Pinned" : "Pin"}
@@ -214,13 +234,13 @@ export function VtoTractionPanel({
         </Card>
       </div>
 
-      {traction.links.length > 0 ? (
+      {links.length > 0 ? (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Pinned to V/TO</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
-            {traction.links.map((link) => (
+            {links.map((link) => (
               <Badge key={link.id} variant="secondary">
                 {link.title} ({link.sectionKey.replace(/_/g, " ")})
               </Badge>

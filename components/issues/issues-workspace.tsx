@@ -10,6 +10,7 @@ import type {
 import { IssuesPageHeader } from "@/components/issues/issues-page-header";
 import { IssuesDedupePanel } from "@/components/issues/issues-dedupe-panel";
 import { IssueTable } from "@/components/issues/issue-table";
+import { IssueMeetingList } from "@/components/issues/issue-meeting-list";
 import type { OrgRole } from "@/types/domain";
 
 interface IssuesWorkspaceProps {
@@ -55,8 +56,18 @@ export function IssuesWorkspace({
     });
   }, [issues, filters]);
 
+  const activeIssues = useMemo(
+    () => filteredIssues.filter((issue) => !issue.is_parking_lot),
+    [filteredIssues],
+  );
+
+  const parkingLotIssues = useMemo(
+    () => filteredIssues.filter((issue) => issue.is_parking_lot),
+    [filteredIssues],
+  );
+
   const rankedIssues = useMemo(() => {
-    const ranked = filteredIssues.map((issue, index) => ({
+    const ranked = activeIssues.map((issue, index) => ({
       ...issue,
       priorityRank: index + 1,
     }));
@@ -78,7 +89,7 @@ export function IssuesWorkspace({
     }));
 
     return top3Only ? merged.slice(0, 3) : merged;
-  }, [filteredIssues, pinnedIssueIds, top3Only, variant]);
+  }, [activeIssues, pinnedIssueIds, top3Only, variant]);
 
   function togglePin(issueId: string) {
     setPinnedIssueIds((current) => {
@@ -127,16 +138,25 @@ export function IssuesWorkspace({
           />
         </>
       ) : null}
-      <IssueTable
-        organizationId={organizationId}
-        orgSlug={orgSlug}
-        orgRole={orgRole}
-        issues={rankedIssues}
-        canCreate={canCreate}
-        meetingMode={variant === "meeting"}
-        pinnedIssueIds={pinnedIssueIds}
-        onTogglePin={variant === "meeting" ? togglePin : undefined}
-      />
+      {variant === "meeting" ? (
+        <IssueMeetingList
+          organizationId={organizationId}
+          orgSlug={orgSlug}
+          orgRole={orgRole}
+          activeIssues={rankedIssues}
+          parkingLotIssues={parkingLotIssues}
+          pinnedIssueIds={pinnedIssueIds}
+          onTogglePin={togglePin}
+        />
+      ) : (
+        <IssueTable
+          organizationId={organizationId}
+          orgSlug={orgSlug}
+          orgRole={orgRole}
+          issues={rankedIssues}
+          canCreate={canCreate}
+        />
+      )}
     </div>
   );
 }

@@ -113,7 +113,7 @@ export function ReportsWorkspace({
         </Card>
       </div>
 
-      <Card>
+      <Card data-testid="reports-scorecard-rollup">
         <CardHeader>
           <CardTitle className="text-lg">Scorecard rollup by team</CardTitle>
         </CardHeader>
@@ -158,7 +158,7 @@ export function ReportsWorkspace({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-testid="reports-rprs-panel">
           <CardHeader>
             <CardTitle className="text-lg">People Analyzer RPRS ({quarter})</CardTitle>
           </CardHeader>
@@ -185,7 +185,7 @@ export function ReportsWorkspace({
         </Card>
       </div>
 
-      <Card>
+      <Card data-testid="reports-l10-trend">
         <CardHeader>
           <CardTitle className="text-lg">L10 rating trend</CardTitle>
         </CardHeader>

@@ -5,12 +5,12 @@ import {
   computeRprsStatus,
   type CoreValueRating,
 } from "@/features/people/utils";
+import { computeScorecardRollup } from "@/features/reports/scorecard-rollup";
 import type {
   ExecutiveReportsData,
   L10RatingTrendPoint,
   RockCompletionByTeam,
   RprsDistribution,
-  ScorecardRollupRow,
 } from "@/features/reports/types";
 
 export type {
@@ -56,13 +56,16 @@ export async function getExecutiveReportsData(
       supabase.from("teams").select("id, name").eq("organization_id", organizationId),
       supabase
         .from("scorecard_metrics")
-        .select("id, team_id")
+        .select(
+          "id, team_id, target_rule, target_operator, target_value, target_min, target_max, tolerance_percent, value_type, time_kind",
+        )
         .eq("organization_id", organizationId)
         .is("archived_at", null),
       supabase
         .from("scorecard_values")
-        .select("metric_id, status_override")
-        .eq("organization_id", organizationId),
+        .select("metric_id, actual, status_override, target_snapshot, period_start")
+        .eq("organization_id", organizationId)
+        .order("period_start", { ascending: false }),
       supabase
         .from("meetings")
         .select("team_id, ended_at, metadata, teams(name)")
@@ -98,46 +101,23 @@ export async function getExecutiveReportsData(
   const teams = teamsResult.data ?? [];
   const teamNameById = new Map(teams.map((team) => [team.id, team.name]));
 
-  const latestStatusByMetric = new Map<string, string>();
-  for (const value of valuesResult.data ?? []) {
-    if (!latestStatusByMetric.has(value.metric_id) && value.status_override) {
-      latestStatusByMetric.set(value.metric_id, value.status_override);
-    }
-  }
-
-  const rollupMap = new Map<string | null, ScorecardRollupRow>();
-
-  function ensureRollup(teamId: string | null) {
-    const existing = rollupMap.get(teamId);
-    if (existing) return existing;
-
-    const row: ScorecardRollupRow = {
-      teamId,
-      teamName: teamId ? (teamNameById.get(teamId) ?? "Team") : "Organization",
-      metricCount: 0,
-      greenCount: 0,
-      yellowCount: 0,
-      redCount: 0,
-      onTrackPct: 0,
-    };
-    rollupMap.set(teamId, row);
-    return row;
-  }
-
-  for (const metric of metricsResult.data ?? []) {
-    const row = ensureRollup(metric.team_id);
-    row.metricCount += 1;
-    const status = latestStatusByMetric.get(metric.id);
-    if (status === "green") row.greenCount += 1;
-    if (status === "yellow") row.yellowCount += 1;
-    if (status === "red") row.redCount += 1;
-  }
-
-  const scorecardRollup = Array.from(rollupMap.values()).map((row) => ({
-    ...row,
-    onTrackPct:
-      row.metricCount > 0 ? Math.round((row.greenCount / row.metricCount) * 100) : 0,
-  }));
+  const scorecardRollup = computeScorecardRollup(
+    metricsResult.data ?? [],
+    (valuesResult.data ?? []).map((value) => ({
+      metric_id: value.metric_id,
+      actual:
+        value.actual === null || value.actual === undefined
+          ? null
+          : Number(value.actual),
+      status_override: value.status_override,
+      target_snapshot:
+        value.target_snapshot === null || value.target_snapshot === undefined
+          ? null
+          : Number(value.target_snapshot),
+      period_start: value.period_start,
+    })),
+    teamNameById,
+  );
 
   const l10RatingTrend: L10RatingTrendPoint[] = [];
   for (const meeting of meetingsResult.data ?? []) {

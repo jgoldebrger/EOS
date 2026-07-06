@@ -46,6 +46,17 @@ export const prioritizeIssueSchema = z.object({
   priority: z.number().int().min(0, "Priority must be at least 0"),
 });
 
+export const reorderIssuesSchema = z.object({
+  organizationId: z.string().uuid("Invalid organization"),
+  issueIds: z.array(z.string().uuid("Invalid issue")).min(1),
+});
+
+export const setIssueParkingLotSchema = z.object({
+  organizationId: z.string().uuid("Invalid organization"),
+  issueId: z.string().uuid("Invalid issue"),
+  isParkingLot: z.boolean(),
+});
+
 export type CreateIssueInput = z.infer<typeof createIssueSchema>;
 export type UpdateIssueInput = z.infer<typeof updateIssueSchema>;
 export type SolveIssueInput = z.infer<typeof solveIssueSchema>;

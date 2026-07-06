@@ -70,6 +70,12 @@ async function fetchIssues(
   if (filters.teamId) {
     query = query.eq("team_id", filters.teamId);
   }
+  if (filters.parkingLot === false) {
+    query = query.eq("is_parking_lot", false);
+  }
+  if (filters.parkingLot === true) {
+    query = query.eq("is_parking_lot", true);
+  }
 
   const { data: issues, error } = await query;
 
@@ -106,6 +112,7 @@ export async function getOpenIssues(
     )
     .eq("organization_id", organizationId)
     .is("archived_at", null)
+    .eq("is_parking_lot", false)
     .in("status", ["open", "discussing"])
     .order("priority", { ascending: false })
     .order("created_at", { ascending: true });
@@ -115,6 +122,12 @@ export async function getOpenIssues(
   }
   if (filters.teamId) {
     query = query.eq("team_id", filters.teamId);
+  }
+  if (filters.parkingLot === false) {
+    query = query.eq("is_parking_lot", false);
+  }
+  if (filters.parkingLot === true) {
+    query = query.eq("is_parking_lot", true);
   }
 
   const { data: issues, error } = await query;

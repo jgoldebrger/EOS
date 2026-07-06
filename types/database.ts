@@ -1030,6 +1030,7 @@ export interface Database {
           linked_rock_id: string | null;
           linked_meeting_id: string | null;
           archived_at: string | null;
+          is_parking_lot: boolean;
           created_at: string;
           updated_at: string;
           created_by: string | null;
@@ -1048,6 +1049,7 @@ export interface Database {
           linked_rock_id?: string | null;
           linked_meeting_id?: string | null;
           archived_at?: string | null;
+          is_parking_lot?: boolean;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
@@ -1066,6 +1068,7 @@ export interface Database {
           linked_rock_id?: string | null;
           linked_meeting_id?: string | null;
           archived_at?: string | null;
+          is_parking_lot?: boolean;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
