@@ -6,12 +6,18 @@ import {
   createDecisionSchema,
   createMeetingSchema,
   endMeetingSchema,
+  extendSectionDurationSchema,
   l10AgendaDurationsSchema,
   saveMeetingRatingSchema,
   saveNoteSchema,
   startMeetingSchema,
   updateActiveSectionSchema,
 } from "@/features/meetings/schema";
+import {
+  buildMeetingTimer,
+  mergeTimerIntoMetadata,
+  parseMeetingTimer,
+} from "@/features/meetings/timer";
 import type {
   CreateMeetingResult,
   MeetingActionResult,
@@ -86,6 +92,13 @@ async function getOrgSlug(
     .single();
 
   return data?.slug ?? null;
+}
+
+function readMeetingMetadata(metadata: unknown): Record<string, unknown> {
+  if (typeof metadata === "object" && metadata !== null && !Array.isArray(metadata)) {
+    return metadata as Record<string, unknown>;
+  }
+  return {};
 }
 
 async function revalidateMeetings(orgSlug: string, meetingId?: string) {
@@ -256,7 +269,7 @@ export async function startMeeting(input: unknown): Promise<MeetingActionResult>
 
   const { data: existing } = await actor.supabase
     .from("meetings")
-    .select("status, agenda_template")
+    .select("status, agenda_template, metadata")
     .eq("id", parsed.data.meetingId)
     .eq("organization_id", parsed.data.organizationId)
     .maybeSingle();
@@ -278,6 +291,8 @@ export async function startMeeting(input: unknown): Promise<MeetingActionResult>
       : getDefaultL10Agenda(),
   );
   const startedAt = new Date().toISOString();
+  const existingMetadata = readMeetingMetadata(existing.metadata);
+  const timer = buildMeetingTimer(firstSection, startedAt);
 
   const { error } = await actor.supabase
     .from("meetings")
@@ -285,6 +300,7 @@ export async function startMeeting(input: unknown): Promise<MeetingActionResult>
       status: "in_progress",
       started_at: startedAt,
       active_section_key: firstSection,
+      metadata: mergeTimerIntoMetadata(existingMetadata, timer) as Json,
     })
     .eq("id", parsed.data.meetingId)
     .eq("organization_id", parsed.data.organizationId);
@@ -340,7 +356,7 @@ export async function updateActiveSection(
 
   const { data: existing } = await actor.supabase
     .from("meetings")
-    .select("status")
+    .select("status, metadata")
     .eq("id", parsed.data.meetingId)
     .eq("organization_id", parsed.data.organizationId)
     .maybeSingle();
@@ -356,9 +372,21 @@ export async function updateActiveSection(
     };
   }
 
+  const existingMetadata = readMeetingMetadata(existing.metadata);
+  const currentTimer = parseMeetingTimer(existingMetadata);
+  const startedAt = new Date().toISOString();
+  const timer = buildMeetingTimer(
+    parsed.data.sectionKey,
+    startedAt,
+    currentTimer.extensions,
+  );
+
   const { error } = await actor.supabase
     .from("meetings")
-    .update({ active_section_key: parsed.data.sectionKey })
+    .update({
+      active_section_key: parsed.data.sectionKey,
+      metadata: mergeTimerIntoMetadata(existingMetadata, timer) as Json,
+    })
     .eq("id", parsed.data.meetingId)
     .eq("organization_id", parsed.data.organizationId);
 
@@ -378,6 +406,83 @@ export async function updateActiveSection(
     parsed.data.meetingId,
     { active_section_key: parsed.data.sectionKey } as Json,
   );
+
+  const orgSlug = await getOrgSlug(actor.supabase, parsed.data.organizationId);
+  if (orgSlug) {
+    await revalidateMeetings(orgSlug, parsed.data.meetingId);
+  }
+
+  return { success: true };
+}
+
+export async function extendSectionDuration(
+  input: unknown,
+): Promise<MeetingActionResult> {
+  const parsed = extendSectionDurationSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid extension request",
+    };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  if (!canEditMeetings(actor.orgRole)) {
+    return {
+      success: false,
+      error: "You do not have permission to extend this section",
+    };
+  }
+
+  const { data: existing } = await actor.supabase
+    .from("meetings")
+    .select("status, metadata")
+    .eq("id", parsed.data.meetingId)
+    .eq("organization_id", parsed.data.organizationId)
+    .maybeSingle();
+
+  if (!existing) {
+    return { success: false, error: "Meeting not found" };
+  }
+
+  if (existing.status !== "in_progress") {
+    return {
+      success: false,
+      error: "Meeting must be in progress to extend a section",
+    };
+  }
+
+  const existingMetadata = readMeetingMetadata(existing.metadata);
+  const currentTimer = parseMeetingTimer(existingMetadata);
+  const extensions = { ...currentTimer.extensions };
+  extensions[parsed.data.sectionKey] =
+    (extensions[parsed.data.sectionKey] ?? 0) + parsed.data.extraMinutes;
+
+  const timer = buildMeetingTimer(
+    currentTimer.sectionKey ?? parsed.data.sectionKey,
+    currentTimer.startedAt?.toISOString() ?? new Date().toISOString(),
+    extensions,
+  );
+
+  const { error } = await actor.supabase
+    .from("meetings")
+    .update({
+      metadata: mergeTimerIntoMetadata(existingMetadata, timer) as Json,
+    })
+    .eq("id", parsed.data.meetingId)
+    .eq("organization_id", parsed.data.organizationId);
+
+  if (error) {
+    return {
+      success: false,
+      error: "Unable to extend section. Please try again.",
+    };
+  }
 
   const orgSlug = await getOrgSlug(actor.supabase, parsed.data.organizationId);
   if (orgSlug) {

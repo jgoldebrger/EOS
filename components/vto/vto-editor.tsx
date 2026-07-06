@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { ChevronDown, Target } from "lucide-react";
 import { createSnapshot, toggleSectionVisibility } from "@/features/vto/actions";
+import { downloadVtoPdf } from "@/features/vto/export-pdf";
 import type { VtoSection, VtoSnapshot } from "@/features/vto/types";
 import { VtoPageHeader } from "@/components/vto/vto-page-header";
 import { VtoSectionEditor } from "@/components/vto/vto-section-editor";
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 interface VtoEditorProps {
   organizationId: string;
+  orgSlug: string;
   canManage: boolean;
   sections: VtoSection[];
   snapshots: VtoSnapshot[];
@@ -24,6 +26,7 @@ interface VtoEditorProps {
 
 export function VtoEditor({
   organizationId,
+  orgSlug,
   canManage,
   sections,
   snapshots,
@@ -69,6 +72,13 @@ export function VtoEditor({
         canManage={canManage}
         onSaveSnapshot={handleSaveSnapshot}
         isSavingSnapshot={isSavingSnapshot}
+        onExportPdf={() =>
+          downloadVtoPdf({
+            orgName: orgSlug,
+            sections,
+            traction,
+          })
+        }
       />
 
       <div className="flex gap-1 rounded-lg border p-1 w-fit">

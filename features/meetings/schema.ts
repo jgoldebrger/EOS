@@ -106,11 +106,19 @@ export type CreateMeetingInput = z.infer<typeof createMeetingSchema>;
 export type UpdateMeetingInput = z.infer<typeof updateMeetingSchema>;
 export type StartMeetingInput = z.infer<typeof startMeetingSchema>;
 export type UpdateActiveSectionInput = z.infer<typeof updateActiveSectionSchema>;
+export type ExtendSectionDurationInput = z.infer<typeof extendSectionDurationSchema>;
 export type SaveNoteInput = z.infer<typeof saveNoteSchema>;
 export type CreateDecisionInput = z.infer<typeof createDecisionSchema>;
 export type EndMeetingInput = z.infer<typeof endMeetingSchema>;
 export type SaveMeetingRatingInput = z.infer<typeof saveMeetingRatingSchema>;
 export type AgendaStepInput = z.infer<typeof agendaStepSchema>;
+
+export const extendSectionDurationSchema = z.object({
+  organizationId: z.string().uuid("Invalid organization"),
+  meetingId: z.string().uuid("Invalid meeting"),
+  sectionKey: z.string().min(1).max(50),
+  extraMinutes: z.number().int().min(1).max(60).default(5),
+});
 
 export const saveCascadingMessagesSchema = z.object({
   organizationId: z.string().uuid(),

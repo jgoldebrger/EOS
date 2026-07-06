@@ -66,7 +66,10 @@ Stubs: `lib/permissions/checks.ts`
 | done | 028 | Scorecard: team members can create/reassign measurables (L10) |
 | done | 029 | Meeting metadata + People Analyzer GWC reviews |
 | done | 030 | People Analyzer core values, V/TO links, inbox archive, process seats |
-| **Next available** | **031** | — |
+| done | 031 | Rock milestones |
+| done | 032 | Cascade deliveries |
+| done | 033 | Issue parking lot (L10 IDS) |
+| **Next available** | **034** | — |
 
 Team workspace routes: `/org/[orgSlug]/teams/[teamSlug]/{overview,l10,rocks,scorecard,todos,headlines,issues,process,people}`
 

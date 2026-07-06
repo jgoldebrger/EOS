@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCascadeCompletionMetric } from "@/features/cascades/queries";
+import {
+  getCascadeCompletionMetric,
+  getCascadeDeliveriesForOrg,
+} from "@/features/cascades/queries";
 import { getCurrentQuarter } from "@/features/rocks/utils";
 import {
   computeRprsStatus,
@@ -15,6 +18,7 @@ import type {
 
 export type {
   CascadeCompletionMetric,
+  CascadeDeliverySummary,
   ExecutiveReportsData,
   IdsThroughput,
   L10RatingTrendPoint,
@@ -23,6 +27,52 @@ export type {
   ScorecardRollupRow,
 } from "@/features/reports/types";
 export { buildScorecardRollupCsv } from "@/features/reports/csv";
+
+async function fetchScorecardRollupRows(organizationId: string) {
+  const supabase = await createClient();
+
+  const [teamsResult, metricsResult, valuesResult] = await Promise.all([
+    supabase.from("teams").select("id, name").eq("organization_id", organizationId),
+    supabase
+      .from("scorecard_metrics")
+      .select(
+        "id, team_id, target_rule, target_operator, target_value, target_min, target_max, tolerance_percent, value_type, time_kind",
+      )
+      .eq("organization_id", organizationId)
+      .is("archived_at", null),
+    supabase
+      .from("scorecard_values")
+      .select("metric_id, actual, status_override, target_snapshot, period_start")
+      .eq("organization_id", organizationId)
+      .order("period_start", { ascending: false }),
+  ]);
+
+  const teamNameById = new Map(
+    (teamsResult.data ?? []).map((team) => [team.id, team.name]),
+  );
+
+  return computeScorecardRollup(
+    metricsResult.data ?? [],
+    (valuesResult.data ?? []).map((value) => ({
+      metric_id: value.metric_id,
+      actual:
+        value.actual === null || value.actual === undefined
+          ? null
+          : Number(value.actual),
+      status_override: value.status_override,
+      target_snapshot:
+        value.target_snapshot === null || value.target_snapshot === undefined
+          ? null
+          : Number(value.target_snapshot),
+      period_start: value.period_start,
+    })),
+    teamNameById,
+  );
+}
+
+export async function getScorecardRollupForOrg(organizationId: string) {
+  return fetchScorecardRollupRows(organizationId);
+}
 
 function parseMeetingAvgRating(metadata: unknown): number | null {
   if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) {
@@ -51,21 +101,16 @@ export async function getExecutiveReportsData(
 ): Promise<ExecutiveReportsData> {
   const supabase = await createClient();
 
-  const [teamsResult, metricsResult, valuesResult, meetingsResult, rocksResult, issuesOpened, issuesSolved, reviewsResult, cascadeCompletion] =
-    await Promise.all([
-      supabase.from("teams").select("id, name").eq("organization_id", organizationId),
-      supabase
-        .from("scorecard_metrics")
-        .select(
-          "id, team_id, target_rule, target_operator, target_value, target_min, target_max, tolerance_percent, value_type, time_kind",
-        )
-        .eq("organization_id", organizationId)
-        .is("archived_at", null),
-      supabase
-        .from("scorecard_values")
-        .select("metric_id, actual, status_override, target_snapshot, period_start")
-        .eq("organization_id", organizationId)
-        .order("period_start", { ascending: false }),
+  const [
+    meetingsResult,
+    rocksResult,
+    issuesOpened,
+    issuesSolved,
+    reviewsResult,
+    cascadeCompletion,
+    cascadeDeliveriesRaw,
+    scorecardRollup,
+  ] = await Promise.all([
       supabase
         .from("meetings")
         .select("team_id, ended_at, metadata, teams(name)")
@@ -96,28 +141,28 @@ export async function getExecutiveReportsData(
         .eq("organization_id", organizationId)
         .eq("quarter", quarter),
       getCascadeCompletionMetric(organizationId),
+      getCascadeDeliveriesForOrg(organizationId),
+      fetchScorecardRollupRows(organizationId),
     ]);
 
-  const teams = teamsResult.data ?? [];
-  const teamNameById = new Map(teams.map((team) => [team.id, team.name]));
-
-  const scorecardRollup = computeScorecardRollup(
-    metricsResult.data ?? [],
-    (valuesResult.data ?? []).map((value) => ({
-      metric_id: value.metric_id,
-      actual:
-        value.actual === null || value.actual === undefined
-          ? null
-          : Number(value.actual),
-      status_override: value.status_override,
-      target_snapshot:
-        value.target_snapshot === null || value.target_snapshot === undefined
-          ? null
-          : Number(value.target_snapshot),
-      period_start: value.period_start,
-    })),
-    teamNameById,
+  const teamsResult = await supabase
+    .from("teams")
+    .select("id, name")
+    .eq("organization_id", organizationId);
+  const teamNameById = new Map(
+    (teamsResult.data ?? []).map((team) => [team.id, team.name]),
   );
+
+  const cascadeDeliveries = cascadeDeliveriesRaw.map((row) => ({
+    id: row.id,
+    sourceType: row.sourceType,
+    sourceLabel: row.sourceLabel,
+    targetTeamId: row.targetTeamId,
+    targetTeamName: row.targetTeamName,
+    status: row.status,
+    deliveredAt: row.deliveredAt,
+    acknowledgedAt: row.acknowledgedAt,
+  }));
 
   const l10RatingTrend: L10RatingTrendPoint[] = [];
   for (const meeting of meetingsResult.data ?? []) {
@@ -190,6 +235,7 @@ export async function getExecutiveReportsData(
     },
     rprsDistribution,
     cascadeCompletion,
+    cascadeDeliveries,
   };
 }
 

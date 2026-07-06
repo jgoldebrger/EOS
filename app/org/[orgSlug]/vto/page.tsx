@@ -22,6 +22,7 @@ async function VtoContent({ orgSlug }: { orgSlug: string }) {
   return (
     <VtoEditor
       organizationId={access.orgId}
+      orgSlug={orgSlug}
       canManage={canManage}
       sections={sections}
       snapshots={snapshots}

@@ -79,6 +79,7 @@ export function AccountabilityWorkspace({
         />
       ) : (
         <AccountabilityChart
+          organizationId={organizationId}
           tree={tree}
           canManage={canManage}
           onEditSeat={canManage ? setEditingSeat : undefined}

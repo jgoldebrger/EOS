@@ -42,6 +42,17 @@ export interface CascadeCompletionMetric {
   completionPct: number;
 }
 
+export interface CascadeDeliverySummary {
+  id: string;
+  sourceType: "headline" | "meeting_message";
+  sourceLabel: string;
+  targetTeamId: string;
+  targetTeamName: string;
+  status: "pending" | "acknowledged";
+  deliveredAt: string;
+  acknowledgedAt: string | null;
+}
+
 export interface ExecutiveReportsData {
   quarter: string;
   scorecardRollup: ScorecardRollupRow[];
@@ -50,4 +61,5 @@ export interface ExecutiveReportsData {
   idsThroughput: IdsThroughput;
   rprsDistribution: RprsDistribution;
   cascadeCompletion: CascadeCompletionMetric;
+  cascadeDeliveries: CascadeDeliverySummary[];
 }

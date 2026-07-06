@@ -237,6 +237,43 @@ export function ReportsWorkspace({
         </CardContent>
       </Card>
 
+      <Card data-testid="reports-cascade-drilldown">
+        <CardHeader>
+          <CardTitle className="text-lg">Cascade deliveries</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {executive.cascadeDeliveries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No cascade deliveries yet.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="pb-2 font-medium">Message</th>
+                  <th className="pb-2 font-medium">Team</th>
+                  <th className="pb-2 font-medium">Status</th>
+                  <th className="pb-2 font-medium">Delivered</th>
+                </tr>
+              </thead>
+              <tbody>
+                {executive.cascadeDeliveries.slice(0, 25).map((row) => (
+                  <tr key={row.id} className="border-b last:border-0">
+                    <td className="py-2">{row.sourceLabel}</td>
+                    <td className="py-2">{row.targetTeamName}</td>
+                    <td className="py-2 capitalize">{row.status}</td>
+                    <td className="py-2 text-muted-foreground">
+                      {new Date(row.deliveredAt).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+
       <p className="text-sm text-muted-foreground">
         <Link href={`/org/${orgSlug}/activity`} className="text-primary hover:underline">
           View full activity log

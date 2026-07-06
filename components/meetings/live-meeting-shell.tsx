@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -18,10 +18,12 @@ import { CascadingMessagesChecklist } from "@/components/meetings/cascading-mess
 import { AiSummaryPanel } from "@/components/ai/ai-summary-panel";
 import type { AiSuggestion } from "@/features/ai/schema";
 import {
+  extendSectionDuration,
   startMeeting,
   updateActiveSection,
 } from "@/features/meetings/actions";
 import type { MeetingWithNotes } from "@/features/meetings/types";
+import { parseMeetingTimer } from "@/features/meetings/timer";
 import { getL10HubHref, getSectionByKey, getSectionRemainingSeconds, isSectionOvertime, formatTimerDisplay, parseCascadingMessageTemplates } from "@/features/meetings/utils";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 
@@ -50,20 +52,37 @@ export function LiveMeetingShell({
 }: LiveMeetingShellProps) {
   const router = useRouter();
   const meeting = initialMeeting;
+  const initialTimer = parseMeetingTimer(initialMeeting.metadata);
   const [activeSectionKey, setActiveSectionKey] = useState<string | null>(
-    initialMeeting.active_section_key ?? initialMeeting.agenda[0]?.key ?? null,
+    initialMeeting.active_section_key ??
+      initialTimer.sectionKey ??
+      initialMeeting.agenda[0]?.key ??
+      null,
   );
   const [sectionStartedAt, setSectionStartedAt] = useState<Date | null>(
-    initialMeeting.started_at ? new Date(initialMeeting.started_at) : null,
+    initialTimer.startedAt ??
+      (initialMeeting.started_at ? new Date(initialMeeting.started_at) : null),
   );
   const [now, setNow] = useState(() => new Date());
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [presenceCount, setPresenceCount] = useState(1);
-  const [durationExtensions, setDurationExtensions] = useState<Record<string, number>>({});
+  const [durationExtensions, setDurationExtensions] = useState<Record<string, number>>(
+    initialTimer.extensions,
+  );
   const [ratingOpen, setRatingOpen] = useState(false);
   const [ratingDismissed, setRatingDismissed] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const prevSectionRef = useRef(activeSectionKey);
+
+  function applyTimerFromMetadata(metadata: unknown) {
+    const timer = parseMeetingTimer(metadata);
+    if (timer.sectionKey) {
+      setActiveSectionKey(timer.sectionKey);
+    }
+    if (timer.startedAt) {
+      setSectionStartedAt(timer.startedAt);
+    }
+    setDurationExtensions(timer.extensions);
+  }
 
   useEffect(() => {
     if (meeting.status !== "in_progress") {
@@ -73,13 +92,6 @@ export function LiveMeetingShell({
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
   }, [meeting.status]);
-
-  useEffect(() => {
-    if (prevSectionRef.current !== activeSectionKey) {
-      setSectionStartedAt(new Date());
-      prevSectionRef.current = activeSectionKey;
-    }
-  }, [activeSectionKey]);
 
   useEffect(() => {
     if (meeting.status !== "in_progress") {
@@ -102,12 +114,18 @@ export function LiveMeetingShell({
             filter: `id=eq.${meeting.id}`,
           },
           (payload) => {
-            const nextKey = (payload.new as { active_section_key?: string | null })
-              .active_section_key;
-            if (nextKey && nextKey !== activeSectionKey) {
-              setActiveSectionKey(nextKey);
-              router.refresh();
+            const nextRow = payload.new as {
+              active_section_key?: string | null;
+              metadata?: unknown;
+            };
+            if (
+              nextRow.active_section_key &&
+              nextRow.active_section_key !== activeSectionKey
+            ) {
+              setActiveSectionKey(nextRow.active_section_key);
             }
+            applyTimerFromMetadata(nextRow.metadata);
+            router.refresh();
           },
         )
         .on("presence", { event: "sync" }, () => {
@@ -211,11 +229,28 @@ export function LiveMeetingShell({
   }
 
   function handleExtendSection() {
-    if (!activeSectionKey) return;
+    if (!activeSectionKey || !canEdit) return;
+
+    const sectionKey = activeSectionKey;
+    const previousExtensions = durationExtensions;
     setDurationExtensions((current) => ({
       ...current,
-      [activeSectionKey]: (current[activeSectionKey] ?? 0) + 5,
+      [sectionKey]: (current[sectionKey] ?? 0) + 5,
     }));
+
+    startTransition(async () => {
+      const result = await extendSectionDuration({
+        organizationId,
+        meetingId: meeting.id,
+        sectionKey,
+        extraMinutes: 5,
+      });
+
+      if (!result.success) {
+        setDurationExtensions(previousExtensions);
+        showErrorToast(result.error);
+      }
+    });
   }
 
   const noteForSection = meeting.notes.find(
