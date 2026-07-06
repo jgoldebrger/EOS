@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getSupabaseSecretKey, getSupabaseUrl } from "@/lib/supabase/env";
 
 export type NotificationType =
   | "assignment"
@@ -83,8 +84,8 @@ export async function queueNotification(input: QueueNotificationInput): Promise<
       return;
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = getSupabaseUrl();
+    const serviceKey = getSupabaseSecretKey();
 
     if (!supabaseUrl || !serviceKey) {
       console.info("[notification] log only", {
@@ -97,7 +98,7 @@ export async function queueNotification(input: QueueNotificationInput): Promise<
       return;
     }
 
-    await fetch(`${supabaseUrl}/functions/v1/send-notifications`, {
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-notifications`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${serviceKey}`,
@@ -111,6 +112,16 @@ export async function queueNotification(input: QueueNotificationInput): Promise<
         type: input.type,
       }),
     });
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      console.error(
+        "[notification] edge function failed",
+        input.type,
+        response.status,
+        detail,
+      );
+    }
   } catch (error) {
     console.error("[notification] failed to queue", input.type, error);
   }

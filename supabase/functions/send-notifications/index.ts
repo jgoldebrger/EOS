@@ -39,7 +39,13 @@ async function sendViaResend(payload: NotificationPayload): Promise<boolean> {
     }),
   });
 
-  return response.ok;
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    console.error("[send-notifications] Resend error", response.status, detail);
+    return false;
+  }
+
+  return true;
 }
 
 const handler = {

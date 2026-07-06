@@ -11,6 +11,10 @@ All functions use [`@supabase/server`](https://github.com/supabase/server) with 
 | `validate-sso-membership` | `user` | SSO auto-join validation |
 | `discover-sso-provider` | `publishable` | Pre-login SSO discovery (`verify_jwt = false`) |
 | `send-notifications` | `secret` | Email delivery via Resend (L10 recap, cascades, assignments) |
+
+Set secrets: `.\scripts\push-resend-secrets.ps1` (reads `RESEND_API_KEY` + `NOTIFICATION_FROM_EMAIL` from `.env.local`).
+
+Cursor agents can also use Resend's hosted MCP (`https://mcp.resend.com`) — see [`.cursor/mcp.json`](../.cursor/mcp.json).
 | `optimize-routes` | `user` | VROOM route optimization proxy |
 | `run-transport-analysis` | `user` | Ferrobus isochrone worker proxy |
 
