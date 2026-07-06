@@ -69,7 +69,8 @@ Stubs: `lib/permissions/checks.ts`
 | done | 031 | Rock milestones |
 | done | 032 | Cascade deliveries |
 | done | 033 | Issue parking lot (L10 IDS) |
-| **Next available** | **034** | — |
+| done | 034 | Recurring L10 schedules + inbox reminders |
+| **Next available** | **035** | — |
 
 Team workspace routes: `/org/[orgSlug]/teams/[teamSlug]/{overview,l10,rocks,scorecard,todos,headlines,issues,process,people}`
 

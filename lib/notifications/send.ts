@@ -4,6 +4,7 @@ import { getSupabaseSecretKey, getSupabaseUrl } from "@/lib/supabase/env";
 export type NotificationType =
   | "assignment"
   | "l10_recap"
+  | "l10_reminder"
   | "cascade"
   | "people_review_reminder";
 
@@ -57,6 +58,7 @@ function shouldSendEmail(type: NotificationType, prefs: NotificationPreferences)
     case "assignment":
       return prefs.emailAssignments;
     case "l10_recap":
+    case "l10_reminder":
       return prefs.emailL10Recap;
     case "cascade":
       return prefs.emailAssignments;

@@ -1,0 +1,111 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import {
+  deleteMeetingScheduleSchema,
+  upsertMeetingScheduleSchema,
+} from "@/features/meetings/schedule-schema";
+import type { MeetingActionResult } from "@/features/meetings/types";
+import { canEditResource } from "@/lib/permissions/checks";
+import type { OrgRole } from "@/types/domain";
+
+async function getActorContext(organizationId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in" } as const;
+  }
+
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select("org_role")
+    .eq("organization_id", organizationId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!membership) {
+    return { error: "You do not have access to this organization" } as const;
+  }
+
+  return {
+    supabase,
+    user,
+    orgRole: membership.org_role as OrgRole,
+  } as const;
+}
+
+export async function upsertMeetingSchedule(input: unknown): Promise<MeetingActionResult> {
+  const parsed = upsertMeetingScheduleSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid schedule",
+    };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  if (!canEditResource(actor.orgRole, "meetings")) {
+    return { success: false, error: "You do not have permission to manage L10 schedules" };
+  }
+
+  const { error } = await actor.supabase.from("meeting_schedules" as never).upsert(
+    {
+      organization_id: parsed.data.organizationId,
+      team_id: parsed.data.teamId,
+      day_of_week: parsed.data.dayOfWeek,
+      time_local: `${parsed.data.timeLocal}:00`,
+      timezone: parsed.data.timezone,
+      reminder_hours_before: parsed.data.reminderHoursBefore,
+      enabled: parsed.data.enabled,
+      created_by: actor.user.id,
+    } as never,
+    { onConflict: "team_id" },
+  );
+
+  if (error) {
+    return { success: false, error: "Could not save L10 schedule" };
+  }
+
+  revalidatePath(`/org/${parsed.data.orgSlug}/teams/${parsed.data.teamSlug}/l10`);
+  return { success: true };
+}
+
+export async function deleteMeetingSchedule(input: unknown): Promise<MeetingActionResult> {
+  const parsed = deleteMeetingScheduleSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid request",
+    };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  if (!canEditResource(actor.orgRole, "meetings")) {
+    return { success: false, error: "You do not have permission to manage L10 schedules" };
+  }
+
+  const { error } = await actor.supabase
+    .from("meeting_schedules" as never)
+    .delete()
+    .eq("organization_id", parsed.data.organizationId)
+    .eq("team_id", parsed.data.teamId);
+
+  if (error) {
+    return { success: false, error: "Could not remove L10 schedule" };
+  }
+
+  revalidatePath(`/org/${parsed.data.orgSlug}/teams/${parsed.data.teamSlug}/l10`);
+  return { success: true };
+}

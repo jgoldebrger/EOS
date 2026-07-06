@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronRight, Clock, ShieldCheck, Users } from "lucide-react";
+import { ChevronRight, Clock, Mail, ShieldCheck, Users } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -152,6 +152,28 @@ export default async function SettingsPage({
           ) : (
             <p className="text-sm text-muted-foreground">Admin access required.</p>
           )}
+        </CardContent>
+      </Card>
+
+      <Card data-testid="notification-settings-link">
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="size-5" />
+              Notifications
+            </CardTitle>
+            <CardDescription>
+              Verify email delivery and production notification configuration.
+            </CardDescription>
+          </div>
+          <ChevronRight className="size-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline">
+            <Link href={`/org/${orgSlug}/settings/notifications`}>
+              {canEdit ? "Test notifications" : "View notification status"}
+            </Link>
+          </Button>
         </CardContent>
       </Card>
 

@@ -5,6 +5,7 @@ import {
   getMeetingsForTeam,
   getOrgL10AgendaTemplate,
 } from "@/features/meetings/queries";
+import { getMeetingScheduleForTeam } from "@/features/meetings/schedule-queries";
 import { getTeamPageContext } from "@/lib/team-page-context";
 import { canEditResource, canManageOrg } from "@/lib/permissions/checks";
 
@@ -16,10 +17,11 @@ export default async function TeamL10Page({
   const { orgSlug, teamSlug } = await params;
   const ctx = await getTeamPageContext(orgSlug, teamSlug);
 
-  const [meetings, inProgressMeeting, agendaTemplate] = await Promise.all([
+  const [meetings, inProgressMeeting, agendaTemplate, schedule] = await Promise.all([
     getMeetingsForTeam(ctx.orgId, ctx.teamId),
     getInProgressMeetingForTeam(ctx.orgId, ctx.teamId),
     getOrgL10AgendaTemplate(ctx.orgId),
+    getMeetingScheduleForTeam(ctx.orgId, ctx.teamId),
   ]);
 
   const canEdit = canEditResource(ctx.orgRole, "meetings");
@@ -39,6 +41,7 @@ export default async function TeamL10Page({
           agendaTemplate={agendaTemplate}
           meetings={meetings}
           inProgressMeeting={inProgressMeeting}
+          schedule={schedule}
         />
       </Suspense>
     </div>

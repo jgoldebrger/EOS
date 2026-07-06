@@ -411,6 +411,9 @@ verify_jwt = false
 [functions.send-notifications]
 verify_jwt = false
 
+[functions.l10-schedule-reminders]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

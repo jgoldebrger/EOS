@@ -9,7 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { CreateL10MeetingButton } from "@/components/meetings/create-l10-meeting-button";
+import { L10ScheduleForm } from "@/components/meetings/l10-schedule-form";
 import type { L10AgendaTemplate, MeetingListItem } from "@/features/meetings/types";
+import type { MeetingSchedule } from "@/features/meetings/schedule-utils";
 import {
   formatSectionDuration,
   getL10MeetingHref,
@@ -29,6 +31,7 @@ interface L10HubProps {
   agendaTemplate: L10AgendaTemplate;
   meetings: MeetingListItem[];
   inProgressMeeting: MeetingListItem | null;
+  schedule: MeetingSchedule | null;
 }
 
 function MeetingHistoryRow({
@@ -73,6 +76,7 @@ export function L10Hub({
   agendaTemplate,
   meetings,
   inProgressMeeting,
+  schedule,
 }: L10HubProps) {
   const searchParams = useSearchParams();
   const [createOpen, setCreateOpen] = useState(
@@ -125,6 +129,22 @@ export function L10Hub({
               <Link href={`/org/${orgSlug}/settings/l10`}>Edit agenda timings</Link>
             </Button>
           ) : null}
+        </CardContent>
+      </Card>
+
+      <Card data-testid="l10-schedule-card">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">Recurring schedule</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <L10ScheduleForm
+            organizationId={organizationId}
+            orgSlug={orgSlug}
+            teamId={teamId}
+            teamSlug={teamSlug}
+            initialSchedule={schedule}
+            canEdit={canEdit}
+          />
         </CardContent>
       </Card>
 

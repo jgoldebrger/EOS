@@ -10,13 +10,20 @@ All functions use [`@supabase/server`](https://github.com/supabase/server) with 
 | `summarize-meeting` | `user` | AI meeting summary |
 | `validate-sso-membership` | `user` | SSO auto-join validation |
 | `discover-sso-provider` | `publishable` | Pre-login SSO discovery (`verify_jwt = false`) |
-| `send-notifications` | `secret` | Email delivery via Resend (L10 recap, cascades, assignments) |
+| `send-notifications` | `secret` | Branded HTML email via Resend (L10 recap, cascades, assignments, reminders) |
+| `l10-schedule-reminders` | `secret` | Hourly cron — inbox + email reminders for recurring L10 schedules |
+| `optimize-routes` | `user` | VROOM route optimization proxy |
+| `run-transport-analysis` | `user` | Ferrobus isochrone worker proxy |
 
 Set secrets: `.\scripts\push-resend-secrets.ps1` (reads `RESEND_API_KEY` + `NOTIFICATION_FROM_EMAIL` from `.env.local`).
 
+Domain setup: `.\scripts\setup-resend-domain.ps1` — add DNS records in Resend, then re-run when verified.
+
+Smoke test: `.\scripts\smoke-test-notification.ps1` or Settings → Notifications in the app.
+
+Rotate API key: `.\scripts\rotate-resend-key.ps1`
+
 Cursor agents can also use Resend's hosted MCP (`https://mcp.resend.com`) — see [`.cursor/mcp.json`](../.cursor/mcp.json).
-| `optimize-routes` | `user` | VROOM route optimization proxy |
-| `run-transport-analysis` | `user` | Ferrobus isochrone worker proxy |
 
 Shared helpers: [`_shared/edge-utils.ts`](./_shared/edge-utils.ts)
 
