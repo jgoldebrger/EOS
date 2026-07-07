@@ -80,6 +80,13 @@ async function ensureOrgSession(
 }
 
 export async function signInAsAdmin(page: Page): Promise<void> {
+  await page.goto(`/org/${E2E_ORG_SLUG}/dashboard`, {
+    waitUntil: "domcontentloaded",
+    timeout: NAV_TIMEOUT,
+  });
+  if (orgUrlPattern(E2E_ORG_SLUG).test(page.url())) {
+    return;
+  }
   await ensureOrgSession(page, E2E_ORG_SLUG, E2E_ADMIN_EMAIL, E2E_ADMIN_PASSWORD);
 }
 
