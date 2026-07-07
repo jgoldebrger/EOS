@@ -6,7 +6,8 @@ export type NotificationType =
   | "l10_recap"
   | "l10_reminder"
   | "cascade"
-  | "people_review_reminder";
+  | "people_review_reminder"
+  | "scorecard_digest";
 
 export interface QueueNotificationInput {
   userId: string;
@@ -63,6 +64,7 @@ function shouldSendEmail(type: NotificationType, prefs: NotificationPreferences)
     case "cascade":
       return prefs.emailAssignments;
     case "people_review_reminder":
+    case "scorecard_digest":
       return prefs.emailWeeklyDigest;
     default:
       return false;

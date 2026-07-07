@@ -9,10 +9,13 @@ import {
   type CoreValueRating,
 } from "@/features/people/utils";
 import { computeScorecardRollup } from "@/features/reports/scorecard-rollup";
+import { aggregateMilestoneHealth } from "@/features/rocks/milestone-health";
 import type {
   ExecutiveReportsData,
   L10RatingTrendPoint,
   RockCompletionByTeam,
+  RockMilestoneHealthByTeam,
+  RockMilestoneHealthSummary,
   RprsDistribution,
 } from "@/features/reports/types";
 
@@ -23,6 +26,8 @@ export type {
   IdsThroughput,
   L10RatingTrendPoint,
   RockCompletionByTeam,
+  RockMilestoneHealthByTeam,
+  RockMilestoneHealthSummary,
   RprsDistribution,
   ScorecardRollupRow,
 } from "@/features/reports/types";
@@ -95,6 +100,78 @@ function parseMeetingAvgRating(metadata: unknown): number | null {
   return Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 10) / 10;
 }
 
+async function fetchRockMilestoneHealth(
+  organizationId: string,
+  quarter: string,
+  teamNameById: Map<string, string>,
+): Promise<RockMilestoneHealthSummary> {
+  const supabase = await createClient();
+
+  const { data: milestones } = await supabase
+    .from("rock_milestones" as never)
+    .select("completed_at, due_date, rocks!inner(team_id, quarter, archived_at)")
+    .eq("organization_id", organizationId)
+    .eq("rocks.quarter", quarter)
+    .is("rocks.archived_at", null);
+
+  const rows = (milestones ?? []) as Array<{
+    completed_at: string | null;
+    due_date: string | null;
+    rocks: { team_id: string | null };
+  }>;
+
+  const byTeamMap = new Map<string | null, RockMilestoneHealthByTeam>();
+
+  for (const row of rows) {
+    const teamId = row.rocks.team_id;
+    const existing = byTeamMap.get(teamId) ?? {
+      teamId,
+      teamName: teamId ? (teamNameById.get(teamId) ?? "Team") : "Organization",
+      total: 0,
+      completed: 0,
+      overdue: 0,
+      atRisk: 0,
+      onTrack: 0,
+      healthPct: 0,
+    };
+
+    const counts = aggregateMilestoneHealth([
+      { completed_at: row.completed_at, due_date: row.due_date },
+    ]);
+    existing.total += counts.total;
+    existing.completed += counts.completed;
+    existing.overdue += counts.overdue;
+    existing.atRisk += counts.atRisk;
+    existing.onTrack += counts.onTrack;
+    byTeamMap.set(teamId, existing);
+  }
+
+  const byTeam = Array.from(byTeamMap.values()).map((team) => ({
+    ...team,
+    healthPct:
+      team.total > 0
+        ? Math.round(((team.completed + team.onTrack) / team.total) * 100)
+        : 100,
+  }));
+
+  const overall = aggregateMilestoneHealth(
+    rows.map((row) => ({
+      completed_at: row.completed_at,
+      due_date: row.due_date,
+    })),
+  );
+
+  return {
+    total: overall.total,
+    completed: overall.completed,
+    overdue: overall.overdue,
+    atRisk: overall.atRisk,
+    onTrack: overall.onTrack,
+    healthPct: overall.healthPct,
+    byTeam: byTeam.sort((a, b) => a.teamName.localeCompare(b.teamName)),
+  };
+}
+
 export async function getExecutiveReportsData(
   organizationId: string,
   quarter: string = getCurrentQuarter(),
@@ -151,6 +228,12 @@ export async function getExecutiveReportsData(
     .eq("organization_id", organizationId);
   const teamNameById = new Map(
     (teamsResult.data ?? []).map((team) => [team.id, team.name]),
+  );
+
+  const milestoneHealth = await fetchRockMilestoneHealth(
+    organizationId,
+    quarter,
+    teamNameById,
   );
 
   const cascadeDeliveries = cascadeDeliveriesRaw.map((row) => ({
@@ -228,6 +311,7 @@ export async function getExecutiveReportsData(
     scorecardRollup,
     l10RatingTrend: l10RatingTrend.slice(0, 20),
     rockCompletionByTeam,
+    rockMilestoneHealth: milestoneHealth,
     idsThroughput: {
       opened,
       solved,

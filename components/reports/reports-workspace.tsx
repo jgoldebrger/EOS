@@ -111,7 +111,76 @@ export function ReportsWorkspace({
             {executive.idsThroughput.solveRatePct}%
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Milestone health ({quarter})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-3xl font-semibold tabular-nums">
+            {executive.rockMilestoneHealth.healthPct}%
+          </CardContent>
+        </Card>
       </div>
+
+      <Card data-testid="reports-milestone-health">
+        <CardHeader>
+          <CardTitle className="text-lg">Rock milestone health ({quarter})</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <div className="grid gap-4 sm:grid-cols-4">
+            <div>
+              <p className="text-2xl font-semibold tabular-nums">
+                {executive.rockMilestoneHealth.total}
+              </p>
+              <p className="text-muted-foreground">Total milestones</p>
+            </div>
+            <div>
+              <p className="text-2xl font-semibold tabular-nums text-emerald-600">
+                {executive.rockMilestoneHealth.completed}
+              </p>
+              <p className="text-muted-foreground">Completed</p>
+            </div>
+            <div>
+              <p className="text-2xl font-semibold tabular-nums text-red-600">
+                {executive.rockMilestoneHealth.overdue}
+              </p>
+              <p className="text-muted-foreground">Overdue</p>
+            </div>
+            <div>
+              <p className="text-2xl font-semibold tabular-nums text-amber-600">
+                {executive.rockMilestoneHealth.atRisk}
+              </p>
+              <p className="text-muted-foreground">Due within 7 days</p>
+            </div>
+          </div>
+
+          {executive.rockMilestoneHealth.byTeam.length === 0 ? (
+            <p className="text-muted-foreground">No milestones for this quarter yet.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="pb-2 font-medium">Team</th>
+                  <th className="pb-2 font-medium">Milestones</th>
+                  <th className="pb-2 font-medium">Overdue</th>
+                  <th className="pb-2 font-medium">Health</th>
+                </tr>
+              </thead>
+              <tbody>
+                {executive.rockMilestoneHealth.byTeam.map((row) => (
+                  <tr key={row.teamId ?? "org"} className="border-b last:border-0">
+                    <td className="py-2">{row.teamName}</td>
+                    <td className="py-2 tabular-nums">{row.total}</td>
+                    <td className="py-2 tabular-nums">{row.overdue}</td>
+                    <td className="py-2 tabular-nums">{row.healthPct}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
 
       <Card data-testid="reports-scorecard-rollup">
         <CardHeader>

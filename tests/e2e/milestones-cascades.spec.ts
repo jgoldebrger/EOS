@@ -41,6 +41,7 @@ test.describe("L10 IDS meeting list (authenticated)", () => {
     await expect(issuesSection).toBeVisible({ timeout: 15_000 });
     await expect(issuesSection.getByTestId("issues-meeting-list")).toBeVisible();
     await expect(issuesSection.getByTestId("issues-parking-lot")).toBeVisible();
+    await expect(issuesSection.getByTestId("ids-top3-timer")).toBeVisible();
   });
 });
 

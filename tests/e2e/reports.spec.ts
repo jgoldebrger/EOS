@@ -21,6 +21,7 @@ test.describe("reports (authenticated)", () => {
     await expect(page.getByTestId("reports-rprs-panel")).toBeVisible();
     await expect(page.getByTestId("reports-l10-trend")).toBeVisible();
     await expect(page.getByTestId("reports-cascade-drilldown")).toBeVisible();
+    await expect(page.getByTestId("reports-milestone-health")).toBeVisible();
     await expect(page.getByText("Cascade ack rate")).toBeVisible();
     await expect(page.getByText(/IDS solve rate/)).toBeVisible();
   });

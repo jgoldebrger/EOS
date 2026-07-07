@@ -36,6 +36,7 @@ supabase functions deploy summarize-meeting
 supabase functions deploy discover-sso-provider
 supabase functions deploy validate-sso-membership
 supabase functions deploy l10-schedule-reminders
+supabase functions deploy scorecard-off-track-digest
 ```
 
 Or run `scripts/deploy-edge-functions.ps1`.
@@ -47,6 +48,7 @@ Or run `scripts/deploy-edge-functions.ps1`.
 
 - [ ] `SUPABASE_SECRET_KEY` added to GitHub repository secrets
 - [ ] `.github/workflows/l10-schedule-reminders.yml` runs hourly (check Actions tab)
+- [ ] `.github/workflows/scorecard-off-track-digest.yml` runs weekly on Mondays (check Actions tab)
 - [ ] Team recurring schedules configured on each team L10 hub
 
 ## 6. Member onboarding

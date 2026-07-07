@@ -23,6 +23,27 @@ export interface RockCompletionByTeam {
   completionPct: number;
 }
 
+export interface RockMilestoneHealthByTeam {
+  teamId: string | null;
+  teamName: string;
+  total: number;
+  completed: number;
+  overdue: number;
+  atRisk: number;
+  onTrack: number;
+  healthPct: number;
+}
+
+export interface RockMilestoneHealthSummary {
+  total: number;
+  completed: number;
+  overdue: number;
+  atRisk: number;
+  onTrack: number;
+  healthPct: number;
+  byTeam: RockMilestoneHealthByTeam[];
+}
+
 export interface IdsThroughput {
   opened: number;
   solved: number;
@@ -58,6 +79,7 @@ export interface ExecutiveReportsData {
   scorecardRollup: ScorecardRollupRow[];
   l10RatingTrend: L10RatingTrendPoint[];
   rockCompletionByTeam: RockCompletionByTeam[];
+  rockMilestoneHealth: RockMilestoneHealthSummary;
   idsThroughput: IdsThroughput;
   rprsDistribution: RprsDistribution;
   cascadeCompletion: CascadeCompletionMetric;

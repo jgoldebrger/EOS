@@ -53,6 +53,9 @@ wait_for_supabase
 echo "Loading Supabase credentials..."
 load_supabase_env
 
+echo "Building Next.js for E2E..."
+npm run build
+
 echo "Installing Playwright browser..."
 npx playwright install chromium --with-deps
 

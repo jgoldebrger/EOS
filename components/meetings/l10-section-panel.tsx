@@ -11,6 +11,8 @@ import {
   getOrgMembersForIssues,
   getOrgTeamsForIssues,
 } from "@/features/issues/queries";
+import { getMeetingById } from "@/features/meetings/queries";
+import { parseIdsSession } from "@/features/meetings/ids-session";
 import {
   getOrgMembersForRocks,
   getOrgTeamsForRocks,
@@ -201,11 +203,14 @@ export async function L10SectionPanel({
     }
 
     case "issues": {
-      const [issues, teams, members] = await Promise.all([
+      const [issues, teams, members, meeting] = await Promise.all([
         getIssuesForOrg(organizationId, { teamId }),
         getOrgTeamsForIssues(organizationId),
         getOrgMembersForIssues(organizationId),
+        getMeetingById(organizationId, meetingId),
       ]);
+
+      const idsSession = parseIdsSession(meeting?.metadata);
 
       return (
         <div data-testid={`l10-section-${sectionKey}`}>
@@ -220,6 +225,9 @@ export async function L10SectionPanel({
             members={members}
             defaultTeamId={teamId}
             linkedMeetingId={meetingId}
+            meetingId={meetingId}
+            initialIdsSession={idsSession}
+            canEditMeeting={canCreate}
             variant="meeting"
           />
         </div>

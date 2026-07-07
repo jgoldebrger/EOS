@@ -251,11 +251,21 @@ export async function getTeamMeetingRatingTrend(
     .reverse();
 }
 
+export interface MeetingRecapIssue {
+  id: string;
+  title: string;
+  status: string;
+  ids_notes: string | null;
+  is_parking_lot: boolean;
+  priorityRank: number | null;
+}
+
 export interface MeetingRecapData {
   meeting: MeetingWithNotes;
   headlines: Array<{ id: string; title: string; body: string; headline_type: string }>;
   todos: Array<{ id: string; title: string; status: string }>;
-  issues: Array<{ id: string; title: string; status: string }>;
+  issues: MeetingRecapIssue[];
+  idsRecap: import("@/features/meetings/ids-session").IdsRecapSummary | null;
   pendingSuggestions: Awaited<ReturnType<typeof import("@/features/ai/queries").getPendingSuggestions>>;
 }
 
@@ -270,6 +280,9 @@ export async function getMeetingRecapData(
 
   const supabase = await createClient();
   const { getPendingSuggestions } = await import("@/features/ai/queries");
+  const { parseIdsSession, buildIdsRecapSummary } = await import(
+    "@/features/meetings/ids-session"
+  );
 
   const [headlinesResult, todosResult, issuesResult, pendingSuggestions] =
     await Promise.all([
@@ -287,17 +300,49 @@ export async function getMeetingRecapData(
         .eq("source_id", meetingId),
       supabase
         .from("issues")
-        .select("id, title, status")
+        .select("id, title, status, ids_notes, is_parking_lot")
         .eq("organization_id", organizationId)
         .eq("linked_meeting_id", meetingId),
       getPendingSuggestions({ organizationId, meetingId }),
     ]);
 
+  const meetingMetadata =
+    typeof meeting.metadata === "object" &&
+    meeting.metadata !== null &&
+    !Array.isArray(meeting.metadata)
+      ? (meeting.metadata as Record<string, unknown>)
+      : {};
+
+  const idsSession = parseIdsSession(meetingMetadata);
+  const storedRecap = meetingMetadata.idsRecap;
+  const issueRows = (issuesResult.data ?? []) as Array<{
+    id: string;
+    title: string;
+    status: string;
+    ids_notes: string | null;
+    is_parking_lot: boolean;
+  }>;
+
+  const idsRecap =
+    typeof storedRecap === "object" &&
+    storedRecap !== null &&
+    !Array.isArray(storedRecap)
+      ? (storedRecap as import("@/features/meetings/ids-session").IdsRecapSummary)
+      : buildIdsRecapSummary(idsSession, issueRows);
+
+  const pinnedRank = new Map(
+    idsRecap.pinnedIssueIds.map((issueId, index) => [issueId, index + 1]),
+  );
+
   return {
     meeting,
     headlines: (headlinesResult.data ?? []) as MeetingRecapData["headlines"],
     todos: todosResult.data ?? [],
-    issues: issuesResult.data ?? [],
+    issues: issueRows.map((issue) => ({
+      ...issue,
+      priorityRank: pinnedRank.get(issue.id) ?? null,
+    })),
+    idsRecap,
     pendingSuggestions,
   };
 }

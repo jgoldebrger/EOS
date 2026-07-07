@@ -1,0 +1,25 @@
+name: Scorecard Off-Track Digest
+
+on:
+  schedule:
+    # Mondays at 14:00 UTC (9am US Eastern during standard time)
+    - cron: "0 14 * * 1"
+  workflow_dispatch:
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger scorecard-off-track-digest edge function
+        env:
+          SUPABASE_URL: https://intfblfzreghhshcztuw.supabase.co
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          if [ -z "$SUPABASE_SECRET_KEY" ]; then
+            echo "Add SUPABASE_SECRET_KEY to GitHub repository secrets."
+            exit 1
+          fi
+          curl -sS -X POST "$SUPABASE_URL/functions/v1/scorecard-off-track-digest" \
+            -H "Authorization: Bearer $SUPABASE_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}'

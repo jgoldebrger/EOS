@@ -23,7 +23,7 @@ export function MeetingRecapView({
   teamSlug,
   recap,
 }: MeetingRecapViewProps) {
-  const { meeting, headlines, todos, issues, pendingSuggestions } = recap;
+  const { meeting, headlines, todos, issues, idsRecap, pendingSuggestions } = recap;
   const [copied, setCopied] = useState(false);
   const recapUrl =
     typeof window !== "undefined"
@@ -130,19 +130,70 @@ export function MeetingRecapView({
         </Card>
       </div>
 
+      <Card data-testid="meeting-recap-ids">
+        <CardHeader>
+          <CardTitle className="text-lg">IDS summary</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <p className="text-2xl font-semibold tabular-nums">{idsRecap?.solvedCount ?? 0}</p>
+              <p className="text-muted-foreground">Solved</p>
+            </div>
+            <div>
+              <p className="text-2xl font-semibold tabular-nums">
+                {idsRecap?.parkingLotCount ?? 0}
+              </p>
+              <p className="text-muted-foreground">Parking lot</p>
+            </div>
+            <div>
+              <p className="text-2xl font-semibold tabular-nums">
+                {idsRecap?.pinnedIssueIds.length ?? 0}
+              </p>
+              <p className="text-muted-foreground">Top 3 pinned</p>
+            </div>
+          </div>
+
+          {(idsRecap?.focusLog.length ?? 0) > 0 ? (
+            <div>
+              <p className="mb-2 font-medium">Focus time</p>
+              <ul className="space-y-1 text-muted-foreground">
+                {idsRecap?.focusLog.map((entry) => (
+                  <li key={`${entry.issueId}-${entry.secondsSpent}`}>
+                    {entry.title} — {Math.max(1, Math.round(entry.secondsSpent / 60))} min
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Issues discussed</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+        <CardContent className="space-y-3 text-sm">
           {issues.length === 0 ? (
             <p className="text-muted-foreground">No issues linked to this meeting.</p>
           ) : (
             issues.map((issue) => (
-              <p key={issue.id}>
-                {issue.title}{" "}
-                <span className="text-muted-foreground capitalize">({issue.status})</span>
-              </p>
+              <div key={issue.id} className="space-y-1">
+                <p>
+                  {issue.priorityRank ? (
+                    <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+                      {issue.priorityRank}
+                    </span>
+                  ) : null}
+                  {issue.title}{" "}
+                  <span className="text-muted-foreground capitalize">
+                    ({issue.is_parking_lot ? "parking lot" : issue.status})
+                  </span>
+                </p>
+                {issue.ids_notes ? (
+                  <p className="text-muted-foreground">{issue.ids_notes}</p>
+                ) : null}
+              </div>
             ))
           )}
         </CardContent>

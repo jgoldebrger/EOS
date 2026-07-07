@@ -44,6 +44,7 @@ test.describe("vto page (authenticated)", () => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/vto`);
 
+    await expect(page.getByTestId("vto-editor")).toBeVisible();
     await page.getByTestId("save-vto-snapshot").click();
     await expect(page.getByTestId("vto-snapshot-history")).toBeVisible();
   });

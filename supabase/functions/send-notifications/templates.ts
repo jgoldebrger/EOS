@@ -4,7 +4,8 @@ export type EmailTemplateType =
   | "cascade"
   | "people_review_reminder"
   | "smoke_test"
-  | "l10_reminder";
+  | "l10_reminder"
+  | "scorecard_digest";
 
 interface TemplateInput {
   subject: string;
@@ -38,6 +39,8 @@ function templateLabel(type: EmailTemplateType | undefined): string {
       return "People Review";
     case "l10_reminder":
       return "L10 Reminder";
+    case "scorecard_digest":
+      return "Scorecard Digest";
     case "assignment":
     default:
       return "Assignment";
@@ -56,7 +59,9 @@ export function buildNotificationHtml(input: TemplateInput): string {
       ? "Open L10"
       : type === "cascade"
         ? "Read cascade"
-        : "Open in EOS";
+        : type === "scorecard_digest"
+          ? "Open scorecard"
+          : "Open in EOS";
 
   const button = actionUrl
     ? `<table role="presentation" cellspacing="0" cellpadding="0" style="margin:24px 0 8px;">

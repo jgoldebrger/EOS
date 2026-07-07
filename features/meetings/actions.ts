@@ -681,12 +681,31 @@ export async function endMeeting(input: unknown): Promise<MeetingActionResult> {
 
   const endedAt = new Date().toISOString();
 
+  const existingMetadata = readMeetingMetadata(existing.metadata);
+  const { parseIdsSession, buildIdsRecapSummary } =
+    await import("@/features/meetings/ids-session");
+
+  const { data: linkedIssues } = await actor.supabase
+    .from("issues")
+    .select("id, status, is_parking_lot")
+    .eq("organization_id", parsed.data.organizationId)
+    .eq("linked_meeting_id", parsed.data.meetingId);
+
+  const idsRecap = buildIdsRecapSummary(
+    parseIdsSession(existingMetadata),
+    linkedIssues ?? [],
+  );
+
   const { error } = await actor.supabase
     .from("meetings")
     .update({
       status: "completed",
       ended_at: endedAt,
       active_section_key: null,
+      metadata: {
+        ...existingMetadata,
+        idsRecap,
+      } as unknown as Json,
     })
     .eq("id", parsed.data.meetingId)
     .eq("organization_id", parsed.data.organizationId);
@@ -713,12 +732,7 @@ export async function endMeeting(input: unknown): Promise<MeetingActionResult> {
     await revalidateMeetings(orgSlug, parsed.data.meetingId);
 
     const teamJoin = existing.teams as { slug: string; name: string } | null;
-    const metadata =
-      typeof existing.metadata === "object" &&
-      existing.metadata !== null &&
-      !Array.isArray(existing.metadata)
-        ? (existing.metadata as Record<string, unknown>)
-        : {};
+    const metadata = readMeetingMetadata(existing.metadata);
 
     const cascadingMessages = Array.isArray(metadata.cascadingMessages)
       ? (metadata.cascadingMessages as Array<{ label: string; completed: boolean }>)
@@ -879,6 +893,161 @@ export async function saveCascadingMessages(input: unknown): Promise<MeetingActi
   }
 
   return { success: true };
+}
+
+async function updateMeetingIdsSession(
+  organizationId: string,
+  meetingId: string,
+  session: import("@/features/meetings/ids-session").IdsSession,
+): Promise<MeetingActionResult> {
+  const actor = await getActorContext(organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  if (!canEditMeetings(actor.orgRole)) {
+    return { success: false, error: "Permission denied" };
+  }
+
+  const { data: meeting } = await actor.supabase
+    .from("meetings")
+    .select("metadata")
+    .eq("id", meetingId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (!meeting) {
+    return { success: false, error: "Meeting not found" };
+  }
+
+  const { mergeIdsSessionIntoMetadata } = await import(
+    "@/features/meetings/ids-session"
+  );
+  const existingMetadata = readMeetingMetadata(meeting.metadata);
+
+  const { error } = await actor.supabase
+    .from("meetings")
+    .update({
+      metadata: mergeIdsSessionIntoMetadata(existingMetadata, session) as Json,
+    } as { metadata: Json })
+    .eq("id", meetingId)
+    .eq("organization_id", organizationId);
+
+  if (error) {
+    return { success: false, error: "Could not save IDS session" };
+  }
+
+  const orgSlug = await getOrgSlug(actor.supabase, organizationId);
+  if (orgSlug) {
+    await revalidateMeetings(orgSlug, meetingId);
+  }
+
+  return { success: true };
+}
+
+export async function saveIdsSession(input: unknown): Promise<MeetingActionResult> {
+  const { saveIdsSessionSchema } = await import("@/features/meetings/schema");
+  const { ensureIdsFocusStarted } = await import("@/features/meetings/ids-session");
+  const parsed = saveIdsSessionSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid IDS session" };
+  }
+
+  const session = ensureIdsFocusStarted(parsed.data.session);
+  return updateMeetingIdsSession(
+    parsed.data.organizationId,
+    parsed.data.meetingId,
+    session,
+  );
+}
+
+export async function advanceIdsFocus(input: unknown): Promise<MeetingActionResult> {
+  const { advanceIdsFocusSchema } = await import("@/features/meetings/schema");
+  const { parseIdsSession } = await import("@/features/meetings/ids-session");
+  const parsed = advanceIdsFocusSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid IDS focus advance" };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  if (!canEditMeetings(actor.orgRole)) {
+    return { success: false, error: "Permission denied" };
+  }
+
+  const { data: meeting } = await actor.supabase
+    .from("meetings")
+    .select("metadata")
+    .eq("id", parsed.data.meetingId)
+    .eq("organization_id", parsed.data.organizationId)
+    .maybeSingle();
+
+  if (!meeting) {
+    return { success: false, error: "Meeting not found" };
+  }
+
+  const session = parseIdsSession(meeting.metadata);
+  const focusLog = [...session.focusLog];
+  if (parsed.data.secondsSpent > 0) {
+    focusLog.push({
+      issueId: parsed.data.currentIssueId,
+      title: parsed.data.currentIssueTitle,
+      secondsSpent: parsed.data.secondsSpent,
+    });
+  }
+
+  const nextIndex = Math.min(session.focusIndex + 1, session.pinnedIssueIds.length - 1);
+  const nextSession = {
+    ...session,
+    focusLog,
+    focusIndex: nextIndex,
+    focusStartedAt: new Date().toISOString(),
+    focusExtraSeconds: 0,
+  };
+
+  return updateMeetingIdsSession(
+    parsed.data.organizationId,
+    parsed.data.meetingId,
+    nextSession,
+  );
+}
+
+export async function extendIdsFocus(input: unknown): Promise<MeetingActionResult> {
+  const { extendIdsFocusSchema } = await import("@/features/meetings/schema");
+  const { parseIdsSession } = await import("@/features/meetings/ids-session");
+  const parsed = extendIdsFocusSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid IDS focus extension" };
+  }
+
+  const actor = await getActorContext(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  if (!canEditMeetings(actor.orgRole)) {
+    return { success: false, error: "Permission denied" };
+  }
+
+  const { data: meeting } = await actor.supabase
+    .from("meetings")
+    .select("metadata")
+    .eq("id", parsed.data.meetingId)
+    .eq("organization_id", parsed.data.organizationId)
+    .maybeSingle();
+
+  if (!meeting) {
+    return { success: false, error: "Meeting not found" };
+  }
+
+  const session = parseIdsSession(meeting.metadata);
+  return updateMeetingIdsSession(parsed.data.organizationId, parsed.data.meetingId, {
+    ...session,
+    focusExtraSeconds: session.focusExtraSeconds + parsed.data.extraSeconds,
+  });
 }
 
 export async function updateSeguePrompts(input: unknown): Promise<MeetingActionResult> {

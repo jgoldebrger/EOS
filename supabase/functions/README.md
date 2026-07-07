@@ -12,6 +12,7 @@ All functions use [`@supabase/server`](https://github.com/supabase/server) with 
 | `discover-sso-provider` | `publishable` | Pre-login SSO discovery (`verify_jwt = false`) |
 | `send-notifications` | `secret` | Branded HTML email via Resend (L10 recap, cascades, assignments, reminders) |
 | `l10-schedule-reminders` | `secret` | Hourly cron — inbox + email reminders for recurring L10 schedules |
+| `scorecard-off-track-digest` | `secret` | Weekly cron — inbox + email digest of off-track metrics to owners |
 | `optimize-routes` | `user` | VROOM route optimization proxy |
 | `run-transport-analysis` | `user` | Ferrobus isochrone worker proxy |
 

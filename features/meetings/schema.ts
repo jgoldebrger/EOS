@@ -137,5 +137,43 @@ export const updateSeguePromptsSchema = z.object({
   prompts: z.array(z.string().min(1).max(500)).min(1).max(20),
 });
 
+export const idsFocusLogEntrySchema = z.object({
+  issueId: z.string().uuid(),
+  title: z.string().min(1).max(500),
+  secondsSpent: z.number().int().min(0).max(86_400),
+});
+
+export const idsSessionSchema = z.object({
+  pinnedIssueIds: z.array(z.string().uuid()).max(3),
+  focusIndex: z.number().int().min(0).max(2),
+  focusStartedAt: z.string().nullable(),
+  focusMinutesPerIssue: z.number().int().min(1).max(30),
+  focusExtraSeconds: z.number().int().min(0).max(3600),
+  focusLog: z.array(idsFocusLogEntrySchema),
+});
+
+export const saveIdsSessionSchema = z.object({
+  organizationId: z.string().uuid(),
+  meetingId: z.string().uuid(),
+  session: idsSessionSchema,
+});
+
+export const advanceIdsFocusSchema = z.object({
+  organizationId: z.string().uuid(),
+  meetingId: z.string().uuid(),
+  currentIssueTitle: z.string().min(1).max(500),
+  currentIssueId: z.string().uuid(),
+  secondsSpent: z.number().int().min(0).max(86_400),
+});
+
+export const extendIdsFocusSchema = z.object({
+  organizationId: z.string().uuid(),
+  meetingId: z.string().uuid(),
+  extraSeconds: z.number().int().min(30).max(600).default(60),
+});
+
 export type SaveCascadingMessagesInput = z.infer<typeof saveCascadingMessagesSchema>;
 export type UpdateSeguePromptsInput = z.infer<typeof updateSeguePromptsSchema>;
+export type SaveIdsSessionInput = z.infer<typeof saveIdsSessionSchema>;
+export type AdvanceIdsFocusInput = z.infer<typeof advanceIdsFocusSchema>;
+export type ExtendIdsFocusInput = z.infer<typeof extendIdsFocusSchema>;
