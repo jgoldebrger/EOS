@@ -40,6 +40,9 @@ export default function Home() {
             <Button variant="outline" asChild>
               <Link href="/onboarding">Create organization</Link>
             </Button>
+            <Button variant="outline" asChild>
+              <Link href="/docs">Documentation</Link>
+            </Button>
           </CardContent>
         </Card>
       </main>

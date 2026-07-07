@@ -2,6 +2,14 @@
 
 Business Operating System for EOS practitioners — Strety-style team workspaces, scorecards, rocks, issues, todos, L10 meetings, headlines, process docs, accountability charts, V/TO, AI suggestions, and enterprise SSO.
 
+## User documentation
+
+Full product documentation for end users is available at **`/docs`** (online user guide) and in the repository [`docs/`](./docs/README.md) folder.
+
+Topics covered: getting started, navigation, roles, L10 meetings, every traction tool, company/V/TO, projects, transport, AI, notifications, and security.
+
+**Online docs:** `/docs` — public documentation site (no sign-in required). Signed-in users see a **Back to app** button.
+
 ## Navigation (Strety-style)
 
 - **Global top nav:** Home, Inbox (unread badge), Activity, Reports, Teams, People, Process, Company, Projects, Transport

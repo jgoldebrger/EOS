@@ -100,6 +100,9 @@ export function TopNav() {
                   Settings
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/docs?from=${orgSlug}`}>Help</Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <form action={signOut} className="w-full">

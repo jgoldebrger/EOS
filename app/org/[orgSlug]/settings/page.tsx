@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronRight, Clock, Mail, ShieldCheck, Users } from "lucide-react";
+import { ChevronRight, Clock, HelpCircle, Mail, ShieldCheck, Users } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -152,6 +152,26 @@ export default async function SettingsPage({
           ) : (
             <p className="text-sm text-muted-foreground">Admin access required.</p>
           )}
+        </CardContent>
+      </Card>
+
+      <Card data-testid="help-docs-link">
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <HelpCircle className="size-5" />
+              Help & documentation
+            </CardTitle>
+            <CardDescription>
+              Full product guide — features, workflows, and permissions.
+            </CardDescription>
+          </div>
+          <ChevronRight className="size-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline">
+            <Link href={`/docs?from=${orgSlug}`}>Open documentation</Link>
+          </Button>
         </CardContent>
       </Card>
 

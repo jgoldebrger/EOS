@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -317,6 +318,11 @@ export function AuthForm() {
               </button>
             </>
           )}
+        </p>
+        <p className="text-center text-sm text-muted-foreground">
+          <Link href="/docs" className="font-medium text-foreground underline-offset-4 hover:underline">
+            Read the documentation
+          </Link>
         </p>
       </CardContent>
     </Card>

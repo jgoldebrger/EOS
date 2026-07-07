@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { getGlobalNavHref } from "@/components/layout/global-nav-config";
 
-const QUICK_LINKS = [
+const QUICK_LINKS: Array<{ label: string; segment: string; href?: string }> = [
   { label: "Home", segment: "home" },
   { label: "Teams", segment: "teams" },
   { label: "People", segment: "people" },
@@ -25,6 +25,7 @@ const QUICK_LINKS = [
   { label: "Inbox", segment: "inbox" },
   { label: "Activity", segment: "activity" },
   { label: "Reports", segment: "reports" },
+  { label: "Help", segment: "help", href: "/docs" },
 ];
 
 export function GlobalSearch() {
@@ -181,7 +182,7 @@ export function GlobalSearch() {
                   type="button"
                   className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
                   onClick={() => {
-                    router.push(getGlobalNavHref(orgSlug, link.segment));
+                    router.push(link.href ?? getGlobalNavHref(orgSlug, link.segment));
                     setOpen(false);
                   }}
                 >
