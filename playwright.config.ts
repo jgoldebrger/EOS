@@ -54,8 +54,6 @@ function webServerEnv(): Record<string, string> {
   return { ...defaultSupabaseEnv, ...fromProcess };
 }
 
-const skipWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER === "1";
-
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
@@ -103,15 +101,11 @@ export default defineConfig({
           use: { ...devices["Desktop Chrome"] },
         },
       ],
-  ...(skipWebServer
-    ? {}
-    : {
-        webServer: {
-          command: process.env.CI ? "npm run start" : "npm run dev",
-          url: "http://localhost:3000",
-          reuseExistingServer: !process.env.CI,
-          timeout: 180_000,
-          env: webServerEnv(),
-        },
-      }),
+  webServer: {
+    command: process.env.CI ? "npm run start" : "npm run dev",
+    url: "http://localhost:3000",
+    reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
+    env: webServerEnv(),
+  },
 });

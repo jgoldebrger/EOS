@@ -48,6 +48,19 @@ load_supabase_env() {
   export E2E_SUPABASE_ENABLED=1
 }
 
+write_next_env_file() {
+  cat > .env.production.local <<EOF
+NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+SUPABASE_URL=${SUPABASE_URL}
+SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
+SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+SUPABASE_JWKS_URL=${SUPABASE_JWKS_URL}
+EOF
+}
+
 start_supabase() {
   local attempt
   for attempt in 1 2 3; do
@@ -68,6 +81,7 @@ start_supabase
 
 echo "Loading Supabase credentials..."
 load_supabase_env
+write_next_env_file
 
 echo "Resetting database with seed data..."
 supabase db reset --yes
@@ -84,27 +98,6 @@ if [[ -z "${SUPABASE_SECRET_KEY:-}" || -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ]]; th
   exit 1
 fi
 
-wait_for_next() {
-  echo "Waiting for Next.js..."
-  for i in $(seq 1 90); do
-    if curl -sf http://127.0.0.1:3000 >/dev/null 2>&1; then
-      echo "Next.js ready (attempt ${i})"
-      return 0
-    fi
-    sleep 2
-  done
-  echo "Next.js failed to become ready"
-  return 1
-}
-
-echo "Starting Next.js with Supabase env..."
-PORT=3000 npm run start &
-WEB_PID=$!
-trap 'kill "$WEB_PID" 2>/dev/null || true' EXIT
-
-wait_for_next
-
 echo "Running E2E tests..."
-export PLAYWRIGHT_SKIP_WEBSERVER=1
 export CI=1
 npm run test:e2e:ci

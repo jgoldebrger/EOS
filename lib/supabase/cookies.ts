@@ -4,7 +4,11 @@ export function getSupabaseProjectRef(): string | null {
   const url = getSupabaseUrl();
   if (!url) return null;
   try {
-    return new URL(url).hostname.split(".")[0] ?? null;
+    const hostname = new URL(url).hostname;
+    if (hostname === "127.0.0.1" || hostname === "localhost") {
+      return "127";
+    }
+    return hostname.split(".")[0] ?? null;
   } catch {
     return null;
   }
