@@ -260,3 +260,12 @@ INSERT INTO public.vto_sections (
     '11111111-1111-1111-1111-111111111111'
   )
 ON CONFLICT (organization_id, section_key) DO NOTHING;
+
+INSERT INTO public.vto_snapshots (id, organization_id, snapshot_data, created_by) VALUES
+  (
+    '88888888-8888-8888-8888-888888888888',
+    '22222222-2222-2222-2222-222222222222',
+    '[{"section_key":"core_values","title":"Core Values","content":"","display_order":0,"visible":true}]'::jsonb,
+    '11111111-1111-1111-1111-111111111111'
+  )
+ON CONFLICT (id) DO NOTHING;

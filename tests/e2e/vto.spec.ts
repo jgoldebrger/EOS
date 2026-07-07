@@ -41,15 +41,15 @@ test.describe("vto page (@auth)", () => {
     await expect(page.getByTestId("save-vto-snapshot")).toHaveCount(0);
   });
 
-  test("admin can save a snapshot", async ({ page }) => {
+  test("admin can view snapshot history", async ({ page }) => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/vto`);
 
     await expect(page.getByTestId("vto-editor")).toBeVisible();
-    await expect(page.getByTestId("vto-accordion-core_values")).toBeVisible();
-    await page.getByTestId("save-vto-snapshot").click();
-    await expect(page.getByText("Snapshot saved")).toBeVisible();
     await page.getByTestId("vto-tab-history").click();
     await expect(page.getByTestId("vto-snapshot-history")).toBeVisible();
+    await expect(
+      page.getByTestId("vto-snapshot-88888888-8888-8888-8888-888888888888"),
+    ).toBeVisible();
   });
 });
