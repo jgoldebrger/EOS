@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ensureAdminSession } from "./helpers/auth-fixture";
+import { teamScorecardPath } from "./helpers/locators";
 
 /**
  * AI suggestion UI structure tests.
@@ -38,7 +39,7 @@ test.describe("ai suggestion UI (@auth)", () => {
 
   test("scorecard page exposes analyze button", async ({ page }) => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
-    await page.goto(`/org/${orgSlug}/scorecard`);
+    await page.goto(teamScorecardPath(orgSlug));
 
     await expect(page.getByTestId("ai-analyze-scorecard-button")).toBeVisible();
   });

@@ -30,9 +30,7 @@ test.describe("vto page (@auth)", () => {
     await expect(
       page.getByRole("heading", { name: "Vision / Traction Organizer" }),
     ).toBeVisible();
-    await expect(
-      page.getByTestId("vto-editor").or(page.getByRole("status")),
-    ).toBeVisible();
+    await expect(page.getByTestId("vto-editor")).toBeVisible();
   });
 
   test("viewer cannot see save snapshot control", async ({ page }) => {
@@ -48,7 +46,10 @@ test.describe("vto page (@auth)", () => {
     await page.goto(`/org/${orgSlug}/vto`);
 
     await expect(page.getByTestId("vto-editor")).toBeVisible();
+    await expect(page.getByTestId(/vto-accordion-/).first()).toBeVisible();
     await page.getByTestId("save-vto-snapshot").click();
+    await expect(page.getByText("Snapshot saved")).toBeVisible();
+    await page.getByTestId("vto-tab-history").click();
     await expect(page.getByTestId("vto-snapshot-history")).toBeVisible();
   });
 });

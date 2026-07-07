@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { signInAsViewer } from "./helpers/auth";
 import { ensureAdminSession } from "./helpers/auth-fixture";
+import { pageHeading, teamScorecardPath } from "./helpers/locators";
 
 /**
  * Scorecard page structure tests.
@@ -25,9 +26,9 @@ test.describe("scorecard page (@auth)", () => {
 
   test("scorecard page renders table structure", async ({ page }) => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
-    await page.goto(`/org/${orgSlug}/scorecard`);
+    await page.goto(teamScorecardPath(orgSlug));
 
-    await expect(page.getByRole("heading", { name: "Scorecard" })).toBeVisible();
+    await expect(pageHeading(page, "Scorecard")).toBeVisible();
     await expect(page.getByTestId("scorecard-metric-table").or(
       page.getByTestId("scorecard-empty-state"),
     )).toBeVisible();
@@ -44,7 +45,7 @@ test.describe("scorecard page (@auth)", () => {
 
   test("admin can open metric creation dialog", async ({ page }) => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
-    await page.goto(`/org/${orgSlug}/scorecard`);
+    await page.goto(teamScorecardPath(orgSlug));
 
     await page.getByTestId("add-metric-button").click();
     await expect(page.getByRole("dialog")).toBeVisible();

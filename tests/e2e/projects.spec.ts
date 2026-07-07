@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { ensureAdminSession } from "./helpers/auth-fixture";
+import { pageHeading } from "./helpers/locators";
 
 test.describe("Projects (@auth)", () => {
   test.skip(
@@ -14,6 +15,6 @@ test.describe("Projects (@auth)", () => {
   test("projects page loads for authenticated org member", async ({ page }) => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/projects`);
-    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(pageHeading(page, "Projects")).toBeVisible();
   });
 });

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { signInAsViewer } from "./helpers/auth";
 import { ensureAdminSession } from "./helpers/auth-fixture";
+import { pageHeading } from "./helpers/locators";
 
 /**
  * Accountability chart page structure tests.
@@ -51,7 +52,7 @@ test.describe("accountability page (@auth)", () => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/accountability`);
 
-    await page.getByTestId("add-seat-button").click();
+    await page.locator("header").getByTestId("add-seat-button").click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByTestId("create-seat-submit")).toBeVisible();
   });

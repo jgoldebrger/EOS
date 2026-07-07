@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { signInAsViewer } from "./helpers/auth";
 import { ensureAdminSession } from "./helpers/auth-fixture";
+import { pageHeading } from "./helpers/locators";
 
 /**
  * Issues page structure tests.
@@ -27,7 +28,7 @@ test.describe("issues page (@auth)", () => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/issues`);
 
-    await expect(page.getByRole("heading", { name: "Issues" })).toBeVisible();
+    await expect(pageHeading(page, "Issues")).toBeVisible();
     await expect(
       page.getByTestId("issues-table").or(page.getByRole("status")),
     ).toBeVisible();
