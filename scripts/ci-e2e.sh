@@ -90,6 +90,9 @@ wait_for_supabase
 echo "Building Next.js for E2E (with Supabase env baked in)..."
 npm run build
 
+echo "Verifying Supabase service role can read seed org..."
+node scripts/verify-e2e-env.mjs
+
 echo "Installing Playwright browser..."
 npx playwright install chromium --with-deps
 

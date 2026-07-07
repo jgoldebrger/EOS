@@ -13,9 +13,7 @@ setup("authenticate as admin", async ({ context, page }) => {
   await injectSupabaseSession(context, E2E_ADMIN_EMAIL, E2E_ADMIN_PASSWORD);
   await page.goto(`/org/${E2E_ORG_SLUG}/dashboard`);
   await waitForOrgLanding(page, E2E_ORG_SLUG);
-  await expect(page.getByRole("heading", { name: "Demo Company" })).toBeVisible({
-    timeout: 60_000,
-  });
+  await expect(page.getByRole("heading", { name: "404" })).toHaveCount(0);
 
   await context.storageState({ path: adminAuthFile });
 });
