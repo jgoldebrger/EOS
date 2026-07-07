@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Services not required for app E2E (cuts Docker pull size and startup time).
+SUPABASE_EXCLUDE="${SUPABASE_EXCLUDE:-studio,imgproxy,logflare,vector,edge-runtime,mailpit}"
+SUPABASE_START_TIMEOUT="${SUPABASE_START_TIMEOUT:-900}"
+
 wait_for_supabase() {
   echo "Waiting for Supabase services..."
-  for i in $(seq 1 30); do
+  for i in $(seq 1 45); do
     if STATUS_JSON=$(supabase status -o json 2>/dev/null); then
       API_URL=$(echo "$STATUS_JSON" | jq -r '.API_URL // empty')
       if [[ -n "$API_URL" && "$API_URL" != "null" ]]; then
@@ -13,7 +17,9 @@ wait_for_supabase() {
     fi
     sleep 2
   done
-  echo "Supabase failed to become ready within 60s"
+  echo "Supabase failed to become ready within 90s"
+  supabase status || true
+  docker ps || true
   exit 1
 }
 
@@ -42,19 +48,43 @@ load_supabase_env() {
   export E2E_SUPABASE_ENABLED=1
 }
 
-echo "Starting local Supabase..."
-supabase start
-wait_for_supabase
+start_supabase() {
+  local attempt
+  for attempt in 1 2 3; do
+    echo "Starting Supabase (attempt ${attempt}, excluding: ${SUPABASE_EXCLUDE})..."
+    if timeout "${SUPABASE_START_TIMEOUT}" supabase start -x "$SUPABASE_EXCLUDE"; then
+      wait_for_supabase
+      return 0
+    fi
+    echo "Supabase start failed on attempt ${attempt}"
+    supabase stop --no-backup 2>/dev/null || true
+    sleep 5
+  done
+  echo "Supabase failed to start after 3 attempts"
+  return 1
+}
+
+echo "Starting Supabase and building Next.js in parallel..."
+start_supabase &
+SUPABASE_PID=$!
+npm run build &
+BUILD_PID=$!
+
+if ! wait "${SUPABASE_PID}"; then
+  kill "${BUILD_PID}" 2>/dev/null || true
+  exit 1
+fi
 
 echo "Resetting database with seed data..."
 supabase db reset --yes
 wait_for_supabase
 
+if ! wait "${BUILD_PID}"; then
+  exit 1
+fi
+
 echo "Loading Supabase credentials..."
 load_supabase_env
-
-echo "Building Next.js for E2E..."
-npm run build
 
 echo "Installing Playwright browser..."
 npx playwright install chromium --with-deps
