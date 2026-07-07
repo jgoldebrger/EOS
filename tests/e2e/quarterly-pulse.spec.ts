@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { signInAsAdmin } from "./helpers/auth";
 
 test.describe("quarterly pulse (no Supabase)", () => {
   test("unauthenticated users are redirected", async ({ page }) => {
@@ -8,11 +7,10 @@ test.describe("quarterly pulse (no Supabase)", () => {
   });
 });
 
-test.describe("quarterly pulse (authenticated)", () => {
+test.describe("quarterly pulse (@auth)", () => {
   test.skip(!process.env.E2E_SUPABASE_ENABLED, "Requires E2E_SUPABASE_ENABLED");
 
   test("quarterly pulse workspace renders checklist", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/company/quarterly`);
 

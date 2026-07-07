@@ -1,14 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { signInAsAdmin } from "./helpers/auth";
 
-test.describe("rock milestones (authenticated)", () => {
+test.describe("rock milestones (@auth)", () => {
   test.skip(!process.env.E2E_SUPABASE_ENABLED, "Requires E2E_SUPABASE_ENABLED");
 
   test("L10 rocks section exposes milestones in meeting mode", async ({ page }) => {
     const meetingId = process.env.E2E_MEETING_ID;
     test.skip(!meetingId, "Requires E2E_MEETING_ID for live L10 meeting");
 
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     const teamSlug = process.env.E2E_TEAM_SLUG ?? "leadership";
 
@@ -24,14 +22,13 @@ test.describe("rock milestones (authenticated)", () => {
   });
 });
 
-test.describe("L10 IDS meeting list (authenticated)", () => {
+test.describe("L10 IDS meeting list (@auth)", () => {
   test.skip(!process.env.E2E_SUPABASE_ENABLED, "Requires E2E_SUPABASE_ENABLED");
 
   test("issues section uses drag-and-drop meeting list with parking lot", async ({ page }) => {
     const meetingId = process.env.E2E_MEETING_ID;
     test.skip(!meetingId, "Requires E2E_MEETING_ID for live L10 meeting");
 
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     const teamSlug = process.env.E2E_TEAM_SLUG ?? "leadership";
 
@@ -45,11 +42,10 @@ test.describe("L10 IDS meeting list (authenticated)", () => {
   });
 });
 
-test.describe("cascade inbox (authenticated)", () => {
+test.describe("cascade inbox (@auth)", () => {
   test.skip(!process.env.E2E_SUPABASE_ENABLED, "Requires E2E_SUPABASE_ENABLED");
 
   test("inbox supports cascade filter", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/inbox`);
 

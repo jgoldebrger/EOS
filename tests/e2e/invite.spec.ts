@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { signInAsAdmin } from "./helpers/auth";
 
 test.describe("invite flow (no Supabase)", () => {
   test("unauthenticated users are redirected from invite accept page", async ({ page }) => {
@@ -13,11 +12,10 @@ test.describe("invite flow (no Supabase)", () => {
   });
 });
 
-test.describe("invite flow (authenticated)", () => {
+test.describe("invite flow (@auth)", () => {
   test.skip(!process.env.E2E_SUPABASE_ENABLED, "Requires E2E_SUPABASE_ENABLED");
 
   test("admin can open members settings with invite controls", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/settings/members`);
 

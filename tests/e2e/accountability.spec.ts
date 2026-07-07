@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signInAsAdmin, signInAsViewer } from "./helpers/auth";
+import { signInAsViewer } from "./helpers/auth";
 
 /**
  * Accountability chart page structure tests.
@@ -14,14 +14,13 @@ test.describe("accountability page structure (no Supabase)", () => {
   });
 });
 
-test.describe("accountability page (authenticated)", () => {
+test.describe("accountability page (@auth)", () => {
   test.skip(
     !process.env.E2E_SUPABASE_ENABLED,
     "Requires E2E_SUPABASE_ENABLED and authenticated session fixtures",
   );
 
   test("accountability page renders chart structure", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/accountability`);
 
@@ -44,7 +43,6 @@ test.describe("accountability page (authenticated)", () => {
   });
 
   test("admin can open seat creation dialog", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/accountability`);
 

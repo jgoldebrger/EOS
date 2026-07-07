@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signInAsAdmin, signInAsViewer } from "./helpers/auth";
+import { signInAsViewer } from "./helpers/auth";
 
 test.describe("SSO discovery UI", () => {
   test("SSO login option renders on auth page", async ({ page }) => {
@@ -38,7 +38,7 @@ test.describe("SSO settings without Supabase", () => {
   });
 });
 
-test.describe("SSO settings authenticated", () => {
+test.describe("SSO settings (@auth)", () => {
   test.skip(
     !process.env.E2E_SUPABASE_ENABLED,
     "Requires E2E_SUPABASE_ENABLED and authenticated session fixtures",
@@ -77,7 +77,6 @@ test.describe("SSO settings authenticated", () => {
   test("SSO settings page structure includes provider and role mapping sections", async ({
     page,
   }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/settings/security/sso`);
 

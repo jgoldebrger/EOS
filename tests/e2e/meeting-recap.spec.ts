@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { signInAsAdmin } from "./helpers/auth";
 
 test.describe("meeting recap", () => {
   test("unauthenticated users are redirected", async ({ page }) => {
@@ -8,11 +7,10 @@ test.describe("meeting recap", () => {
   });
 });
 
-test.describe("meeting recap (authenticated)", () => {
+test.describe("meeting recap (@auth)", () => {
   test.skip(!process.env.E2E_SUPABASE_ENABLED, "Requires E2E_SUPABASE_ENABLED");
 
   test("recap view renders with copy link", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     const teamSlug = process.env.E2E_TEAM_SLUG ?? "leadership";
     const meetingId = process.env.E2E_MEETING_ID ?? "55555555-5555-5555-5555-555555555555";

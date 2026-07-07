@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signInAsAdmin, signInAsViewer } from "./helpers/auth";
+import { signInAsViewer } from "./helpers/auth";
 
 /**
  * Rocks page structure tests.
@@ -12,14 +12,13 @@ test.describe("rocks page structure (no Supabase)", () => {
   });
 });
 
-test.describe("rocks page (authenticated)", () => {
+test.describe("rocks page (@auth)", () => {
   test.skip(
     !process.env.E2E_SUPABASE_ENABLED,
     "Requires E2E_SUPABASE_ENABLED and authenticated session fixtures",
   );
 
   test("rocks page renders table structure", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/rocks`);
 
@@ -40,7 +39,6 @@ test.describe("rocks page (authenticated)", () => {
   });
 
   test("admin can open rock creation dialog", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/rocks`);
 

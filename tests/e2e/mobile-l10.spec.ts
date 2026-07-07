@@ -1,11 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { signInAsAdmin } from "./helpers/auth";
 
-test.describe("mobile L10 facilitator (authenticated)", () => {
+test.describe("mobile L10 facilitator (@auth)", () => {
   test.skip(!process.env.E2E_SUPABASE_ENABLED, "Requires E2E_SUPABASE_ENABLED");
 
   test("live meeting shows mobile agenda strip and facilitator bar", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     const meetingId = process.env.E2E_MEETING_ID ?? "55555555-5555-5555-5555-555555555555";
 

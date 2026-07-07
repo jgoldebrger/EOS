@@ -49,10 +49,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 4 : undefined,
+  workers: process.env.CI ? 2 : undefined,
   timeout: process.env.CI ? 45_000 : 30_000,
   expect: {
-    timeout: process.env.CI ? 15_000 : 5_000,
+    timeout: process.env.CI ? 20_000 : 5_000,
   },
   reporter: process.env.CI ? [["github"], ["html"]] : "html",
   use: {
@@ -66,8 +66,18 @@ export default defineConfig({
           testMatch: /auth\.setup\.ts/,
         },
         {
-          name: "chromium",
+          name: "chromium-guest",
           testIgnore: /auth\.setup\.ts/,
+          grepInvert: /@auth/,
+          use: {
+            ...devices["Desktop Chrome"],
+            storageState: { cookies: [], origins: [] },
+          },
+        },
+        {
+          name: "chromium-auth",
+          testIgnore: /auth\.setup\.ts/,
+          grep: /@auth/,
           dependencies: ["setup"],
           use: {
             ...devices["Desktop Chrome"],

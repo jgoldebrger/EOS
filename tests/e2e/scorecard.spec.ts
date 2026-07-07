@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signInAsAdmin, signInAsViewer } from "./helpers/auth";
+import { signInAsViewer } from "./helpers/auth";
 
 /**
  * Scorecard page structure tests.
@@ -12,14 +12,13 @@ test.describe("scorecard page structure (no Supabase)", () => {
   });
 });
 
-test.describe("scorecard page (authenticated)", () => {
+test.describe("scorecard page (@auth)", () => {
   test.skip(
     !process.env.E2E_SUPABASE_ENABLED,
     "Requires E2E_SUPABASE_ENABLED and authenticated session fixtures",
   );
 
   test("scorecard page renders table structure", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/scorecard`);
 
@@ -39,7 +38,6 @@ test.describe("scorecard page (authenticated)", () => {
   });
 
   test("admin can open metric creation dialog", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/scorecard`);
 

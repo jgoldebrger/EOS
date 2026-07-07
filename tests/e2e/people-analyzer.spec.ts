@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { signInAsAdmin } from "./helpers/auth";
 
 test.describe("people analyzer", () => {
   test("unauthenticated users are redirected", async ({ page }) => {
@@ -8,11 +7,10 @@ test.describe("people analyzer", () => {
   });
 });
 
-test.describe("people analyzer (authenticated)", () => {
+test.describe("people analyzer (@auth)", () => {
   test.skip(!process.env.E2E_SUPABASE_ENABLED, "Requires E2E_SUPABASE_ENABLED");
 
   test("analyzer page renders", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/people/analyzer`);
     await expect(page.getByTestId("people-analyzer")).toBeVisible();

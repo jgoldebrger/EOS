@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { signInAsAdmin } from "./helpers/auth";
 
 /**
  * Meetings page structure tests.
@@ -14,14 +13,13 @@ test.describe("meetings page structure (no Supabase)", () => {
   });
 });
 
-test.describe("meetings page (authenticated)", () => {
+test.describe("meetings page (@auth)", () => {
   test.skip(
     !process.env.E2E_SUPABASE_ENABLED,
     "Requires E2E_SUPABASE_ENABLED and authenticated session fixtures",
   );
 
   test("meetings list page renders structure", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/meetings`);
 
@@ -31,7 +29,6 @@ test.describe("meetings page (authenticated)", () => {
   });
 
   test("create L10 meeting dialog opens", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     await page.goto(`/org/${orgSlug}/meetings`);
 
@@ -41,7 +38,6 @@ test.describe("meetings page (authenticated)", () => {
   });
 
   test("live meeting shows agenda panel", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     const teamSlug = process.env.E2E_TEAM_SLUG ?? "leadership";
     const meetingId = process.env.E2E_MEETING_ID ?? "55555555-5555-5555-5555-555555555555";
@@ -54,7 +50,6 @@ test.describe("meetings page (authenticated)", () => {
   });
 
   test("team L10 hub renders", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     const teamSlug = process.env.E2E_TEAM_SLUG ?? "leadership";
 
@@ -65,7 +60,6 @@ test.describe("meetings page (authenticated)", () => {
   });
 
   test("scorecard section embeds inline grid in live L10", async ({ page }) => {
-    await signInAsAdmin(page);
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
     const teamSlug = process.env.E2E_TEAM_SLUG ?? "leadership";
     const meetingId = process.env.E2E_MEETING_ID ?? "55555555-5555-5555-5555-555555555555";

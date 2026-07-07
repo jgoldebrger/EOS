@@ -56,7 +56,7 @@ const viewerReadOnlyModules = [
   },
 ] as const;
 
-test.describe("viewer read-only structure (requires Supabase)", () => {
+test.describe("viewer read-only structure (@auth)", () => {
   test.skip(
     !process.env.E2E_SUPABASE_ENABLED,
     "Requires E2E_SUPABASE_ENABLED and E2E_VIEWER_ORG_SLUG fixtures",
