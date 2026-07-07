@@ -55,18 +55,32 @@ export default defineConfig({
     timeout: process.env.CI ? 30_000 : 5_000,
   },
   reporter: "html",
-  globalSetup: useSupabaseFixtures ? "./tests/e2e/global-setup.ts" : undefined,
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
-    storageState: useSupabaseFixtures ? authFile : undefined,
   },
-  projects: [
-    {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
-    },
-  ],
+  projects: useSupabaseFixtures
+    ? [
+        {
+          name: "setup",
+          testMatch: /auth\.setup\.ts/,
+        },
+        {
+          name: "chromium",
+          testIgnore: /auth\.setup\.ts/,
+          dependencies: ["setup"],
+          use: {
+            ...devices["Desktop Chrome"],
+            storageState: authFile,
+          },
+        },
+      ]
+    : [
+        {
+          name: "chromium",
+          use: { ...devices["Desktop Chrome"] },
+        },
+      ],
   webServer: {
     command: process.env.CI ? "npm run start" : "npm run dev",
     url: "http://localhost:3000",
