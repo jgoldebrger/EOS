@@ -50,7 +50,11 @@ jobs:
           version: 2.109.1
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y jq zstd
+        run: |
+          # GHA images occasionally ship broken Microsoft apt mirrors; jq/zstd are from Ubuntu main.
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/azure-cli.list 2>/dev/null || true
+          sudo apt-get update
+          sudo apt-get install -y jq zstd
 
       - name: Install npm dependencies
         run: npm ci
