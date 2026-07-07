@@ -41,13 +41,13 @@ export function InvitePersonDialog({
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [orgRole, setOrgRole] = useState<Exclude<OrgRole, "owner">>("member");
-  const [sendEmail, setSendEmail] = useState(false);
+  const [sendEmail, setSendEmail] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function resetForm() {
     setEmail("");
     setOrgRole("member");
-    setSendEmail(false);
+    setSendEmail(true);
   }
 
   async function handleSubmit() {

@@ -17,8 +17,11 @@ import {
   addPersonToOrgSchema,
   createOrgUserAccountSchema,
   inviteOrgMemberSchema,
+  cancelInvitationSchema,
+  resendInvitationSchema,
 } from "@/features/people/schema";
 import { AUDIT_ACTIONS, type OrgRole } from "@/types/domain";
+import { acceptPendingInvitations } from "@/lib/people/accept-invitations";
 
 export type PeopleActionResult =
   | { success: true }
@@ -671,4 +674,140 @@ export async function sendPeopleReviewReminders(input: {
 
   revalidatePath(`/org/${input.orgSlug}/inbox`);
   return { success: true, remindedCount };
+}
+
+export type AcceptInvitationsActionResult =
+  | { success: true; acceptedCount: number; redirectSlug?: string }
+  | { success: false; error: string };
+
+export async function acceptPendingInvitationsForCurrentUser(
+  token?: string | null,
+): Promise<AcceptInvitationsActionResult> {
+  const user = await getServerSessionUser();
+  if (!user?.email) {
+    return { success: false, error: "You must be signed in with an email address." };
+  }
+
+  const { accepted } = await acceptPendingInvitations({
+    userId: user.id,
+    email: user.email,
+    token,
+  });
+
+  for (const invite of accepted) {
+    after(() => {
+      revalidatePath(`/org/${invite.orgSlug}/people`);
+      revalidatePath(`/org/${invite.orgSlug}/settings/members`);
+    });
+  }
+
+  return {
+    success: true,
+    acceptedCount: accepted.length,
+    redirectSlug: accepted[0]?.orgSlug,
+  };
+}
+
+export async function acceptInvitationByToken(
+  input: unknown,
+): Promise<AcceptInvitationsActionResult> {
+  const { acceptInvitationByTokenSchema } = await import("@/features/people/schema");
+  const parsed = acceptInvitationByTokenSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid invitation token",
+    };
+  }
+
+  return acceptPendingInvitationsForCurrentUser(parsed.data.token);
+}
+
+export async function cancelInvitation(input: unknown): Promise<PeopleActionResult> {
+  const parsed = cancelInvitationSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid request",
+    };
+  }
+
+  const access = await assertCanManageOrgMembers(parsed.data.organizationId);
+  if (!access.ok) {
+    return { success: false, error: access.error };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("invitations")
+    .delete()
+    .eq("id", parsed.data.invitationId)
+    .eq("organization_id", parsed.data.organizationId)
+    .is("accepted_at", null);
+
+  if (error) {
+    return { success: false, error: "Unable to cancel invitation." };
+  }
+
+  after(() => {
+    revalidatePath(`/org/${parsed.data.orgSlug}/settings/members`);
+    revalidatePath(`/org/${parsed.data.orgSlug}/people`);
+  });
+
+  return { success: true };
+}
+
+export async function resendInvitationEmail(input: unknown): Promise<
+  | { success: true; emailSent: boolean }
+  | { success: false; error: string }
+> {
+  const parsed = resendInvitationSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid request",
+    };
+  }
+
+  const access = await assertCanManageOrgMembers(parsed.data.organizationId);
+  if (!access.ok) {
+    return { success: false, error: access.error };
+  }
+
+  const supabase = await createClient();
+  const now = new Date().toISOString();
+  const { data: invitation } = await supabase
+    .from("invitations")
+    .select("id, email, token, expires_at")
+    .eq("id", parsed.data.invitationId)
+    .eq("organization_id", parsed.data.organizationId)
+    .is("accepted_at", null)
+    .maybeSingle();
+
+  if (!invitation) {
+    return { success: false, error: "Invitation not found or already accepted." };
+  }
+
+  if (invitation.expires_at <= now) {
+    return { success: false, error: "Invitation has expired. Create a new invite." };
+  }
+
+  try {
+    const admin = createAdminClient();
+    const redirectTo = await getInviteRedirectUrl();
+    const { error: emailError } = await admin.auth.admin.inviteUserByEmail(
+      invitation.email,
+      {
+        redirectTo,
+        data: {
+          invitation_token: invitation.token,
+          organization_id: parsed.data.organizationId,
+        },
+      },
+    );
+
+    return { success: true, emailSent: !emailError };
+  } catch {
+    return { success: true, emailSent: false };
+  }
 }

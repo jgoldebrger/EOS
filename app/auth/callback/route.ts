@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { acceptPendingInvitations } from "@/lib/people/accept-invitations";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -11,6 +12,28 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user?.email) {
+        const token =
+          typeof user.user_metadata?.invitation_token === "string"
+            ? user.user_metadata.invitation_token
+            : null;
+
+        const { accepted } = await acceptPendingInvitations({
+          userId: user.id,
+          email: user.email,
+          token,
+        });
+
+        if (accepted.length > 0) {
+          const safeNext = `/org/${accepted[0].orgSlug}/home`;
+          return NextResponse.redirect(`${origin}${safeNext}`);
+        }
+      }
+
       const safeNext = next.startsWith("/") ? next : "/onboarding";
       return NextResponse.redirect(`${origin}${safeNext}`);
     }

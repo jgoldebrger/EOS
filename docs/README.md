@@ -15,6 +15,7 @@ Welcome to the EOS Platform user documentation. This guide covers every feature 
 | Solve problems with IDS | [Issues](./issues.md) |
 | Configure email notifications | [Notifications](./notifications.md) |
 | Set up SSO for my company | [Settings & Security](./settings-and-security.md) |
+| Deploy to production | [Production Checklist](./production-checklist.md) |
 
 ## Documentation index
 
@@ -53,6 +54,7 @@ Welcome to the EOS Platform user documentation. This guide covers every feature 
 - [AI Assistant](./ai-assistant.md) — Meeting summaries, todo extraction, scorecard analysis, issue dedupe
 - [Notifications](./notifications.md) — Email preferences, inbox, smoke testing
 - [Settings & Security](./settings-and-security.md) — Members, audit log, L10 agenda, SSO
+- [Production Checklist](./production-checklist.md) — Pre-launch verification for admins
 
 ## In-app help
 

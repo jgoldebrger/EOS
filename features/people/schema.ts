@@ -88,3 +88,19 @@ export const removeOrgMemberSchema = z.object({
   orgSlug: z.string().trim().min(1),
   userId: z.string().uuid(),
 });
+
+export const cancelInvitationSchema = z.object({
+  organizationId: z.string().uuid(),
+  orgSlug: z.string().trim().min(1),
+  invitationId: z.string().uuid(),
+});
+
+export const resendInvitationSchema = z.object({
+  organizationId: z.string().uuid(),
+  orgSlug: z.string().trim().min(1),
+  invitationId: z.string().uuid(),
+});
+
+export const acceptInvitationByTokenSchema = z.object({
+  token: z.string().trim().min(1),
+});

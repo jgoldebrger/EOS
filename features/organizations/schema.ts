@@ -29,10 +29,6 @@ export const createOrgSchema = z.object({
 
 export type CreateOrgInput = z.infer<typeof createOrgSchema>;
 
-/** Stub - full invite flow in a later wave */
-export const inviteSchema = z.object({
-  email: z.string().email("Enter a valid email address"),
-  orgRole: z.enum(["admin", "member", "viewer"]),
-});
-
-export type InviteInput = z.infer<typeof inviteSchema>;
+/** @deprecated Use inviteOrgMemberSchema from features/people/schema */
+export { inviteOrgMemberSchema as inviteSchema } from "@/features/people/schema";
+export type { InviteOrgMemberInput as InviteInput } from "@/features/people/schema";

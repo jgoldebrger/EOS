@@ -91,6 +91,49 @@ export interface PeopleReviewRow {
   reviewerName: string;
 }
 
+export interface PendingInvitationRow {
+  id: string;
+  email: string;
+  orgRole: string;
+  expiresAt: string;
+  createdAt: string;
+  invitedByName: string | null;
+}
+
+export async function getPendingOrgInvitations(
+  organizationId: string,
+): Promise<PendingInvitationRow[]> {
+  const supabase = await createClient();
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("invitations")
+    .select("id, email, org_role, expires_at, created_at, invited_by")
+    .eq("organization_id", organizationId)
+    .is("accepted_at", null)
+    .gt("expires_at", now)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) {
+    return [];
+  }
+
+  const inviterIds = data
+    .map((row) => row.invited_by)
+    .filter((id): id is string => Boolean(id));
+  const resolved = await resolveUserEmails(inviterIds);
+
+  return data.map((row) => ({
+    id: row.id,
+    email: row.email,
+    orgRole: row.org_role,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+    invitedByName: row.invited_by
+      ? (resolved.get(row.invited_by)?.displayName ?? null)
+      : null,
+  }));
+}
+
 export async function getCoreValuesForOrg(organizationId: string): Promise<string[]> {
   const sections = await getVtoSections(organizationId);
   const coreValuesSection = sections.find((section) => section.section_key === "core_values");

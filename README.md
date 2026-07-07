@@ -148,3 +148,7 @@ All waves (0–7) are **complete**. See BUILD_CONTRACT.md for the full matrix.
 - **Next.js 16 middleware** — root `middleware.ts` uses the current session pattern; watch for framework deprecation notices in Next.js release notes.
 - **Corporate SSL** — shadcn CLI downloads may fail behind SSL-inspecting proxies.
 - **E2E authenticated flows** — require `E2E_SUPABASE_ENABLED` and seeded test data; smoke tests run without Supabase.
+
+## Production deployment
+
+See [docs/production-checklist.md](./docs/production-checklist.md) for pre-launch verification (Supabase, SSO, Resend email, edge functions, L10 reminders, member invites).

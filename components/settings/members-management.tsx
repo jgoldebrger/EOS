@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { removeOrgMember, updateOrgMemberRole } from "@/features/people/actions";
 import type { OrgPersonWithManager } from "@/features/people/queries";
+import { InvitePersonDialog } from "@/components/people/invite-person-dialog";
+import { PendingInvitesList } from "@/components/settings/pending-invites-list";
+import type { PendingInvitationRow } from "@/features/people/queries";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +17,7 @@ interface MembersManagementProps {
   orgSlug: string;
   members: OrgPersonWithManager[];
   currentUserId: string;
+  pendingInvitations?: PendingInvitationRow[];
 }
 
 export function MembersManagement({
@@ -21,6 +25,7 @@ export function MembersManagement({
   orgSlug,
   members,
   currentUserId,
+  pendingInvitations = [],
 }: MembersManagementProps) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -55,7 +60,16 @@ export function MembersManagement({
   }
 
   return (
-    <ul className="space-y-2" data-testid="members-management">
+    <div className="space-y-6" data-testid="members-management">
+      <div className="flex justify-end">
+        <InvitePersonDialog organizationId={organizationId} orgSlug={orgSlug} />
+      </div>
+      <PendingInvitesList
+        organizationId={organizationId}
+        orgSlug={orgSlug}
+        invitations={pendingInvitations}
+      />
+      <ul className="space-y-2">
       {members.map((member) => (
         <Card key={member.userId}>
           <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3">
@@ -99,6 +113,7 @@ export function MembersManagement({
           </CardContent>
         </Card>
       ))}
-    </ul>
+      </ul>
+    </div>
   );
 }

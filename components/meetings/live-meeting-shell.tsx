@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { List } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import {
 import type { MeetingWithNotes } from "@/features/meetings/types";
 import { parseMeetingTimer } from "@/features/meetings/timer";
 import { getL10HubHref, getSectionByKey, getSectionRemainingSeconds, isSectionOvertime, formatTimerDisplay, parseCascadingMessageTemplates } from "@/features/meetings/utils";
+import { cn } from "@/lib/utils";
 import { showErrorToast, showSuccessToast } from "@/components/feedback/toast";
 
 interface LiveMeetingShellProps {
@@ -71,6 +73,7 @@ export function LiveMeetingShell({
   );
   const [ratingOpen, setRatingOpen] = useState(false);
   const [ratingDismissed, setRatingDismissed] = useState(false);
+  const [agendaOpen, setAgendaOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function applyTimerFromMetadata(metadata: unknown) {
@@ -383,10 +386,10 @@ export function LiveMeetingShell({
   }
 
   return (
-    <div className="space-y-6" data-testid="live-meeting-shell">
+    <div className="space-y-6 pb-24 lg:pb-0" data-testid="live-meeting-shell">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
             {meeting.title}
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -396,6 +399,17 @@ export function LiveMeetingShell({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="lg:hidden"
+            onClick={() => setAgendaOpen((open) => !open)}
+            data-testid="l10-mobile-agenda-toggle"
+          >
+            <List className="mr-1 h-4 w-4" />
+            Agenda
+          </Button>
           {teamSlug ? (
             <Button variant="outline" asChild data-testid="l10-exit-button">
               <Link href={exitHref}>Exit L10</Link>
@@ -411,8 +425,36 @@ export function LiveMeetingShell({
         </div>
       </div>
 
+      <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden" data-testid="l10-mobile-agenda-strip">
+        {meeting.agenda.map((step) => {
+          const isActive = step.key === activeSectionKey;
+          return (
+            <button
+              key={step.key}
+              type="button"
+              disabled={!canEdit}
+              onClick={() => handleSelectSection(step.key)}
+              className={cn(
+                "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                isActive
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-background text-muted-foreground",
+              )}
+            >
+              {step.label}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
-        <aside className="rounded-lg border p-4">
+        <aside
+          className={cn(
+            "rounded-lg border p-4",
+            agendaOpen ? "block" : "hidden lg:block",
+          )}
+          data-testid="l10-agenda-sidebar"
+        >
           <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Agenda
           </p>
@@ -525,6 +567,45 @@ export function LiveMeetingShell({
           />
         </main>
       </div>
+
+      {canEdit && meeting.status === "in_progress" ? (
+        <div
+          className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur lg:hidden"
+          data-testid="l10-mobile-facilitator-bar"
+        >
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">
+                {activeSection?.label ?? "Select section"}
+              </p>
+              <p
+                className={cn(
+                  "text-xs",
+                  sectionOvertime ? "text-destructive" : "text-muted-foreground",
+                )}
+              >
+                {formatTimerDisplay(sectionRemaining)}
+                {sectionOvertime ? " overtime" : ""}
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={handleExtendSection}>
+                +5m
+              </Button>
+              {nextSectionKey ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSkipSection}
+                  disabled={isPending}
+                >
+                  Next
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <MeetingRatingDialog
         organizationId={organizationId}

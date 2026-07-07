@@ -19,6 +19,16 @@ export default async function CompanyPage({
         description="Company-wide vision, traction, and strategic tools."
       />
       <div className="grid gap-4 sm:grid-cols-2">
+        <Link href={`${base}/company/quarterly`}>
+          <Card className="transition-colors hover:bg-muted/50">
+            <CardHeader>
+              <CardTitle>Quarterly pulse</CardTitle>
+              <CardDescription>
+                Guided V/TO, company rocks, and People Analyzer review
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
         <Link href={`${base}/vto`}>
           <Card className="transition-colors hover:bg-muted/50">
             <CardHeader>

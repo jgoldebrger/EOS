@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
-import { getOrgPeopleWithManagers } from "@/features/people/queries";
+import { getOrgPeopleWithManagers, getPendingOrgInvitations } from "@/features/people/queries";
 import { MembersManagement } from "@/components/settings/members-management";
 import { canManageOrg } from "@/lib/permissions/checks";
 import { createClient } from "@/lib/supabase/server";
@@ -25,6 +25,7 @@ export default async function SettingsMembersPage({
     data: { user },
   } = await supabase.auth.getUser();
   const members = await getOrgPeopleWithManagers(access.orgId);
+  const pendingInvitations = await getPendingOrgInvitations(access.orgId);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-8">
@@ -37,7 +38,7 @@ export default async function SettingsMembersPage({
       <div className="space-y-2">
         <h1 className="text-3xl font-semibold tracking-tight">Members</h1>
         <p className="text-muted-foreground">
-          Manage organization roles and remove members.
+          Manage organization roles, invitations, and membership.
         </p>
       </div>
       <MembersManagement
@@ -45,6 +46,7 @@ export default async function SettingsMembersPage({
         orgSlug={orgSlug}
         members={members}
         currentUserId={user?.id ?? ""}
+        pendingInvitations={pendingInvitations}
       />
     </div>
   );
