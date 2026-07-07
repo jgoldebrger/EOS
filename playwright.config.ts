@@ -34,7 +34,9 @@ const defaultSupabaseEnv: Record<string, string> = {
   SUPABASE_SERVICE_ROLE_KEY:
     process.env.SUPABASE_SERVICE_ROLE_KEY ??
     process.env.SUPABASE_SECRET_KEY ??
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU",
+    (process.env.CI
+      ? ""
+      : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU"),
   E2E_SUPABASE_ENABLED: process.env.E2E_SUPABASE_ENABLED ?? "",
   E2E_ORG_SLUG: process.env.E2E_ORG_SLUG ?? "demo",
   E2E_VIEWER_ORG_SLUG: process.env.E2E_VIEWER_ORG_SLUG ?? "demo-viewer",
@@ -49,8 +51,10 @@ function webServerEnv(): Record<string, string> {
     Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] != null),
   );
 
-  return { ...fromProcess, ...defaultSupabaseEnv };
+  return { ...defaultSupabaseEnv, ...fromProcess };
 }
+
+const skipWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER === "1";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -99,11 +103,15 @@ export default defineConfig({
           use: { ...devices["Desktop Chrome"] },
         },
       ],
-  webServer: {
-    command: process.env.CI ? "npm run start" : "npm run dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
-    env: webServerEnv(),
-  },
+  ...(skipWebServer
+    ? {}
+    : {
+        webServer: {
+          command: process.env.CI ? "npm run start" : "npm run dev",
+          url: "http://localhost:3000",
+          reuseExistingServer: !process.env.CI,
+          timeout: 180_000,
+          env: webServerEnv(),
+        },
+      }),
 });
