@@ -22,6 +22,6 @@ test.describe("quarterly pulse (@auth)", () => {
     await expect(page.getByRole("heading", { name: "Quarterly pulse" })).toBeVisible();
     await expect(page.getByTestId("quarterly-pulse-workspace")).toBeVisible();
     await expect(page.getByText("1. Review V/TO")).toBeVisible();
-    await expect(page.getByText(/People Analyzer/i)).toBeVisible();
+    await expect(page.getByText("3. People Analyzer")).toBeVisible();
   });
 });

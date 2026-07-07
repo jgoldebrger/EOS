@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ensureAdminSession } from "./helpers/auth-fixture";
-import { activateL10Section, pageHeading } from "./helpers/locators";
+import { pageHeading } from "./helpers/locators";
 
 /**
  * Meetings page structure tests.
@@ -71,7 +71,8 @@ test.describe("meetings page (@auth)", () => {
     const meetingId = process.env.E2E_MEETING_ID ?? "55555555-5555-5555-5555-555555555555";
 
     await page.goto(`/org/${orgSlug}/teams/${teamSlug}/l10/${meetingId}`);
-    await activateL10Section(page, "scorecard");
+
+    await expect(page.getByTestId("l10-section-scorecard")).toBeVisible();
     await expect(page.getByTestId("section-embed-scorecard")).toHaveCount(0);
     await expect(
       page.getByTestId("scorecard-metric-table").or(page.getByTestId("scorecard-empty-state")),

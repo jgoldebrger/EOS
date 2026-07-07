@@ -191,7 +191,72 @@ INSERT INTO public.meetings (
     'l10',
     'in_progress',
     timezone('utc', now()),
-    'issues',
+    'scorecard',
     '11111111-1111-1111-1111-111111111111'
   )
 ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.vto_sections (
+  organization_id,
+  section_key,
+  title,
+  content,
+  display_order,
+  visible,
+  created_by
+) VALUES
+  (
+    '22222222-2222-2222-2222-222222222222',
+    'core_values',
+    'Core Values',
+    '',
+    0,
+    true,
+    '11111111-1111-1111-1111-111111111111'
+  ),
+  (
+    '22222222-2222-2222-2222-222222222222',
+    'core_focus',
+    'Core Focus',
+    '',
+    1,
+    true,
+    '11111111-1111-1111-1111-111111111111'
+  ),
+  (
+    '22222222-2222-2222-2222-222222222222',
+    'ten_year_target',
+    '10-Year Target',
+    '',
+    2,
+    true,
+    '11111111-1111-1111-1111-111111111111'
+  ),
+  (
+    '22222222-2222-2222-2222-222222222222',
+    'marketing_strategy',
+    'Marketing Strategy',
+    '',
+    3,
+    true,
+    '11111111-1111-1111-1111-111111111111'
+  ),
+  (
+    '22222222-2222-2222-2222-222222222222',
+    'three_year_picture',
+    '3-Year Picture',
+    '',
+    4,
+    true,
+    '11111111-1111-1111-1111-111111111111'
+  ),
+  (
+    '22222222-2222-2222-2222-222222222222',
+    'one_year_plan',
+    '1-Year Plan',
+    '',
+    5,
+    true,
+    '11111111-1111-1111-1111-111111111111'
+  )
+ON CONFLICT (organization_id, section_key) DO NOTHING;

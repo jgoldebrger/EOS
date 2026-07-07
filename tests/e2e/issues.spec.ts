@@ -29,9 +29,7 @@ test.describe("issues page (@auth)", () => {
     await page.goto(`/org/${orgSlug}/issues`);
 
     await expect(pageHeading(page, "Issues")).toBeVisible();
-    await expect(
-      page.getByTestId("issues-table").or(page.getByRole("status")),
-    ).toBeVisible();
+    await expect(page.getByTestId("issues-table")).toBeVisible();
     await expect(page.getByTestId("issues-filters")).toBeVisible();
   });
 

@@ -29,9 +29,7 @@ test.describe("rocks page (@auth)", () => {
     await page.goto(`/org/${orgSlug}/rocks`);
 
     await expect(pageHeading(page, "Rocks")).toBeVisible();
-    await expect(
-      page.getByTestId("rocks-table").or(page.getByRole("status")),
-    ).toBeVisible();
+    await expect(page.getByTestId("rocks-table")).toBeVisible();
     await expect(page.getByTestId("rocks-filters")).toBeVisible();
   });
 

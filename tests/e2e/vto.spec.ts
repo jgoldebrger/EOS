@@ -46,7 +46,7 @@ test.describe("vto page (@auth)", () => {
     await page.goto(`/org/${orgSlug}/vto`);
 
     await expect(page.getByTestId("vto-editor")).toBeVisible();
-    await expect(page.getByTestId(/vto-accordion-/).first()).toBeVisible();
+    await expect(page.getByTestId("vto-accordion-core_values")).toBeVisible();
     await page.getByTestId("save-vto-snapshot").click();
     await expect(page.getByText("Snapshot saved")).toBeVisible();
     await page.getByTestId("vto-tab-history").click();
