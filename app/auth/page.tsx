@@ -1,15 +1,12 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getServerSessionUser } from "@/lib/supabase/server";
 import { getUserOrganizations } from "@/features/organizations/queries";
 import { AuthForm } from "@/app/auth/components/auth-form";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default async function AuthPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (user) {
     const orgs = await getUserOrganizations();

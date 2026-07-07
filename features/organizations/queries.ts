@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import type { OrganizationWithRole } from "@/features/organizations/types";
 import type { OrgRole } from "@/types/domain";
 
@@ -17,9 +17,7 @@ export async function getOrganizationBySlug(
     return null;
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (!user) {
     return null;
@@ -45,9 +43,7 @@ export async function getOrganizationBySlug(
 export async function getUserOrganizations(): Promise<OrganizationWithRole[]> {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (!user) {
     return [];
