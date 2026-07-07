@@ -64,27 +64,17 @@ start_supabase() {
   return 1
 }
 
-echo "Starting Supabase and building Next.js in parallel..."
-start_supabase &
-SUPABASE_PID=$!
-npm run build &
-BUILD_PID=$!
+start_supabase
 
-if ! wait "${SUPABASE_PID}"; then
-  kill "${BUILD_PID}" 2>/dev/null || true
-  exit 1
-fi
+echo "Loading Supabase credentials..."
+load_supabase_env
 
 echo "Resetting database with seed data..."
 supabase db reset --yes
 wait_for_supabase
 
-if ! wait "${BUILD_PID}"; then
-  exit 1
-fi
-
-echo "Loading Supabase credentials..."
-load_supabase_env
+echo "Building Next.js for E2E (with Supabase env baked in)..."
+npm run build
 
 echo "Installing Playwright browser..."
 npx playwright install chromium --with-deps

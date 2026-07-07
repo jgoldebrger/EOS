@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { injectSupabaseSession } from "./supabase-session";
 
 export const E2E_ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? "admin@demo.local";
 export const E2E_ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "E2eTestPassword1!";
@@ -11,6 +12,13 @@ const NAV_TIMEOUT = process.env.CI ? 60_000 : 30_000;
 
 function orgUrlPattern(orgSlug: string): RegExp {
   return new RegExp(`/org/${orgSlug}`);
+}
+
+async function waitForAuthForm(page: Page): Promise<void> {
+  await page.getByText(/welcome back/i).waitFor({ timeout: NAV_TIMEOUT });
+  await page.getByRole("textbox", { name: "Email", exact: true }).waitFor({
+    timeout: NAV_TIMEOUT,
+  });
 }
 
 async function submitSignIn(
@@ -29,6 +37,7 @@ async function submitSignIn(
     return;
   }
 
+  await waitForAuthForm(page);
   await page.getByRole("textbox", { name: "Email", exact: true }).fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: /^sign in$/i }).click();
@@ -61,7 +70,12 @@ async function ensureOrgSession(
     return;
   }
 
-  await submitSignIn(page, email, password, orgSlug);
+  await injectSupabaseSession(page.context(), email, password);
+
+  await page.goto(`/org/${orgSlug}/dashboard`, {
+    waitUntil: "domcontentloaded",
+    timeout: NAV_TIMEOUT,
+  });
   await waitForOrgLanding(page, orgSlug);
 }
 
