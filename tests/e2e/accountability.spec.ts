@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signInAsViewer } from "./helpers/auth";
 import { ensureAdminSession } from "./helpers/auth-fixture";
-import { pageHeading } from "./helpers/locators";
 
 /**
  * Accountability chart page structure tests.
