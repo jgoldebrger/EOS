@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { ensureAdminSession } from "./helpers/auth-fixture";
 
 /**
  * AI suggestion UI structure tests.
@@ -18,6 +19,10 @@ test.describe("ai suggestion UI (@auth)", () => {
     !process.env.E2E_SUPABASE_ENABLED,
     "Requires E2E_SUPABASE_ENABLED and authenticated session fixtures",
   );
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAdminSession(page);
+  });
 
   test("meeting page exposes AI summary panel hooks", async ({ page }) => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";

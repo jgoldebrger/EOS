@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { ensureAdminSession } from "./helpers/auth-fixture";
 
 /**
  * Meetings page structure tests.
@@ -18,6 +19,10 @@ test.describe("meetings page (@auth)", () => {
     !process.env.E2E_SUPABASE_ENABLED,
     "Requires E2E_SUPABASE_ENABLED and authenticated session fixtures",
   );
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAdminSession(page);
+  });
 
   test("meetings list page renders structure", async ({ page }) => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";

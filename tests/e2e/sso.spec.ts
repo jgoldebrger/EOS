@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signInAsViewer } from "./helpers/auth";
+import { ensureAdminSession } from "./helpers/auth-fixture";
 
 test.describe("SSO discovery UI", () => {
   test("SSO login option renders on auth page", async ({ page }) => {
@@ -43,6 +44,10 @@ test.describe("SSO settings (@auth)", () => {
     !process.env.E2E_SUPABASE_ENABLED,
     "Requires E2E_SUPABASE_ENABLED and authenticated session fixtures",
   );
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAdminSession(page);
+  });
 
   test("viewer role cannot access SSO settings mutations", async ({ page }) => {
     await signInAsViewer(page);

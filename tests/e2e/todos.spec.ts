@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signInAsViewer } from "./helpers/auth";
+import { ensureAdminSession } from "./helpers/auth-fixture";
 
 /**
  * Todos page structure tests.
@@ -17,6 +18,10 @@ test.describe("todos page (@auth)", () => {
     !process.env.E2E_SUPABASE_ENABLED,
     "Requires E2E_SUPABASE_ENABLED and authenticated session fixtures",
   );
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAdminSession(page);
+  });
 
   test("todos page renders list structure", async ({ page }) => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";

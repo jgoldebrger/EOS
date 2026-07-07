@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { ensureAdminSession } from "./helpers/auth-fixture";
 
 test.describe("quarterly pulse (no Supabase)", () => {
   test("unauthenticated users are redirected", async ({ page }) => {
@@ -9,6 +10,10 @@ test.describe("quarterly pulse (no Supabase)", () => {
 
 test.describe("quarterly pulse (@auth)", () => {
   test.skip(!process.env.E2E_SUPABASE_ENABLED, "Requires E2E_SUPABASE_ENABLED");
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAdminSession(page);
+  });
 
   test("quarterly pulse workspace renders checklist", async ({ page }) => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";

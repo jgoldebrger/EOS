@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { ensureAdminSession } from "./helpers/auth-fixture";
 
 test.describe("org scorecard page", () => {
   test("unauthenticated users are redirected", async ({ page }) => {
@@ -9,6 +10,10 @@ test.describe("org scorecard page", () => {
 
 test.describe("org scorecard (@auth)", () => {
   test.skip(!process.env.E2E_SUPABASE_ENABLED, "Requires E2E_SUPABASE_ENABLED");
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAdminSession(page);
+  });
 
   test("org scorecard page renders rollup table", async ({ page }) => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";

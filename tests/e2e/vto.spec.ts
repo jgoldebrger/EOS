@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signInAsViewer } from "./helpers/auth";
+import { ensureAdminSession } from "./helpers/auth-fixture";
 
 /**
  * V/TO page structure tests.
@@ -17,6 +18,10 @@ test.describe("vto page (@auth)", () => {
     !process.env.E2E_SUPABASE_ENABLED,
     "Requires E2E_SUPABASE_ENABLED and authenticated session fixtures",
   );
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAdminSession(page);
+  });
 
   test("vto page renders editor structure", async ({ page }) => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";

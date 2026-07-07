@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signInAsViewer } from "../helpers/auth";
+import { ensureAdminSession } from "../helpers/auth-fixture";
 
 /**
  * Viewer read-only permission structure across EOS modules.
@@ -63,11 +64,12 @@ test.describe("viewer read-only structure (@auth)", () => {
   );
 
   test.beforeEach(async ({ page }) => {
-    await signInAsViewer(page);
+    await ensureAdminSession(page);
   });
 
   for (const mod of viewerReadOnlyModules) {
     test(`viewer cannot mutate ${mod.name}`, async ({ page }) => {
+      await signInAsViewer(page);
       const orgSlug = process.env.E2E_VIEWER_ORG_SLUG ?? "demo-viewer";
       await page.goto(mod.path(orgSlug));
 
@@ -77,6 +79,7 @@ test.describe("viewer read-only structure (@auth)", () => {
   }
 
   test("viewer cannot manage SSO settings", async ({ page }) => {
+    await signInAsViewer(page);
     const orgSlug = process.env.E2E_VIEWER_ORG_SLUG ?? "demo-viewer";
     await page.goto(`/org/${orgSlug}/settings/security/sso`);
 

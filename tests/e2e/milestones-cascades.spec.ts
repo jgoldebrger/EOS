@@ -1,7 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { ensureAdminSession } from "./helpers/auth-fixture";
 
 test.describe("rock milestones (@auth)", () => {
   test.skip(!process.env.E2E_SUPABASE_ENABLED, "Requires E2E_SUPABASE_ENABLED");
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAdminSession(page);
+  });
 
   test("L10 rocks section exposes milestones in meeting mode", async ({ page }) => {
     const meetingId = process.env.E2E_MEETING_ID;
@@ -25,6 +30,10 @@ test.describe("rock milestones (@auth)", () => {
 test.describe("L10 IDS meeting list (@auth)", () => {
   test.skip(!process.env.E2E_SUPABASE_ENABLED, "Requires E2E_SUPABASE_ENABLED");
 
+  test.beforeEach(async ({ page }) => {
+    await ensureAdminSession(page);
+  });
+
   test("issues section uses drag-and-drop meeting list with parking lot", async ({ page }) => {
     const meetingId = process.env.E2E_MEETING_ID;
     test.skip(!meetingId, "Requires E2E_MEETING_ID for live L10 meeting");
@@ -44,6 +53,10 @@ test.describe("L10 IDS meeting list (@auth)", () => {
 
 test.describe("cascade inbox (@auth)", () => {
   test.skip(!process.env.E2E_SUPABASE_ENABLED, "Requires E2E_SUPABASE_ENABLED");
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAdminSession(page);
+  });
 
   test("inbox supports cascade filter", async ({ page }) => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";

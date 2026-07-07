@@ -44,6 +44,14 @@ const defaultSupabaseEnv: Record<string, string> = {
 
 const useSupabaseFixtures = Boolean(process.env.E2E_SUPABASE_ENABLED);
 
+function webServerEnv(): Record<string, string> {
+  const fromProcess = Object.fromEntries(
+    Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] != null),
+  );
+
+  return { ...fromProcess, ...defaultSupabaseEnv };
+}
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
@@ -96,6 +104,6 @@ export default defineConfig({
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
-    env: defaultSupabaseEnv,
+    env: webServerEnv(),
   },
 });

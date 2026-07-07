@@ -80,4 +80,8 @@ echo "Installing Playwright browser..."
 npx playwright install chromium --with-deps
 
 echo "Running E2E tests..."
+if [[ -z "${SUPABASE_SECRET_KEY:-}" || -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ]]; then
+  echo "Missing Supabase env for E2E (SUPABASE_SECRET_KEY / NEXT_PUBLIC_SUPABASE_URL)"
+  exit 1
+fi
 npm run test:e2e:ci

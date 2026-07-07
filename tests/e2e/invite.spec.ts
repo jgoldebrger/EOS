@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { ensureAdminSession } from "./helpers/auth-fixture";
 
 test.describe("invite flow (no Supabase)", () => {
   test("unauthenticated users are redirected from invite accept page", async ({ page }) => {
@@ -14,6 +15,10 @@ test.describe("invite flow (no Supabase)", () => {
 
 test.describe("invite flow (@auth)", () => {
   test.skip(!process.env.E2E_SUPABASE_ENABLED, "Requires E2E_SUPABASE_ENABLED");
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAdminSession(page);
+  });
 
   test("admin can open members settings with invite controls", async ({ page }) => {
     const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
