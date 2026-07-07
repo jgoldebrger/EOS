@@ -102,6 +102,8 @@ On the L10 hub, configure **Recurring schedule**:
 
 Team members receive **inbox reminders** (and optional email) before each occurrence.
 
+Reminders are sent hourly by a **GitHub Actions** workflow (not Vercel cron). Vercel Hobby plans only allow daily cron jobs, so production uses `.github/workflows/l10-schedule-reminders.yml` with `SUPABASE_SECRET_KEY` in GitHub secrets.
+
 ---
 
 ## Org-wide meetings list
