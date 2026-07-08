@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { UserRound } from "lucide-react";
+import { KeyRound, UserRound } from "lucide-react";
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
 import { getCurrentUserProfile } from "@/features/profile/queries";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { NotificationPreferencesForm } from "@/components/profile/notification-preferences-form";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -61,6 +63,24 @@ export default async function ProfilePage({
             orgSlug={orgSlug}
             preferences={profile.notificationPreferences}
           />
+        </CardContent>
+      </Card>
+
+      <Card data-testid="profile-mfa-link-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <KeyRound className="size-5" />
+            Multi-factor authentication
+          </CardTitle>
+          <CardDescription>
+            Add an authenticator app for stronger sign-in protection and admin step-up
+            verification.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline">
+            <Link href={`/org/${orgSlug}/settings/security/mfa`}>Manage MFA</Link>
+          </Button>
         </CardContent>
       </Card>
     </div>

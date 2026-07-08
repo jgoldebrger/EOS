@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
-import { signInWithEmail } from "@/app/auth/actions";
+import { loadMfaStatus } from "@/lib/auth/mfa-client";
 import { toSafeAuthError } from "@/lib/auth/errors";
+import { toSafeRelativePath } from "@/lib/auth/safe-redirect";
 import { oauthProviders } from "@/app/auth/oauth-config";
+import { MfaVerifyForm } from "@/components/auth/mfa-verify-form";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -42,6 +44,7 @@ const authSchema = z.object({
 type AuthFormValues = z.infer<typeof authSchema>;
 
 export function AuthForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackError = searchParams.get("error");
 
@@ -51,6 +54,8 @@ export function AuthForm() {
       : null,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState<string | undefined>();
 
   const form = useForm<AuthFormValues>({
     resolver: zodResolver(authSchema),
@@ -61,18 +66,37 @@ export function AuthForm() {
     setFormError(null);
     setIsSubmitting(true);
 
-    const nextPath = searchParams.get("next") ?? undefined;
-    const result = await signInWithEmail({
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({
       email: values.email,
       password: values.password,
-      nextPath,
     });
 
     setIsSubmitting(false);
 
-    if (result?.success === false) {
-      setFormError(result.error);
+    if (error) {
+      setFormError(toSafeAuthError(error));
+      return;
     }
+
+    const status = await loadMfaStatus(supabase);
+    if ("error" in status) {
+      setFormError(status.error ?? "Could not verify MFA requirements.");
+      return;
+    }
+
+    if (status.needsStepUp && status.verifiedFactor) {
+      setMfaFactorId(status.verifiedFactor.id);
+      setMfaRequired(true);
+      return;
+    }
+
+    const nextPath = toSafeRelativePath(
+      searchParams.get("next"),
+      "/onboarding",
+    );
+    router.push(nextPath);
+    router.refresh();
   }
 
   async function signInWithOAuth(provider: "google" | "azure") {
@@ -91,6 +115,38 @@ export function AuthForm() {
   }
 
   const oauthEnabled = oauthProviders.google || oauthProviders.microsoft;
+
+  if (mfaRequired) {
+    const nextPath = toSafeRelativePath(searchParams.get("next"), "/onboarding");
+
+    return (
+      <Card className="w-full max-w-md border-border/60 shadow-lg" data-testid="auth-mfa-step">
+        <CardHeader className="space-y-3 text-center">
+          <Badge variant="secondary" className="mx-auto w-fit">
+            EOS Platform
+          </Badge>
+          <CardTitle className="text-2xl">Verify authenticator</CardTitle>
+          <CardDescription>
+            Enter the code from your authenticator app to finish signing in.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <MfaVerifyForm
+            factorId={mfaFactorId}
+            submitLabel="Complete sign in"
+            onCancel={() => {
+              setMfaRequired(false);
+              setMfaFactorId(undefined);
+            }}
+            onSuccess={async () => {
+              router.push(nextPath);
+              router.refresh();
+            }}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-md border-border/60 shadow-lg">

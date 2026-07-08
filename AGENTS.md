@@ -21,6 +21,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Local dev opt-in: `ALLOW_PUBLIC_SIGNUP=true`, `ALLOW_SELF_SERVICE_ORG=true`.
 - Supabase Cloud: disable email sign-up in Dashboard → Authentication → Providers.
 - Enable TOTP MFA in Supabase Dashboard → Authentication → MFA (local: `supabase/config.toml`).
+- Users enroll at `/org/[slug]/settings/security/mfa` (also linked from Profile).
 
 ## Database hardening
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, ShieldCheck } from "lucide-react";
+import { ChevronRight, KeyRound, ShieldCheck } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -24,6 +24,27 @@ export default async function SecurityPage({
           Manage authentication and access controls for your organization.
         </p>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <KeyRound className="size-5" />
+              Multi-factor authentication
+            </CardTitle>
+            <CardDescription>
+              Enroll an authenticator app to protect your account and unlock privileged admin
+              actions.
+            </CardDescription>
+          </div>
+          <ChevronRight className="size-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline" data-testid="security-mfa-link">
+            <Link href={`/org/${orgSlug}/settings/security/mfa`}>Manage MFA</Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-4">
