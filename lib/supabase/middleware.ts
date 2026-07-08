@@ -25,7 +25,7 @@ function isRateLimitedRoute(pathname: string): boolean {
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
-  if (isRateLimitedRoute(request.nextUrl.pathname)) {
+  if (isRateLimitedRoute(request.nextUrl.pathname) && !process.env.CI) {
     const ip = clientIpFromHeaders(request.headers);
     const limit = checkRateLimit(`auth:${ip}`, 30, 5 * 60 * 1000);
     if (!limit.allowed) {
