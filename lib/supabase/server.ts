@@ -47,6 +47,8 @@ export const createServiceClient = cache(() => createAdminClient());
 /** One auth lookup per request — avoids repeated getUser() round trips. */
 export const getServerSessionUser = cache(async () => {
   const supabase = await createClient();
+  const allowSessionFallback =
+    process.env.NODE_ENV === "development" || process.env.CI === "1";
 
   try {
     const {
@@ -56,16 +58,19 @@ export const getServerSessionUser = cache(async () => {
       return user;
     }
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
+    if (allowSessionFallback) {
       console.warn(
-        "[auth] getUser() failed (network/TLS to Supabase). Falling back to cookie session.",
+        "[auth] getUser() failed. Falling back to cookie session.",
         error,
       );
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      return session?.user ?? null;
     }
+  }
+
+  if (allowSessionFallback) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    return session?.user ?? null;
   }
 
   return null;

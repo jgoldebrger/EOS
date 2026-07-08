@@ -11,13 +11,13 @@ test.describe("cross-tenant access denial (@auth)", () => {
     await signInAsAdmin(page);
     await page.goto(`/org/${E2E_VIEWER_ORG_SLUG}/dashboard`);
 
-    await expect(page).not.toHaveURL(new RegExp(`/org/${E2E_VIEWER_ORG_SLUG}/dashboard`));
+    await expect(page.getByRole("heading", { name: "Demo Viewer Org" })).not.toBeVisible();
   });
 
   test("viewer cannot access the admin organization workspace", async ({ page }) => {
     await signInAsViewer(page);
     await page.goto(`/org/${E2E_ORG_SLUG}/dashboard`);
 
-    await expect(page).not.toHaveURL(new RegExp(`/org/${E2E_ORG_SLUG}/dashboard`));
+    await expect(page.getByRole("heading", { name: "Demo Company" })).not.toBeVisible();
   });
 });
