@@ -1,17 +1,72 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { hasSupabaseAuthCookie } from "@/lib/supabase/cookies";
+import type { Database } from "@/types/database";
+import {
+  getSupabasePublishableKey,
+  getSupabaseUrl,
+} from "@/lib/supabase/env";
+import {
+  checkRateLimit,
+  clientIpFromHeaders,
+} from "@/lib/security/rate-limit";
+
+function isProtectedRoute(pathname: string): boolean {
+  return (
+    pathname.startsWith("/org/") ||
+    pathname.startsWith("/onboarding") ||
+    pathname.startsWith("/request-access")
+  );
+}
+
+function isRateLimitedRoute(pathname: string): boolean {
+  return pathname.startsWith("/auth");
+}
 
 export async function updateSession(request: NextRequest) {
-  // Edge middleware cannot use Node TLS overrides for Supabase JWKS/API calls.
-  // Read the session cookie set by server actions (which use supabaseFetch).
-  const isAuthenticated = hasSupabaseAuthCookie(request.cookies.getAll());
+  let response = NextResponse.next({ request });
+
+  if (isRateLimitedRoute(request.nextUrl.pathname)) {
+    const ip = clientIpFromHeaders(request.headers);
+    const limit = checkRateLimit(`auth:${ip}`, 30, 5 * 60 * 1000);
+    if (!limit.allowed) {
+      return new NextResponse("Too many requests", {
+        status: 429,
+        headers: {
+          "Retry-After": String(limit.retryAfterSeconds),
+        },
+      });
+    }
+  }
+
+  const supabaseUrl = getSupabaseUrl();
+  const publishableKey = getSupabasePublishableKey();
+
+  if (!supabaseUrl || !publishableKey) {
+    return response;
+  }
+
+  const supabase = createServerClient<Database>(supabaseUrl, publishableKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        response = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options),
+        );
+      },
+    },
+  });
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
 
-  const isProtectedRoute =
-    pathname.startsWith("/org/") || pathname.startsWith("/onboarding");
-
-  if (isProtectedRoute && !isAuthenticated) {
+  if (isProtectedRoute(pathname) && !user) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/auth";
     redirectUrl.search = "";
@@ -20,5 +75,5 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  return NextResponse.next({ request });
+  return response;
 }

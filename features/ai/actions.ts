@@ -22,29 +22,7 @@ import { AUDIT_ACTIONS } from "@/types/domain";
 import type { Json } from "@/types/database";
 import { logAuditEvent } from "@/lib/audit";
 
-async function getActorContext(organizationId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: "You must be signed in" } as const;
-  }
-
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("org_role")
-    .eq("organization_id", organizationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!membership) {
-    return { error: "You do not have access to this organization" } as const;
-  }
-
-  return { supabase, user } as const;
-}
+import { requireEditableActor } from "@/lib/auth/get-action-actor";
 
 async function writeAudit(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -227,7 +205,7 @@ export async function approveSuggestion(
     };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
+  const actor = await requireEditableActor(parsed.data.organizationId);
   if ("error" in actor) {
     return { success: false, error: actor.error ?? "Unauthorized" };
   }
@@ -304,7 +282,7 @@ export async function dismissSuggestion(
     };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
+  const actor = await requireEditableActor(parsed.data.organizationId);
   if ("error" in actor) {
     return { success: false, error: actor.error ?? "Unauthorized" };
   }

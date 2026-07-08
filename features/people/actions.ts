@@ -633,7 +633,7 @@ export async function sendPeopleReviewReminders(input: {
     .select("user_id, reports_to_user_id")
     .eq("organization_id", input.organizationId);
 
-  const { createInboxItem } = await import("@/features/inbox/actions");
+  const { insertInboxItem } = await import("@/features/inbox/internal");
   const { queueNotification } = await import("@/lib/notifications/send");
 
   let remindedCount = 0;
@@ -650,7 +650,7 @@ export async function sendPeopleReviewReminders(input: {
         continue;
       }
 
-      await createInboxItem({
+      await insertInboxItem(supabase, {
         organizationId: input.organizationId,
         assigneeId: manager.user_id,
         title: `Complete People Analyzer review for ${input.quarter}`,

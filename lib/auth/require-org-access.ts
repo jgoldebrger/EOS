@@ -39,7 +39,7 @@ export const requireOrgAccess = cache(async (orgSlug: string): Promise<OrgAccess
     .maybeSingle();
 
   if (memberError || !membership) {
-    redirect("/onboarding");
+    redirect("/request-access");
   }
 
   return {

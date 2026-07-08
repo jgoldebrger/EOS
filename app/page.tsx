@@ -30,15 +30,12 @@ export default function Home() {
           <CardHeader>
             <CardTitle>Get started</CardTitle>
             <CardDescription>
-              Sign in or create an organization to access your EOS workspace.
+              Sign in with an invitation or enterprise SSO to access your workspace.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 sm:flex-row">
             <Button asChild>
               <Link href="/auth">Sign in</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/onboarding">Create organization</Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href="/docs">Documentation</Link>

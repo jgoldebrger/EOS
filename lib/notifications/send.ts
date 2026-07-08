@@ -89,7 +89,9 @@ export async function queueNotification(input: QueueNotificationInput): Promise<
     }
 
     const supabaseUrl = getSupabaseUrl();
-    const serviceKey = getSupabaseSecretKey();
+    const serviceKey =
+      process.env.NOTIFICATIONS_CRON_SECRET ??
+      getSupabaseSecretKey();
 
     if (!supabaseUrl || !serviceKey) {
       console.info("[notification] log only", {

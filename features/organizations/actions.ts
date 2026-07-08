@@ -6,6 +6,7 @@ import { createOrgSchema } from "@/features/organizations/schema";
 import type { CreateOrganizationResult } from "@/features/organizations/types";
 import { AUDIT_ACTIONS } from "@/types/domain";
 import { logAuditEvent } from "@/lib/audit";
+import { isSelfServiceOrgCreationEnabled } from "@/lib/auth/platform-access";
 
 export async function createOrganization(
   input: unknown,
@@ -16,6 +17,13 @@ export async function createOrganization(
     return {
       success: false,
       error: parsed.error.issues[0]?.message ?? "Invalid organization details",
+    };
+  }
+
+  if (!isSelfServiceOrgCreationEnabled()) {
+    return {
+      success: false,
+      error: "Organization creation requires an invitation. Contact your administrator.",
     };
   }
 

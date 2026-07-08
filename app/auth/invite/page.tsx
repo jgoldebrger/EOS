@@ -41,7 +41,7 @@ export default async function InviteAcceptPage({
             <p className="text-sm text-destructive">{result.error}</p>
           ) : null}
           <Button asChild>
-            <Link href="/onboarding">Continue</Link>
+            <Link href="/request-access">Continue</Link>
           </Button>
         </CardContent>
       </Card>

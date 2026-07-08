@@ -13,37 +13,10 @@ import { canEditResource, canManageOrg, canManageTeam } from "@/lib/permissions/
 import { AUDIT_ACTIONS } from "@/types/domain";
 import type { OrgRole, TeamRole } from "@/types/domain";
 import { logAuditEvent } from "@/lib/audit";
-import { createInboxItem } from "@/features/inbox/actions";
+import { insertInboxItem } from "@/features/inbox/internal";
 import { notifyAssignment } from "@/lib/notifications/send";
+import { getActionActor as getActorContext } from "@/lib/auth/get-action-actor";
 import type { Json, TablesUpdate } from "@/types/database";
-
-async function getActorContext(organizationId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: "You must be signed in" } as const;
-  }
-
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("org_role")
-    .eq("organization_id", organizationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!membership) {
-    return { error: "You do not have access to this organization" } as const;
-  }
-
-  return {
-    supabase,
-    user,
-    orgRole: membership.org_role as OrgRole,
-  } as const;
-}
 
 async function canManageTodo(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -275,7 +248,7 @@ export async function updateTodo(input: unknown): Promise<TodoActionResult> {
     parsed.data.ownerId !== existing.owner_id &&
     parsed.data.ownerId !== actor.user.id
   ) {
-    await createInboxItem({
+    await insertInboxItem(actor.supabase, {
       organizationId: parsed.data.organizationId,
       assigneeId: parsed.data.ownerId,
       title: `To-do assigned: ${existing.title}`,

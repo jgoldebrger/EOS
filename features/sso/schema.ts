@@ -57,7 +57,6 @@ export const removeVerifiedDomainSchema = z.object({
 
 export const validateSsoMembershipSchema = z.object({
   organizationId: z.string().uuid(),
-  providerGroups: z.array(z.string()).optional(),
 });
 
 export type DiscoverSsoInput = z.infer<typeof discoverSsoInputSchema>;

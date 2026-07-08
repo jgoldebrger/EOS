@@ -10,21 +10,19 @@ test.describe("auth page", () => {
     await expect(page.getByRole("button", { name: /^sign in$/i })).toBeVisible();
   });
 
+  test("shows invitation-only messaging", async ({ page }) => {
+    await page.goto("/auth");
+
+    await expect(page.getByText(/invitation-only/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: /create an account/i })).toHaveCount(0);
+  });
+
   test("validates empty email on submit", async ({ page }) => {
     await page.goto("/auth");
 
     await page.getByRole("button", { name: /^sign in$/i }).click();
 
     await expect(page.getByText(/enter a valid email/i)).toBeVisible();
-  });
-
-  test("toggles to sign-up mode", async ({ page }) => {
-    await page.goto("/auth");
-
-    await page.getByRole("button", { name: /create an account/i }).click();
-
-    await expect(page.getByText(/create your account/i)).toBeVisible();
-    await expect(page.getByRole("button", { name: /create account/i })).toBeVisible();
   });
 
   test("validates short password", async ({ page }) => {

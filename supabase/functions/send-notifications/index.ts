@@ -1,13 +1,30 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { z } from "https://esm.sh/zod@3.24.2";
 import { buildNotificationHtml } from "./templates.ts";
 
-interface NotificationPayload {
-  to: string;
-  subject: string;
-  body: string;
-  actionUrl?: string;
-  type?: string;
-}
+const notificationPayloadSchema = z.object({
+  to: z.string().email(),
+  subject: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(10_000),
+  actionUrl: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((value) => value.startsWith("/") || /^https?:\/\//.test(value), {
+      message: "actionUrl must be a relative or absolute URL",
+    })
+    .optional(),
+  type: z
+    .enum([
+      "assignment",
+      "l10_recap",
+      "l10_reminder",
+      "cascade",
+      "people_review_reminder",
+      "scorecard_digest",
+    ])
+    .optional(),
+});
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return Response.json(body, { status });
@@ -15,9 +32,12 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 
 function verifySecret(req: Request): boolean {
   const auth = req.headers.get("Authorization");
-  const expected =
+  const scopedSecret = Deno.env.get("NOTIFICATIONS_CRON_SECRET");
+  const fallbackSecret =
     Deno.env.get("SUPABASE_SECRET_KEY") ??
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  const expected = scopedSecret ?? fallbackSecret;
 
   if (!auth || !expected) {
     return false;
@@ -26,7 +46,9 @@ function verifySecret(req: Request): boolean {
   return auth === `Bearer ${expected}`;
 }
 
-async function sendViaResend(payload: NotificationPayload): Promise<{ sent: boolean; messageId?: string }> {
+async function sendViaResend(
+  payload: z.infer<typeof notificationPayloadSchema>,
+): Promise<{ sent: boolean; messageId?: string }> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   const from = Deno.env.get("NOTIFICATION_FROM_EMAIL") ?? "notifications@localhost";
 
@@ -71,17 +93,19 @@ const handler = {
       return jsonResponse({ error: "method_not_allowed" }, 405);
     }
 
-    let payload: NotificationPayload;
+    let rawPayload: unknown;
     try {
-      payload = await req.json();
+      rawPayload = await req.json();
     } catch {
       return jsonResponse({ error: "invalid_input" }, 400);
     }
 
-    if (!payload.to || !payload.subject || !payload.body) {
+    const parsed = notificationPayloadSchema.safeParse(rawPayload);
+    if (!parsed.success) {
       return jsonResponse({ error: "invalid_input" }, 400);
     }
 
+    const payload = parsed.data;
     const { sent, messageId } = await sendViaResend(payload);
 
     if (!sent) {

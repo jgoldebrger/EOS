@@ -19,39 +19,11 @@ import type {
 } from "@/features/issues/types";
 import { canEditResource } from "@/lib/permissions/checks";
 import { AUDIT_ACTIONS } from "@/types/domain";
-import type { OrgRole } from "@/types/domain";
 import type { Json, TablesUpdate } from "@/types/database";
 import { logAuditEvent } from "@/lib/audit";
-import { createInboxItem } from "@/features/inbox/actions";
+import { insertInboxItem } from "@/features/inbox/internal";
+import { getActionActor as getActorContext } from "@/lib/auth/get-action-actor";
 import { notifyAssignment } from "@/lib/notifications/send";
-
-async function getActorContext(organizationId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: "You must be signed in" } as const;
-  }
-
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("org_role")
-    .eq("organization_id", organizationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!membership) {
-    return { error: "You do not have access to this organization" } as const;
-  }
-
-  return {
-    supabase,
-    user,
-    orgRole: membership.org_role as OrgRole,
-  } as const;
-}
 
 async function writeAudit(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -237,7 +209,7 @@ export async function updateIssue(input: unknown): Promise<IssueActionResult> {
     parsed.data.ownerId !== existing.owner_id &&
     parsed.data.ownerId !== actor.user.id
   ) {
-    await createInboxItem({
+    await insertInboxItem(actor.supabase, {
       organizationId: parsed.data.organizationId,
       assigneeId: parsed.data.ownerId,
       title: `Issue assigned: ${existing.title}`,

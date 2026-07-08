@@ -93,6 +93,9 @@ npm run build
 echo "Verifying Supabase service role can read seed org..."
 node scripts/verify-e2e-env.mjs
 
+echo "Verifying user JWT + RLS path..."
+node scripts/verify-jwt-rls.mjs
+
 echo "Installing Playwright browser..."
 npx playwright install chromium --with-deps
 

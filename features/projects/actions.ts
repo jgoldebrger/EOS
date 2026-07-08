@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { canEditResource } from "@/lib/permissions/checks";
 import { logAuditEvent } from "@/lib/audit";
-import { AUDIT_ACTIONS, type OrgRole } from "@/types/domain";
+import { AUDIT_ACTIONS } from "@/types/domain";
 import type { Json, TablesUpdate } from "@/types/database";
 import {
   archiveProjectSchema,
@@ -33,33 +33,7 @@ import type {
   ProjectActionResult,
 } from "@/features/projects/types";
 
-async function getActorContext(organizationId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: "You must be signed in" } as const;
-  }
-
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("org_role")
-    .eq("organization_id", organizationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!membership) {
-    return { error: "You do not have access to this organization" } as const;
-  }
-
-  return {
-    supabase,
-    user,
-    orgRole: membership.org_role as OrgRole,
-  } as const;
-}
+import { getActionActor as getActorContext } from "@/lib/auth/get-action-actor";
 
 function revalidateProjectPaths(orgSlug: string, projectSlug?: string) {
   after(() => {

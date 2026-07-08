@@ -23,9 +23,12 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 
 function verifySecret(req: Request): boolean {
   const auth = req.headers.get("Authorization");
-  const expected =
+  const scopedSecret = Deno.env.get("L10_CRON_SECRET");
+  const fallbackSecret =
     Deno.env.get("SUPABASE_SECRET_KEY") ??
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  const expected = scopedSecret ?? fallbackSecret;
 
   if (!auth || !expected) {
     return false;
@@ -91,7 +94,10 @@ async function sendNotification(payload: {
   type?: string;
 }) {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const secretKey = Deno.env.get("SUPABASE_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const secretKey =
+    Deno.env.get("NOTIFICATIONS_CRON_SECRET") ??
+    Deno.env.get("SUPABASE_SECRET_KEY") ??
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !secretKey) {
     return false;
   }

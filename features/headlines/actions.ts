@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getActionActor,
+  requireEditableActor,
+} from "@/lib/auth/get-action-actor";
 import {
   archiveHeadlineSchema,
   createHeadlineSchema,
@@ -16,15 +19,12 @@ export async function createHeadline(input: unknown) {
     return { success: false as const, error: "Invalid headline" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false as const, error: "Unauthorized" };
+  const actor = await requireEditableActor(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false as const, error: actor.error };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await actor.supabase
     .from("headlines" as never)
     .insert({
       organization_id: parsed.data.organizationId,
@@ -34,7 +34,7 @@ export async function createHeadline(input: unknown) {
       headline_type: parsed.data.headlineType,
       meeting_id: parsed.data.meetingId ?? null,
       is_cascading: parsed.data.isCascading ?? false,
-      created_by: user.id,
+      created_by: actor.user.id,
     } as never)
     .select("id")
     .single();
@@ -43,9 +43,9 @@ export async function createHeadline(input: unknown) {
     return { success: false as const, error: "Could not create headline" };
   }
 
-  await logAuditEvent(supabase, {
+  await logAuditEvent(actor.supabase, {
     organizationId: parsed.data.organizationId,
-    actorId: user.id,
+    actorId: actor.user.id,
     action: AUDIT_ACTIONS.CREATE,
     entityType: "issues",
     entityId: (data as { id: string }).id,
@@ -62,12 +62,9 @@ export async function updateHeadline(input: unknown) {
     return { success: false as const, error: "Invalid headline update" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false as const, error: "Unauthorized" };
+  const actor = await requireEditableActor(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false as const, error: actor.error };
   }
 
   const updates: Record<string, unknown> = {};
@@ -80,7 +77,7 @@ export async function updateHeadline(input: unknown) {
     updates.is_cascading = parsed.data.isCascading;
   }
 
-  const { error } = await supabase
+  const { error } = await actor.supabase
     .from("headlines" as never)
     .update(updates as never)
     .eq("id", parsed.data.headlineId)
@@ -90,9 +87,9 @@ export async function updateHeadline(input: unknown) {
     return { success: false as const, error: "Could not update headline" };
   }
 
-  await logAuditEvent(supabase, {
+  await logAuditEvent(actor.supabase, {
     organizationId: parsed.data.organizationId,
-    actorId: user.id,
+    actorId: actor.user.id,
     action: AUDIT_ACTIONS.UPDATE,
     entityType: "issues",
     entityId: parsed.data.headlineId,
@@ -109,15 +106,12 @@ export async function archiveHeadline(input: unknown) {
     return { success: false as const, error: "Invalid archive request" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false as const, error: "Unauthorized" };
+  const actor = await requireEditableActor(parsed.data.organizationId);
+  if ("error" in actor) {
+    return { success: false as const, error: actor.error };
   }
 
-  const { error } = await supabase
+  const { error } = await actor.supabase
     .from("headlines" as never)
     .update({ archived_at: new Date().toISOString() } as never)
     .eq("id", parsed.data.headlineId)
@@ -127,9 +121,9 @@ export async function archiveHeadline(input: unknown) {
     return { success: false as const, error: "Could not archive headline" };
   }
 
-  await logAuditEvent(supabase, {
+  await logAuditEvent(actor.supabase, {
     organizationId: parsed.data.organizationId,
-    actorId: user.id,
+    actorId: actor.user.id,
     action: AUDIT_ACTIONS.UPDATE,
     entityType: "issues",
     entityId: parsed.data.headlineId,
@@ -141,8 +135,12 @@ export async function archiveHeadline(input: unknown) {
 }
 
 export async function getHeadlinesForTeam(organizationId: string, teamId: string) {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const actor = await getActionActor(organizationId);
+  if ("error" in actor) {
+    return [];
+  }
+
+  const { data } = await actor.supabase
     .from("headlines" as never)
     .select("*")
     .eq("organization_id", organizationId)

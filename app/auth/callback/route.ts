@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { acceptPendingInvitations } from "@/lib/people/accept-invitations";
+import { toSafeRelativePath } from "@/lib/auth/safe-redirect";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
         }
       }
 
-      const safeNext = next.startsWith("/") ? next : "/onboarding";
+      const safeNext = toSafeRelativePath(next, "/onboarding");
       return NextResponse.redirect(`${origin}${safeNext}`);
     }
   }

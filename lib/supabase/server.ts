@@ -1,19 +1,13 @@
 import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
-import {
-  createClient as createSupabaseClient,
-  type SupabaseClient,
-} from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { Database } from "@/types/database";
 import {
   getSupabasePublishableKey,
-  getSupabaseSecretKey,
   getSupabaseUrl,
 } from "@/lib/supabase/env";
 import { supabaseFetch } from "@/lib/supabase/fetch";
-
-const DB_METHODS = new Set(["from", "rpc", "schema", "storage"]);
+import { createAdminClient } from "@/lib/supabase/admin";
 
 async function createAuthClient() {
   const cookieStore = await cookies();
@@ -41,42 +35,14 @@ async function createAuthClient() {
   );
 }
 
-function createServiceClient(): SupabaseClient<Database> {
-  return createSupabaseClient<Database>(
-    getSupabaseUrl(),
-    getSupabaseSecretKey(),
-    {
-      global: { fetch: supabaseFetch },
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
-    },
-  );
-}
-
 /**
- * Server Supabase client: auth via user session cookies (GoTrue / ES256),
- * database via service role (PostgREST cannot verify ES256 user JWTs on new projects).
+ * Server Supabase client scoped to the signed-in user's JWT (RLS enforced).
  * Never expose to the browser.
  */
-export const createClient = cache(async (): Promise<SupabaseClient<Database>> => {
-  const auth = await createAuthClient();
-  const db = createServiceClient();
+export const createClient = cache(createAuthClient);
 
-  return new Proxy(auth, {
-    get(target, prop, receiver) {
-      if (typeof prop === "string" && DB_METHODS.has(prop)) {
-        const value = Reflect.get(db, prop, db);
-        return typeof value === "function"
-          ? (value as (...args: unknown[]) => unknown).bind(db)
-          : value;
-      }
-      return Reflect.get(target, prop, receiver);
-    },
-  }) as SupabaseClient<Database>;
-});
+/** Explicit service-role client for break-glass server paths only. */
+export const createServiceClient = cache(() => createAdminClient());
 
 /** One auth lookup per request — avoids repeated getUser() round trips. */
 export const getServerSessionUser = cache(async () => {
@@ -95,12 +61,12 @@ export const getServerSessionUser = cache(async () => {
         "[auth] getUser() failed (network/TLS to Supabase). Falling back to cookie session.",
         error,
       );
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      return session?.user ?? null;
     }
   }
 
-  // Cookie session avoids a GoTrue round trip when corporate network drops TLS.
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return session?.user ?? null;
+  return null;
 });

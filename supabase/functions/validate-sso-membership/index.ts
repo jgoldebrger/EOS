@@ -15,8 +15,27 @@ const PUBLIC_DOMAINS = new Set([
 
 const validateInputSchema = z.object({
   organizationId: z.string().uuid(),
-  providerGroups: z.array(z.string()).optional(),
 });
+
+function extractVerifiedProviderGroups(
+  userMetadata: Record<string, unknown> | undefined,
+  appMetadata: Record<string, unknown> | undefined,
+): string[] {
+  const candidates: unknown[] = [
+    appMetadata?.provider_groups,
+    appMetadata?.groups,
+    userMetadata?.provider_groups,
+    userMetadata?.groups,
+  ];
+
+  for (const value of candidates) {
+    if (Array.isArray(value)) {
+      return value.filter((item): item is string => typeof item === "string");
+    }
+  }
+
+  return [];
+}
 
 function normalizeDomain(input: string): string {
   const trimmed = input.trim().toLowerCase();
@@ -94,7 +113,19 @@ const handler = {
     }
 
     const adminClient = ctx.supabaseAdmin;
-    const { organizationId, providerGroups = [] } = parsed.data;
+    const { organizationId } = parsed.data;
+
+    const { data: authUser, error: authUserError } =
+      await adminClient.auth.admin.getUserById(userId);
+
+    if (authUserError || !authUser.user) {
+      return jsonResponse({ error: "unauthorized", success: false }, 401);
+    }
+
+    const providerGroups = extractVerifiedProviderGroups(
+      authUser.user.user_metadata as Record<string, unknown>,
+      authUser.user.app_metadata as Record<string, unknown>,
+    );
 
     const { data: org } = await adminClient
       .from("organizations")

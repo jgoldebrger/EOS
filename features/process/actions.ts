@@ -3,6 +3,10 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import {
+  getActionActor,
+  requireProcessMutator,
+} from "@/lib/auth/get-action-actor";
 import type { Json, TablesUpdate } from "@/types/database";
 import {
   archiveProcessPageSchema,
@@ -188,14 +192,6 @@ export async function createProcessPage(
     };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, error: "You must be signed in" };
-  }
-
   const {
     organizationId,
     orgSlug,
@@ -206,7 +202,12 @@ export async function createProcessPage(
     parentId,
   } = parsed.data;
 
-  const { data, error } = await supabase
+  const actor = await requireProcessMutator(organizationId, teamId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error };
+  }
+
+  const { data, error } = await actor.supabase
     .from("process_pages")
     .insert({
       organization_id: organizationId,
@@ -216,7 +217,7 @@ export async function createProcessPage(
       category: category ?? "General",
       content: "",
       content_format: "sop",
-      created_by: user.id,
+      created_by: actor.user.id,
     })
     .select("id")
     .single();
@@ -228,7 +229,7 @@ export async function createProcessPage(
   const pageId = data.id;
   const sopDocument = createEmptySopDocument(pageId, title);
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await actor.supabase
     .from("process_pages")
     .update({
       sop_document: sopDocument as unknown as Json,
@@ -254,14 +255,6 @@ export async function updateProcessPage(
     };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, error: "You must be signed in" };
-  }
-
   const {
     id,
     organizationId,
@@ -277,7 +270,12 @@ export async function updateProcessPage(
     tagIds,
   } = parsed.data;
 
-  let currentQuery = supabase
+  const actor = await requireProcessMutator(organizationId, teamId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error };
+  }
+
+  let currentQuery = actor.supabase
     .from("process_pages")
     .select("id, organization_id, title, content, sop_document")
     .eq("id", id)
@@ -314,9 +312,9 @@ export async function updateProcessPage(
 
   if (Object.keys(updates).length > 0) {
     const versionResult = await saveProcessPageVersion(
-      supabase,
+      actor.supabase,
       currentPage,
-      user.id,
+      actor.user.id,
     );
     if (versionResult.error) {
       return { success: false, error: versionResult.error };
@@ -324,7 +322,7 @@ export async function updateProcessPage(
   }
 
   if (Object.keys(updates).length > 0) {
-    let query = supabase
+    let query = actor.supabase
       .from("process_pages")
       .update(updates)
       .eq("id", id)
@@ -341,7 +339,7 @@ export async function updateProcessPage(
 
   if (tagIds !== undefined) {
     const tagResult = await replaceProcessPageTags(
-      supabase,
+      actor.supabase,
       organizationId,
       id,
       [...new Set(tagIds)],
@@ -362,12 +360,9 @@ export async function listProcessPageVersions(input: {
   | { success: true; versions: ProcessPageVersionListItem[] }
   | { success: false; error: string }
 > {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, error: "You must be signed in" };
+  const actor = await getActionActor(input.organizationId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error };
   }
 
   const versions = await getProcessPageVersions(
@@ -381,11 +376,8 @@ export async function loadProcessPageSopDocument(
   organizationId: string,
   pageId: string,
 ): Promise<SopDocument | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const actor = await getActionActor(organizationId);
+  if ("error" in actor) {
     return null;
   }
 
@@ -404,18 +396,15 @@ export async function restoreProcessPageVersion(
     };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, error: "You must be signed in" };
-  }
-
   const { organizationId, orgSlug, teamId, teamSlug, pageId, versionId } =
     parsed.data;
 
-  let pageQuery = supabase
+  const actor = await requireProcessMutator(organizationId, teamId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error };
+  }
+
+  let pageQuery = actor.supabase
     .from("process_pages")
     .select("id, organization_id, title, content, sop_document")
     .eq("id", pageId)
@@ -429,7 +418,7 @@ export async function restoreProcessPageVersion(
     return { success: false, error: "SOP not found" };
   }
 
-  const { data: version } = await supabase
+  const { data: version } = await actor.supabase
     .from("process_page_versions")
     .select("id, sop_document, content, version_number")
     .eq("id", versionId)
@@ -442,9 +431,9 @@ export async function restoreProcessPageVersion(
   }
 
   const versionResult = await saveProcessPageVersion(
-    supabase,
+    actor.supabase,
     currentPage,
-    user.id,
+    actor.user.id,
   );
   if (versionResult.error) {
     return { success: false, error: versionResult.error };
@@ -465,7 +454,7 @@ export async function restoreProcessPageVersion(
     updates.title = restoredDoc.title;
   }
 
-  let updateQuery = supabase
+  let updateQuery = actor.supabase
     .from("process_pages")
     .update(updates)
     .eq("id", pageId)
@@ -494,18 +483,15 @@ export async function setProcessPageTags(
     };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, error: "You must be signed in" };
-  }
-
   const { organizationId, orgSlug, teamId, teamSlug, pageId, tagIds } =
     parsed.data;
 
-  let pageQuery = supabase
+  const actor = await requireProcessMutator(organizationId, teamId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error };
+  }
+
+  let pageQuery = actor.supabase
     .from("process_pages")
     .select("id")
     .eq("id", pageId)
@@ -520,7 +506,7 @@ export async function setProcessPageTags(
   }
 
   const tagResult = await replaceProcessPageTags(
-    supabase,
+    actor.supabase,
     organizationId,
     pageId,
     [...new Set(tagIds)],
@@ -545,18 +531,15 @@ export async function archiveProcessPage(
     };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, error: "You must be signed in" };
-  }
-
   const { id, organizationId, orgSlug, teamId, teamSlug, archived } =
     parsed.data;
 
-  let query = supabase
+  const actor = await requireProcessMutator(organizationId, teamId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error };
+  }
+
+  let query = actor.supabase
     .from("process_pages")
     .update({
       archived_at: archived ? new Date().toISOString() : null,
@@ -587,17 +570,14 @@ export async function deleteProcessPage(
     };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, error: "You must be signed in" };
-  }
-
   const { id, organizationId, orgSlug, teamId, teamSlug } = parsed.data;
 
-  let query = supabase
+  const actor = await requireProcessMutator(organizationId, teamId);
+  if ("error" in actor) {
+    return { success: false, error: actor.error };
+  }
+
+  let query = actor.supabase
     .from("process_pages")
     .delete()
     .eq("id", id)
@@ -640,23 +620,20 @@ export async function uploadSopStepImageAction(
     };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, error: "You must be signed in" };
-  }
-
   const page = await getProcessPageById(organizationId, pageId);
   if (!page) {
     return { success: false, error: "SOP not found" };
   }
 
+  const actor = await requireProcessMutator(organizationId, page.team_id);
+  if ("error" in actor) {
+    return { success: false, error: actor.error };
+  }
+
   const path = `${organizationId}/${pageId}/${crypto.randomUUID()}.jpg`;
   const bytes = Buffer.from(await file.arrayBuffer());
 
-  const { error } = await supabase.storage
+  const { error } = await actor.supabase.storage
     .from(SOP_IMAGES_BUCKET)
     .upload(path, bytes, {
       contentType: file.type || "image/jpeg",
@@ -667,6 +644,6 @@ export async function uploadSopStepImageAction(
     return { success: false, error: error.message };
   }
 
-  const { data } = supabase.storage.from(SOP_IMAGES_BUCKET).getPublicUrl(path);
+  const { data } = actor.supabase.storage.from(SOP_IMAGES_BUCKET).getPublicUrl(path);
   return { success: true, url: data.publicUrl };
 }

@@ -96,7 +96,6 @@ const handler = {
     return jsonResponse({
       providerName: settings.provider_name,
       providerType: settings.provider_type,
-      organizationId: settings.organization_id,
     });
   }),
 };

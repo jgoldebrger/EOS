@@ -24,8 +24,9 @@ test.describe("onboarding structure (no Supabase)", () => {
       "href",
       "/auth",
     );
-    await expect(
-      page.getByRole("link", { name: /create organization/i }),
-    ).toHaveAttribute("href", "/onboarding");
+    await expect(page.getByRole("link", { name: /documentation/i })).toHaveAttribute(
+      "href",
+      "/docs",
+    );
   });
 });

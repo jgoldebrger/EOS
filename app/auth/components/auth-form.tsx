@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
-import { signInWithEmail, signUpWithEmail } from "@/app/auth/actions";
+import { signInWithEmail } from "@/app/auth/actions";
 import { toSafeAuthError } from "@/lib/auth/errors";
 import { oauthProviders } from "@/app/auth/oauth-config";
 import { Button } from "@/components/ui/button";
@@ -37,19 +37,14 @@ const authSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters")
     .max(128, "Password is too long"),
-  firstName: z.string(),
-  lastName: z.string(),
 });
 
 type AuthFormValues = z.infer<typeof authSchema>;
-
-type AuthMode = "sign-in" | "sign-up";
 
 export function AuthForm() {
   const searchParams = useSearchParams();
   const callbackError = searchParams.get("error");
 
-  const [mode, setMode] = useState<AuthMode>("sign-in");
   const [formError, setFormError] = useState<string | null>(
     callbackError === "callback"
       ? "Sign in was interrupted. Please try again."
@@ -59,7 +54,7 @@ export function AuthForm() {
 
   const form = useForm<AuthFormValues>({
     resolver: zodResolver(authSchema),
-    defaultValues: { email: "", password: "", firstName: "", lastName: "" },
+    defaultValues: { email: "", password: "" },
   });
 
   async function onSubmit(values: AuthFormValues) {
@@ -67,47 +62,16 @@ export function AuthForm() {
     setIsSubmitting(true);
 
     const nextPath = searchParams.get("next") ?? undefined;
-
-    if (mode === "sign-in") {
-      const result = await signInWithEmail({
-        email: values.email,
-        password: values.password,
-        nextPath,
-      });
-
-      setIsSubmitting(false);
-
-      if (result?.success === false) {
-        setFormError(result.error);
-      }
-      return;
-    }
-
-    if (!values.firstName.trim() || !values.lastName.trim()) {
-      setFormError("First and last name are required.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    const result = await signUpWithEmail({
+    const result = await signInWithEmail({
       email: values.email,
       password: values.password,
-      firstName: values.firstName?.trim() ?? "",
-      lastName: values.lastName?.trim() ?? "",
+      nextPath,
     });
 
     setIsSubmitting(false);
 
     if (result?.success === false) {
       setFormError(result.error);
-      return;
-    }
-
-    if (result?.success === true && "needsConfirmation" in result && result.needsConfirmation) {
-      setFormError(
-        "Check your email to confirm your account, then sign in.",
-      );
-      setMode("sign-in");
     }
   }
 
@@ -134,13 +98,9 @@ export function AuthForm() {
         <Badge variant="secondary" className="mx-auto w-fit">
           EOS Platform
         </Badge>
-        <CardTitle className="text-2xl">
-          {mode === "sign-in" ? "Welcome back" : "Create your account"}
-        </CardTitle>
+        <CardTitle className="text-2xl">Welcome back</CardTitle>
         <CardDescription>
-          {mode === "sign-in"
-            ? "Sign in to access your organization workspace."
-            : "Get started with your EOS operating system."}
+          Sign in to access your organization workspace. Access is invitation-only.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -195,44 +155,6 @@ export function AuthForm() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {mode === "sign-up" && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="firstName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>First name</FormLabel>
-                      <FormControl>
-                        <Input
-                          autoComplete="given-name"
-                          placeholder="Jane"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="lastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Last name</FormLabel>
-                      <FormControl>
-                        <Input
-                          autoComplete="family-name"
-                          placeholder="Smith"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
             <FormField
               control={form.control}
               name="email"
@@ -260,9 +182,7 @@ export function AuthForm() {
                   <FormControl>
                     <Input
                       type="password"
-                      autoComplete={
-                        mode === "sign-in" ? "current-password" : "new-password"
-                      }
+                      autoComplete="current-password"
                       placeholder="••••••••"
                       {...field}
                     />
@@ -279,45 +199,13 @@ export function AuthForm() {
             )}
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting
-                ? "Please wait…"
-                : mode === "sign-in"
-                  ? "Sign in"
-                  : "Create account"}
+              {isSubmitting ? "Please wait…" : "Sign in"}
             </Button>
           </form>
         </Form>
 
         <p className="text-center text-sm text-muted-foreground">
-          {mode === "sign-in" ? (
-            <>
-              New here?{" "}
-              <button
-                type="button"
-                className="font-medium text-foreground underline-offset-4 hover:underline"
-                onClick={() => {
-                  setMode("sign-up");
-                  setFormError(null);
-                }}
-              >
-                Create an account
-              </button>
-            </>
-          ) : (
-            <>
-              Already have an account?{" "}
-              <button
-                type="button"
-                className="font-medium text-foreground underline-offset-4 hover:underline"
-                onClick={() => {
-                  setMode("sign-in");
-                  setFormError(null);
-                }}
-              >
-                Sign in
-              </button>
-            </>
-          )}
+          Need access? Ask your organization administrator for an invitation.
         </p>
         <p className="text-center text-sm text-muted-foreground">
           <Link href="/docs" className="font-medium text-foreground underline-offset-4 hover:underline">

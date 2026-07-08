@@ -3,7 +3,7 @@
 import { cache } from "react";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { createClient, getServerSessionUser } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import {
   createMetricActionSchema,
   createScorecardCategorySchema,
@@ -45,46 +45,7 @@ import type { OrgRole, TeamRole } from "@/types/domain";
 import type { Json, TablesUpdate } from "@/types/database";
 import { logAuditEvent } from "@/lib/audit";
 
-async function getActorContext(organizationId: string) {
-  return getActorContextCached(organizationId);
-}
-
-const getActorContextCached = cache(async (organizationId: string) => {
-  const startedAt = Date.now();
-  const logStep = (step: string) => {
-    if (process.env.NODE_ENV === "development") {
-      console.info(`[getActorContext] ${step}: +${Date.now() - startedAt}ms`);
-    }
-  };
-
-  const supabase = await createClient();
-  logStep("client");
-
-  const user = await getServerSessionUser();
-  logStep("auth");
-
-  if (!user) {
-    return { error: "You must be signed in" } as const;
-  }
-
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("org_role")
-    .eq("organization_id", organizationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-  logStep("membership");
-
-  if (!membership) {
-    return { error: "You do not have access to this organization" } as const;
-  }
-
-  return {
-    supabase,
-    user,
-    orgRole: membership.org_role as OrgRole,
-  } as const;
-});
+import { getCachedActionActor as getActorContext } from "@/lib/auth/get-action-actor";
 
 const getTeamRoleForUser = cache(
   async (teamId: string, userId: string): Promise<TeamRole | null> => {

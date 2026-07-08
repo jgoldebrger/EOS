@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createInboxItem } from "@/features/inbox/actions";
+import { insertInboxItem } from "@/features/inbox/internal";
 import { acknowledgeCascadeSchema, sendCascadesSchema } from "@/features/cascades/schema";
 import { queueNotification } from "@/lib/notifications/send";
 import { canEditResource } from "@/lib/permissions/checks";
@@ -100,7 +100,7 @@ export async function sendCascades(input: unknown): Promise<CascadeActionResult>
     const actionUrl = `/org/${parsed.data.orgSlug}/teams/${team.slug}/headlines`;
 
     for (const leaderId of leaderIds) {
-      await createInboxItem({
+      await insertInboxItem(supabase, {
         organizationId: parsed.data.organizationId,
         assigneeId: leaderId,
         title: `Cascade to acknowledge: ${parsed.data.sourceLabel}`,

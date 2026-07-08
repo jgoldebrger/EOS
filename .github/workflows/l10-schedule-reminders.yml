@@ -5,20 +5,29 @@ on:
     - cron: "0 * * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   remind:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger l10-schedule-reminders edge function
         env:
-          SUPABASE_URL: https://intfblfzreghhshcztuw.supabase.co
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          L10_CRON_SECRET: ${{ secrets.L10_CRON_SECRET }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: |
-          if [ -z "$SUPABASE_SECRET_KEY" ]; then
-            echo "Add SUPABASE_SECRET_KEY to GitHub repository secrets."
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "Add SUPABASE_URL to GitHub repository secrets."
+            exit 1
+          fi
+          SECRET="${L10_CRON_SECRET:-$SUPABASE_SECRET_KEY}"
+          if [ -z "$SECRET" ]; then
+            echo "Add L10_CRON_SECRET or SUPABASE_SECRET_KEY to GitHub repository secrets."
             exit 1
           fi
           curl -sS -X POST "$SUPABASE_URL/functions/v1/l10-schedule-reminders" \
-            -H "Authorization: Bearer $SUPABASE_SECRET_KEY" \
+            -H "Authorization: Bearer $SECRET" \
             -H "Content-Type: application/json" \
             -d '{}'
