@@ -23,4 +23,20 @@ $encoded = [uri]::EscapeDataString($Password)
 $dbUrl = "postgresql://postgres.${ProjectRef}:${encoded}@${PoolerCluster}-${Region}.pooler.supabase.com:5432/postgres"
 
 Set-Location (Split-Path $PSScriptRoot -Parent)
-npx supabase db push --db-url $dbUrl --yes
+
+# Supabase CLI fails on UTF-8 BOM in .env.local — temporarily hide it during push.
+$envLocal = Join-Path (Get-Location) ".env.local"
+$envBackup = Join-Path (Get-Location) ".env.local.bak-push"
+$renamedEnv = $false
+if (Test-Path $envLocal) {
+  Rename-Item $envLocal $envBackup
+  $renamedEnv = $true
+}
+
+try {
+  npx supabase db push --db-url $dbUrl --yes
+} finally {
+  if ($renamedEnv -and (Test-Path $envBackup)) {
+    Rename-Item $envBackup $envLocal
+  }
+}

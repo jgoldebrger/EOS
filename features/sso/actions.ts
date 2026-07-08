@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getServerSessionUser } from "@/lib/supabase/server";
+import { requirePrivilegedSession } from "@/lib/auth/privileged-session";
 import { getOrganizationBySlug } from "@/features/organizations/queries";
 import {
   addRoleMappingSchema,
@@ -49,6 +50,24 @@ async function writeSsoAudit(
   });
 }
 
+async function requireOwnerActor(orgSlug: string) {
+  const ownerCheck = await requireOwner(orgSlug);
+  if ("error" in ownerCheck) {
+    return { error: ownerCheck.error } as const;
+  }
+
+  const session = await requirePrivilegedSession();
+  if ("error" in session) {
+    return { error: session.error } as const;
+  }
+
+  return {
+    org: ownerCheck.org,
+    userId: session.userId,
+    supabase: await createClient(),
+  } as const;
+}
+
 export async function updateSsoSettings(input: unknown): Promise<SsoActionResult> {
   const parsed = updateSsoSettingsSchema.safeParse(input);
 
@@ -59,9 +78,9 @@ export async function updateSsoSettings(input: unknown): Promise<SsoActionResult
     };
   }
 
-  const ownerCheck = await requireOwner(parsed.data.orgSlug);
-  if ("error" in ownerCheck) {
-    return { success: false, error: ownerCheck.error };
+  const ownerActor = await requireOwnerActor(parsed.data.orgSlug);
+  if ("error" in ownerActor) {
+    return { success: false, error: ownerActor.error };
   }
 
   const domain = normalizeDomain(parsed.data.domain);
@@ -72,17 +91,10 @@ export async function updateSsoSettings(input: unknown): Promise<SsoActionResult
     };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: "You must be signed in" };
-  }
+  const { org, userId, supabase } = ownerActor;
 
   const payload = {
-    organization_id: ownerCheck.org.id,
+    organization_id: org.id,
     provider_type: parsed.data.providerType,
     provider_name: parsed.data.providerName,
     domain,
@@ -108,7 +120,7 @@ export async function updateSsoSettings(input: unknown): Promise<SsoActionResult
     return { success: false, error: "Unable to save SSO settings. Please try again." };
   }
 
-  await writeSsoAudit(ownerCheck.org.id, user.id, AUDIT_ACTIONS.UPDATE, data.id, {
+  await writeSsoAudit(org.id, userId, AUDIT_ACTIONS.UPDATE, data.id, {
     domain,
     provider_type: parsed.data.providerType,
     enforced: parsed.data.enforced,
@@ -129,24 +141,17 @@ export async function addRoleMapping(input: unknown): Promise<SsoActionResult> {
     };
   }
 
-  const ownerCheck = await requireOwner(parsed.data.orgSlug);
-  if ("error" in ownerCheck) {
-    return { success: false, error: ownerCheck.error };
+  const ownerActor = await requireOwnerActor(parsed.data.orgSlug);
+  if ("error" in ownerActor) {
+    return { success: false, error: ownerActor.error };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: "You must be signed in" };
-  }
+  const { org, userId, supabase } = ownerActor;
 
   const { data, error } = await supabase
     .from("organization_sso_role_mappings")
     .insert({
-      organization_id: ownerCheck.org.id,
+      organization_id: org.id,
       provider_group: parsed.data.providerGroup,
       org_role: parsed.data.orgRole,
     })
@@ -160,7 +165,7 @@ export async function addRoleMapping(input: unknown): Promise<SsoActionResult> {
     return { success: false, error: "Unable to add role mapping. Please try again." };
   }
 
-  await writeSsoAudit(ownerCheck.org.id, user.id, AUDIT_ACTIONS.CREATE, data.id, {
+  await writeSsoAudit(org.id, userId, AUDIT_ACTIONS.CREATE, data.id, {
     provider_group: parsed.data.providerGroup,
     org_role: parsed.data.orgRole,
   });
@@ -179,31 +184,24 @@ export async function removeRoleMapping(input: unknown): Promise<SsoActionResult
     };
   }
 
-  const ownerCheck = await requireOwner(parsed.data.orgSlug);
-  if ("error" in ownerCheck) {
-    return { success: false, error: ownerCheck.error };
+  const ownerActor = await requireOwnerActor(parsed.data.orgSlug);
+  if ("error" in ownerActor) {
+    return { success: false, error: ownerActor.error };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: "You must be signed in" };
-  }
+  const { org, userId, supabase } = ownerActor;
 
   const { error } = await supabase
     .from("organization_sso_role_mappings")
     .delete()
     .eq("id", parsed.data.mappingId)
-    .eq("organization_id", ownerCheck.org.id);
+    .eq("organization_id", org.id);
 
   if (error) {
     return { success: false, error: "Unable to remove role mapping. Please try again." };
   }
 
-  await writeSsoAudit(ownerCheck.org.id, user.id, AUDIT_ACTIONS.DELETE, parsed.data.mappingId, {});
+  await writeSsoAudit(org.id, userId, AUDIT_ACTIONS.DELETE, parsed.data.mappingId, {});
 
   revalidatePath(`/org/${parsed.data.orgSlug}/settings/security/sso`);
   return { success: true };
@@ -219,9 +217,9 @@ export async function addVerifiedDomain(input: unknown): Promise<SsoActionResult
     };
   }
 
-  const ownerCheck = await requireOwner(parsed.data.orgSlug);
-  if ("error" in ownerCheck) {
-    return { success: false, error: ownerCheck.error };
+  const ownerActor = await requireOwnerActor(parsed.data.orgSlug);
+  if ("error" in ownerActor) {
+    return { success: false, error: ownerActor.error };
   }
 
   const domain = normalizeDomain(parsed.data.domain);
@@ -232,19 +230,12 @@ export async function addVerifiedDomain(input: unknown): Promise<SsoActionResult
     };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: "You must be signed in" };
-  }
+  const { org, userId, supabase } = ownerActor;
 
   const { data, error } = await supabase
     .from("organization_verified_domains")
     .insert({
-      organization_id: ownerCheck.org.id,
+      organization_id: org.id,
       domain,
       verification_method: parsed.data.verificationMethod,
     })
@@ -258,7 +249,7 @@ export async function addVerifiedDomain(input: unknown): Promise<SsoActionResult
     return { success: false, error: "Unable to verify domain. Please try again." };
   }
 
-  await writeSsoAudit(ownerCheck.org.id, user.id, AUDIT_ACTIONS.CREATE, data.id, {
+  await writeSsoAudit(org.id, userId, AUDIT_ACTIONS.CREATE, data.id, {
     domain,
     verification_method: parsed.data.verificationMethod,
   });
@@ -277,31 +268,24 @@ export async function removeVerifiedDomain(input: unknown): Promise<SsoActionRes
     };
   }
 
-  const ownerCheck = await requireOwner(parsed.data.orgSlug);
-  if ("error" in ownerCheck) {
-    return { success: false, error: ownerCheck.error };
+  const ownerActor = await requireOwnerActor(parsed.data.orgSlug);
+  if ("error" in ownerActor) {
+    return { success: false, error: ownerActor.error };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: "You must be signed in" };
-  }
+  const { org, userId, supabase } = ownerActor;
 
   const { error } = await supabase
     .from("organization_verified_domains")
     .delete()
     .eq("id", parsed.data.domainId)
-    .eq("organization_id", ownerCheck.org.id);
+    .eq("organization_id", org.id);
 
   if (error) {
     return { success: false, error: "Unable to remove verified domain. Please try again." };
   }
 
-  await writeSsoAudit(ownerCheck.org.id, user.id, AUDIT_ACTIONS.DELETE, parsed.data.domainId, {});
+  await writeSsoAudit(org.id, userId, AUDIT_ACTIONS.DELETE, parsed.data.domainId, {});
 
   revalidatePath(`/org/${parsed.data.orgSlug}/settings/security/sso`);
   return { success: true };

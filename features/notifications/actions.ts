@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import { getSupabaseSecretKey, getSupabaseUrl } from "@/lib/supabase/env";
 import { canManageOrg } from "@/lib/permissions/checks";
 import type { OrgRole } from "@/types/domain";
@@ -23,9 +23,7 @@ export async function sendNotificationSmokeTest(
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (!user?.email) {
     return { success: false, error: "You must be signed in with an email address" };
@@ -43,19 +41,20 @@ export async function sendNotificationSmokeTest(
   }
 
   const supabaseUrl = getSupabaseUrl();
-  const secretKey = getSupabaseSecretKey();
+  const bearerToken =
+    process.env.NOTIFICATIONS_CRON_SECRET ?? getSupabaseSecretKey();
 
-  if (!supabaseUrl || !secretKey) {
+  if (!supabaseUrl || !bearerToken) {
     return {
       success: false,
-      error: "SUPABASE_SECRET_KEY is not configured on this deployment",
+      error: "Notification secrets are not configured on this deployment",
     };
   }
 
   const response = await fetch(`${supabaseUrl}/functions/v1/send-notifications`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${secretKey}`,
+      Authorization: `Bearer ${bearerToken}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({

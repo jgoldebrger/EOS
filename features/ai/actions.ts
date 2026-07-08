@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getServerSessionUser } from "@/lib/supabase/server";
+import { requireActionRateLimit } from "@/lib/security/action-rate-limit";
 import { createTodo } from "@/features/todos/actions";
 import { archiveIssue, updateIssue } from "@/features/issues/actions";
 import { createHeadline } from "@/features/headlines/actions";
@@ -210,6 +211,16 @@ export async function approveSuggestion(
     return { success: false, error: actor.error ?? "Unauthorized" };
   }
 
+  const rateLimit = requireActionRateLimit(
+    actor.user.id,
+    "ai-approve",
+    60,
+    60 * 60 * 1000,
+  );
+  if (rateLimit) {
+    return { success: false, error: rateLimit.error };
+  }
+
   const suggestion = await getSuggestionById(
     parsed.data.organizationId,
     parsed.data.suggestionId,
@@ -285,6 +296,16 @@ export async function dismissSuggestion(
   const actor = await requireEditableActor(parsed.data.organizationId);
   if ("error" in actor) {
     return { success: false, error: actor.error ?? "Unauthorized" };
+  }
+
+  const rateLimit = requireActionRateLimit(
+    actor.user.id,
+    "ai-dismiss",
+    60,
+    60 * 60 * 1000,
+  );
+  if (rateLimit) {
+    return { success: false, error: rateLimit.error };
   }
 
   const suggestion = await getSuggestionById(

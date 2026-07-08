@@ -7,7 +7,7 @@ import {
   getRocksForOrg,
 } from "@/features/rocks/queries";
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
-import { createClient } from "@/lib/supabase/server";
+import { getServerSessionUser } from "@/lib/supabase/server";
 import { canEditResource, canManageOrg } from "@/lib/permissions/checks";
 
 export default async function CompanyRocksPage({
@@ -17,10 +17,7 @@ export default async function CompanyRocksPage({
 }) {
   const { orgSlug } = await params;
   const access = await requireOrgAccess(orgSlug);
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (!user) {
     return null;

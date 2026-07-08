@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "npm:@supabase/server";
 import { z } from "https://esm.sh/zod@3.24.2";
-import { jsonResponse } from "../_shared/edge-utils.ts";
+import { checkEdgeRateLimit, clientIpFromRequest, jsonResponse } from "../_shared/edge-utils.ts";
 
 const PUBLIC_DOMAINS = new Set([
   "gmail.com",
@@ -37,6 +37,11 @@ const handler = {
   fetch: withSupabase({ auth: "publishable" }, async (req, ctx) => {
     if (req.method !== "POST") {
       return jsonResponse({ error: "invalid_input" }, 405);
+    }
+
+    const ip = clientIpFromRequest(req);
+    if (!checkEdgeRateLimit(`discover-sso:${ip}`, 20, 5 * 60 * 1000)) {
+      return jsonResponse({ error: "rate_limited" }, 429);
     }
 
     let payload: unknown;

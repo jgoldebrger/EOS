@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import { createOrgSchema } from "@/features/organizations/schema";
 import type { CreateOrganizationResult } from "@/features/organizations/types";
 import { AUDIT_ACTIONS } from "@/types/domain";
@@ -28,9 +28,7 @@ export async function createOrganization(
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (!user) {
     return { success: false, error: "You must be signed in to create an organization" };

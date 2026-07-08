@@ -6,7 +6,7 @@ import { DocsShell } from "@/components/help/docs-shell";
 import { extractDocHeadings } from "@/lib/docs/headings";
 import { loadDocMarkdown } from "@/lib/docs/load-doc";
 import { getAdjacentDocs, getAllDocSlugs, getDocEntry } from "@/lib/docs/manifest";
-import { createClient } from "@/lib/supabase/server";
+import { getServerSessionUser } from "@/lib/supabase/server";
 import { getUserOrganizations } from "@/features/organizations/queries";
 
 export function generateStaticParams() {
@@ -48,10 +48,7 @@ export default async function DocsArticlePage({
   const headings = extractDocHeadings(markdown);
   const { prev, next } = getAdjacentDocs(slug);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   let appHomeHref: string | null = null;
   if (fromOrgSlug) {

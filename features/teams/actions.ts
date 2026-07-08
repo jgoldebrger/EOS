@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import {
   addTeamMemberSchema,
   createTeamSchema,
@@ -24,9 +24,7 @@ async function assertCanManageTeamMembers(
   | { ok: false; error: string }
 > {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (!user) {
     return { ok: false, error: "You must be signed in." };
@@ -86,7 +84,9 @@ async function revalidateTeamPeoplePaths(
     revalidatePath(`/org/${org.slug}/teams/${team.slug}/people`);
     revalidatePath(`/org/${org.slug}/teams/${team.slug}/overview`);
   }
-}export async function createTeam(input: unknown): Promise<CreateTeamResult> {
+}
+
+export async function createTeam(input: unknown): Promise<CreateTeamResult> {
   const parsed = createTeamSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -97,9 +97,7 @@ async function revalidateTeamPeoplePaths(
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (!user) {
     return { success: false, error: "You must be signed in to create a team" };

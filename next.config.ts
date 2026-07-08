@@ -19,6 +19,7 @@ function buildContentSecurityPolicy(): string {
 
   return [
     "default-src 'self'",
+    "object-src 'none'",
     `connect-src ${connectSrc.join(" ")}`,
     "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
@@ -27,6 +28,7 @@ function buildContentSecurityPolicy(): string {
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
+    ...(process.env.NODE_ENV === "production" ? ["upgrade-insecure-requests"] : []),
   ]
     .filter(Boolean)
     .join("; ");
@@ -40,6 +42,14 @@ const securityHeaders = [
   {
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=()",
+  },
+  {
+    key: "Cross-Origin-Opener-Policy",
+    value: "same-origin-allow-popups",
+  },
+  {
+    key: "Cross-Origin-Resource-Policy",
+    value: "same-site",
   },
   {
     key: "Content-Security-Policy",

@@ -7,6 +7,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 ## Security architecture
 
 - **User-facing DB access:** `createClient()` in `lib/supabase/server.ts` uses the signed-in user's JWT. PostgreSQL RLS is the enforcement layer.
+- **Session lookup:** Use `getServerSessionUser()` in server components/actions — not `supabase.auth.getUser()` directly.
+- **Privileged mutations:** SSO settings, invites, and account creation call `requirePrivilegedSession()` (MFA step-up when TOTP is enrolled).
 - **Break-glass admin access:** `createAdminClient()` / `createServiceClient()` in `lib/supabase/admin.ts` and `lib/supabase/server.ts`. Use only for:
   - Auth Admin API (invite user, resolve email, delete user)
   - `lib/people/accept-invitations.ts` (pending invite acceptance)
@@ -18,6 +20,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Public sign-up is disabled in production (`lib/auth/platform-access.ts`).
 - Local dev opt-in: `ALLOW_PUBLIC_SIGNUP=true`, `ALLOW_SELF_SERVICE_ORG=true`.
 - Supabase Cloud: disable email sign-up in Dashboard → Authentication → Providers.
+- Enable TOTP MFA in Supabase Dashboard → Authentication → MFA (local: `supabase/config.toml`).
+
+## Database hardening
+
+- Migrations **036–039**: FORCE RLS, narrowed `service_role` grants, `authenticated` table grants, `anon` lockdown.
+- After deploy: `node scripts/verify-jwt-rls.mjs` and `supabase migration list` against cloud.
 
 ## Secrets rotation (ops)
 

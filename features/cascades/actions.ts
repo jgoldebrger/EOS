@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import { insertInboxItem } from "@/features/inbox/internal";
 import { acknowledgeCascadeSchema, sendCascadesSchema } from "@/features/cascades/schema";
 import { queueNotification } from "@/lib/notifications/send";
@@ -35,9 +35,7 @@ export async function sendCascades(input: unknown): Promise<CascadeActionResult>
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (!user) {
     return { success: false, error: "Unauthorized" };
@@ -133,9 +131,7 @@ export async function acknowledgeCascade(input: unknown): Promise<CascadeActionR
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (!user) {
     return { success: false, error: "Unauthorized" };

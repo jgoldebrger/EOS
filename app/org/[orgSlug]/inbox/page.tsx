@@ -1,6 +1,6 @@
 import { requireOrgAccess } from "@/lib/auth/require-org-access";
 import { getInboxForUser } from "@/features/inbox/queries";
-import { createClient } from "@/lib/supabase/server";
+import { getServerSessionUser } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
 import { InboxWorkspace } from "@/components/inbox/inbox-workspace";
 
@@ -11,10 +11,7 @@ export default async function InboxPage({
 }) {
   const { orgSlug } = await params;
   const access = await requireOrgAccess(orgSlug);
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   const items = user
     ? await getInboxForUser(access.orgId, user.id, { includeArchived: true })

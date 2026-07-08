@@ -12,6 +12,8 @@ import { buildFullName } from "@/lib/users/display-name";
 import { canManageOrg } from "@/lib/permissions/checks";
 import { logAuditEvent } from "@/lib/audit";
 import { toSafeAuthError } from "@/lib/auth/errors";
+import { requirePrivilegedSession } from "@/lib/auth/privileged-session";
+import { requireActionRateLimit } from "@/lib/security/action-rate-limit";
 import {
   addOrgMemberSchema,
   addPersonToOrgSchema,
@@ -233,6 +235,21 @@ export async function createOrgUserAccount(
     return { success: false, error: access.error };
   }
 
+  const privileged = await requirePrivilegedSession();
+  if ("error" in privileged) {
+    return { success: false, error: privileged.error };
+  }
+
+  const rateLimit = requireActionRateLimit(
+    privileged.userId,
+    "create-org-user",
+    10,
+    60 * 60 * 1000,
+  );
+  if (rateLimit) {
+    return { success: false, error: rateLimit.error };
+  }
+
   const existingUser = await findAuthUserByEmail(email);
   if (existingUser) {
     return {
@@ -306,6 +323,21 @@ export async function inviteOrgMember(
   const access = await assertCanManageOrgMembers(organizationId);
   if (!access.ok) {
     return { success: false, error: access.error };
+  }
+
+  const privileged = await requirePrivilegedSession();
+  if ("error" in privileged) {
+    return { success: false, error: privileged.error };
+  }
+
+  const rateLimit = requireActionRateLimit(
+    privileged.userId,
+    "invite-org-member",
+    20,
+    60 * 60 * 1000,
+  );
+  if (rateLimit) {
+    return { success: false, error: rateLimit.error };
   }
 
   const supabase = await createClient();

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import { acceptPendingInvitations } from "@/lib/people/accept-invitations";
 import { toSafeRelativePath } from "@/lib/auth/safe-redirect";
 
@@ -13,9 +13,7 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await getServerSessionUser();
 
       if (user?.email) {
         const token =

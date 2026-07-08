@@ -4,7 +4,7 @@ Use this checklist before rolling out the EOS Platform to your leadership team.
 
 ## 1. Supabase (database + auth)
 
-- [ ] Cloud project provisioned with migrations **001–034** applied (`supabase db push` or `scripts/push-cloud-db.ps1`)
+- [ ] Cloud project provisioned with migrations **001–039** applied (`supabase db push` or `scripts/push-cloud-db.ps1`)
 - [ ] `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, and `SUPABASE_JWKS_URL` set on Vercel (server)
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` set on Vercel (browser)
 - [ ] Row Level Security enabled (default from migrations)
@@ -14,6 +14,8 @@ Use this checklist before rolling out the EOS Platform to your leadership team.
 
 - [ ] Google and/or Microsoft OAuth configured in Supabase Auth dashboard (if using social login)
 - [ ] Enterprise SSO configured at `/org/[slug]/settings/security/sso` (if using SAML/OIDC)
+- [ ] TOTP MFA enabled in Supabase Dashboard → Authentication → MFA
+- [ ] Email sign-up disabled in Supabase Dashboard → Authentication → Providers
 - [ ] Redirect URLs include production domain (`https://your-domain.com/auth/callback`)
 
 ## 3. Email notifications (optional but recommended)

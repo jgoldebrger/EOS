@@ -4,7 +4,7 @@ import { requireOrgAccess } from "@/lib/auth/require-org-access";
 import { getOrgPeopleWithManagers, getPendingOrgInvitations } from "@/features/people/queries";
 import { MembersManagement } from "@/components/settings/members-management";
 import { canManageOrg } from "@/lib/permissions/checks";
-import { createClient } from "@/lib/supabase/server";
+import { getServerSessionUser } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
 
@@ -20,10 +20,7 @@ export default async function SettingsMembersPage({
     redirect(`/org/${orgSlug}/settings`);
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
   const members = await getOrgPeopleWithManagers(access.orgId);
   const pendingInvitations = await getPendingOrgInvitations(access.orgId);
 

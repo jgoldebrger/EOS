@@ -11,7 +11,7 @@ import { PeopleReviewRemindersButton } from "@/components/people/people-review-r
 import { PageHeader } from "@/components/shared/page-header";
 import { getCurrentQuarter } from "@/features/rocks/utils";
 import { canManageOrg } from "@/lib/permissions/checks";
-import { createClient } from "@/lib/supabase/server";
+import { getServerSessionUser } from "@/lib/supabase/server";
 
 export default async function PeopleAnalyzerPage({
   params,
@@ -24,10 +24,7 @@ export default async function PeopleAnalyzerPage({
   const { quarter: quarterParam } = await searchParams;
   const access = await requireOrgAccess(orgSlug);
   const quarter = quarterParam ?? getCurrentQuarter();
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   const [people, reviews, coreValues, seats] = await Promise.all([
     getOrgPeopleWithManagers(access.orgId),

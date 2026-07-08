@@ -6,7 +6,7 @@ import { getUnreadInboxCount } from "@/features/inbox/queries";
 import { OrgProvider } from "@/features/organizations/components/org-context";
 import { TeamProvider } from "@/features/teams/components/team-context";
 import { AppShell } from "@/components/layout/app-shell";
-import { createClient } from "@/lib/supabase/server";
+import { getServerSessionUser } from "@/lib/supabase/server";
 
 export default async function OrgLayout({
   children,
@@ -17,10 +17,7 @@ export default async function OrgLayout({
 }) {
   const { orgSlug } = await params;
   const access = await requireOrgAccess(orgSlug);
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   const [org, teams, inboxUnreadCount] = await Promise.all([
     getOrganizationBySlug(orgSlug),

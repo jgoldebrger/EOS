@@ -10,7 +10,11 @@ describe("toSafeRelativePath", () => {
     expect(toSafeRelativePath("//evil.com", "/onboarding")).toBe("/onboarding");
   });
 
-  it("falls back when path is empty", () => {
-    expect(toSafeRelativePath(null, "/onboarding")).toBe("/onboarding");
+  it("blocks encoded protocol-relative open redirects", () => {
+    expect(toSafeRelativePath("%2F%2Fevil.com", "/onboarding")).toBe("/onboarding");
+  });
+
+  it("blocks backslash paths", () => {
+    expect(toSafeRelativePath("/org\\evil", "/onboarding")).toBe("/onboarding");
   });
 });

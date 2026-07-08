@@ -19,22 +19,51 @@ function isProtectedRoute(pathname: string): boolean {
 }
 
 function isRateLimitedRoute(pathname: string): boolean {
-  return pathname.startsWith("/auth");
+  return pathname.startsWith("/auth") || pathname.startsWith("/request-access");
+}
+
+function applyRouteRateLimit(
+  request: NextRequest,
+  bucket: string,
+  limit: number,
+  windowMs: number,
+): NextResponse | null {
+  if (process.env.CI) {
+    return null;
+  }
+
+  const ip = clientIpFromHeaders(request.headers);
+  const result = checkRateLimit(`${bucket}:${ip}`, limit, windowMs);
+  if (!result.allowed) {
+    return new NextResponse("Too many requests", {
+      status: 429,
+      headers: {
+        "Retry-After": String(result.retryAfterSeconds),
+      },
+    });
+  }
+
+  return null;
 }
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
+  const { pathname } = request.nextUrl;
 
-  if (isRateLimitedRoute(request.nextUrl.pathname) && !process.env.CI) {
-    const ip = clientIpFromHeaders(request.headers);
-    const limit = checkRateLimit(`auth:${ip}`, 30, 5 * 60 * 1000);
-    if (!limit.allowed) {
-      return new NextResponse("Too many requests", {
-        status: 429,
-        headers: {
-          "Retry-After": String(limit.retryAfterSeconds),
-        },
-      });
+  if (isRateLimitedRoute(pathname)) {
+    const rateLimited = applyRouteRateLimit(request, "auth", 30, 5 * 60 * 1000);
+    if (rateLimited) {
+      return rateLimited;
+    }
+
+    const sensitive = applyRouteRateLimit(
+      request,
+      "auth-sensitive",
+      10,
+      15 * 60 * 1000,
+    );
+    if (sensitive) {
+      return sensitive;
     }
   }
 
@@ -65,8 +94,6 @@ export async function updateSession(request: NextRequest) {
   if (!user && process.env.CI === "1") {
     user = (await supabase.auth.getSession()).data.session?.user ?? null;
   }
-
-  const { pathname } = request.nextUrl;
 
   if (isProtectedRoute(pathname) && !user) {
     const redirectUrl = request.nextUrl.clone();

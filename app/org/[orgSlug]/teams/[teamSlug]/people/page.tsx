@@ -8,7 +8,7 @@ import { getSeatsForOrg } from "@/features/accountability/queries";
 import { PeopleAnalyzer } from "@/components/people/people-analyzer";
 import { TeamPeopleWorkspace } from "@/components/teams/team-people-workspace";
 import { getCurrentQuarter } from "@/features/rocks/utils";
-import { createClient } from "@/lib/supabase/server";
+import { getServerSessionUser } from "@/lib/supabase/server";
 import { canManageTeam } from "@/lib/permissions/checks";
 
 export default async function TeamPeoplePage({
@@ -18,10 +18,7 @@ export default async function TeamPeoplePage({
 }) {
   const { orgSlug, teamSlug } = await params;
   const access = await requireTeamAccess(orgSlug, teamSlug);
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   const quarter = getCurrentQuarter();
 

@@ -136,6 +136,38 @@ export async function persistSuggestions(
   return data;
 }
 
+export function clientIpFromRequest(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) {
+    return forwarded.split(",")[0]?.trim() ?? "unknown";
+  }
+
+  return req.headers.get("x-real-ip") ?? "unknown";
+}
+
+const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
+
+export function checkEdgeRateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+): boolean {
+  const now = Date.now();
+  const bucket = rateLimitBuckets.get(key);
+
+  if (!bucket || now >= bucket.resetAt) {
+    rateLimitBuckets.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+
+  if (bucket.count >= limit) {
+    return false;
+  }
+
+  bucket.count += 1;
+  return true;
+}
+
 export function requireUserId(userId: string | undefined | null) {
   if (!userId) {
     return jsonResponse({ error: "unauthorized", success: false }, 401);
