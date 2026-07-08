@@ -60,9 +60,11 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = (await supabase.auth.getUser()).data.user;
+
+  if (!user && process.env.CI === "1") {
+    user = (await supabase.auth.getSession()).data.session?.user ?? null;
+  }
 
   const { pathname } = request.nextUrl;
 

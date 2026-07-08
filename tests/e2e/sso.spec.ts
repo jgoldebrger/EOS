@@ -51,7 +51,7 @@ test.describe("SSO settings (@auth)", () => {
 
   test("viewer role cannot access SSO settings mutations", async ({ page }) => {
     await signInAsViewer(page);
-    const orgSlug = process.env.E2E_ORG_SLUG ?? "demo";
+    const orgSlug = process.env.E2E_VIEWER_ORG_SLUG ?? "demo-viewer";
     await page.goto(`/org/${orgSlug}/settings/security/sso`);
 
     const restricted = page.getByText(/access restricted|view only|owner permissions/i);

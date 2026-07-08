@@ -96,17 +96,7 @@ export function VtoEditor({
         ))}
       </div>
 
-      {sections.length === 0 ? (
-        <EmptyState
-          title="V/TO not initialized"
-          description={
-            canManage
-              ? "Default sections will be created when an admin visits this page."
-              : "An admin has not set up the Vision/Traction Organizer yet."
-          }
-          icon={<Target className="h-6 w-6" />}
-        />
-      ) : tab === "traction" ? (
+      {tab === "traction" ? (
         <VtoTractionPanel
           organizationId={organizationId}
           canManage={canManage}
@@ -117,6 +107,16 @@ export function VtoEditor({
           organizationId={organizationId}
           snapshots={snapshots}
           canManage={canManage}
+        />
+      ) : sections.length === 0 ? (
+        <EmptyState
+          title="V/TO not initialized"
+          description={
+            canManage
+              ? "Default sections will be created when an admin visits this page."
+              : "An admin has not set up the Vision/Traction Organizer yet."
+          }
+          icon={<Target className="h-6 w-6" />}
         />
       ) : (
         <div className="space-y-3" role="region" aria-label="V/TO sections">

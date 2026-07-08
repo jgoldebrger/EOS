@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import { resolveUserEmails } from "@/lib/users/resolve-emails";
 import type { OrgMemberOption, TeamMemberPerson, TeamWithRole } from "@/features/teams/types";
 import type { TeamRole } from "@/types/domain";
@@ -7,9 +7,7 @@ export async function getTeamBySlug(
   teamSlug: string,
 ): Promise<TeamWithRole | null> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (!user) {
     return null;
@@ -41,9 +39,7 @@ export async function getAllTeamsForOrgListing(
   organizationId: string,
 ): Promise<TeamWithRole[]> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (!user) {
     return [];
@@ -76,10 +72,7 @@ export async function getAllTeamsForOrgListing(
 
 export async function getTeamsForOrg(organizationId: string): Promise<TeamWithRole[]> {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (!user) {
     return [];

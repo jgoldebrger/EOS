@@ -29,11 +29,19 @@ function getAuthCookieName(supabaseUrl: string): string {
   return `sb-${ref}-auth-token`;
 }
 
+export async function clearSupabaseAuthCookies(context: BrowserContext): Promise<void> {
+  const { url } = getSupabaseEnv();
+  const cookieName = getAuthCookieName(url);
+  await context.clearCookies({ name: cookieName, domain: "localhost" });
+}
+
 export async function injectSupabaseSession(
   context: BrowserContext,
   email: string,
   password: string,
 ): Promise<void> {
+  await clearSupabaseAuthCookies(context);
+
   const { url, apiKey } = getSupabaseEnv();
 
   const response = await fetch(`${url}/auth/v1/token?grant_type=password`, {

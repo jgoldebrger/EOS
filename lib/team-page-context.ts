@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import { requireTeamAccess } from "@/lib/auth/require-team-access";
 import { canManageOrg, canEditResource } from "@/lib/permissions/checks";
 import type { OrgRole } from "@/types/domain";
@@ -22,9 +22,7 @@ export async function getTeamPageContext(
 ): Promise<TeamPageContext> {
   const access = await requireTeamAccess(orgSlug, teamSlug);
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerSessionUser();
 
   if (!user) {
     throw new Error("Unauthorized");
