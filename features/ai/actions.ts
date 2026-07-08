@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient, getServerSessionUser } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { requireActionRateLimit } from "@/lib/security/action-rate-limit";
 import { createTodo } from "@/features/todos/actions";
 import { archiveIssue, updateIssue } from "@/features/issues/actions";
