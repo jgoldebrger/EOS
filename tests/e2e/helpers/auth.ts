@@ -34,7 +34,10 @@ async function submitSignIn(
   });
 
   if (orgUrlPattern(orgSlug).test(page.url())) {
-    return;
+    const heading = page.getByRole("heading", { level: 1 });
+    if (await heading.isVisible().catch(() => false)) {
+      return;
+    }
   }
 
   await waitForAuthForm(page);
@@ -67,7 +70,10 @@ async function ensureOrgSession(
   });
 
   if (orgUrlPattern(orgSlug).test(page.url())) {
-    return;
+    const heading = page.getByRole("heading", { level: 1 });
+    if (await heading.isVisible().catch(() => false)) {
+      return;
+    }
   }
 
   await injectSupabaseSession(page.context(), email, password);
@@ -85,11 +91,19 @@ export async function signInAsAdmin(page: Page): Promise<void> {
     timeout: NAV_TIMEOUT,
   });
   if (orgUrlPattern(E2E_ORG_SLUG).test(page.url())) {
-    return;
+    const heading = page.getByRole("heading", { level: 1 });
+    if (await heading.isVisible().catch(() => false)) {
+      return;
+    }
   }
   await ensureOrgSession(page, E2E_ORG_SLUG, E2E_ADMIN_EMAIL, E2E_ADMIN_PASSWORD);
 }
 
 export async function signInAsViewer(page: Page): Promise<void> {
-  await ensureOrgSession(page, E2E_VIEWER_ORG_SLUG, E2E_VIEWER_EMAIL, E2E_VIEWER_PASSWORD);
+  await injectSupabaseSession(page.context(), E2E_VIEWER_EMAIL, E2E_VIEWER_PASSWORD);
+  await page.goto(`/org/${E2E_VIEWER_ORG_SLUG}/dashboard`, {
+    waitUntil: "domcontentloaded",
+    timeout: NAV_TIMEOUT,
+  });
+  await waitForOrgLanding(page, E2E_VIEWER_ORG_SLUG);
 }

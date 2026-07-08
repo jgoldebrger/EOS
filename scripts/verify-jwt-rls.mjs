@@ -68,6 +68,12 @@ const { data: foreignIssues, error: foreignError } = await userClient
   .eq("organization_id", otherOrgId)
   .limit(1);
 
+const { data: meetings, error: meetingsError } = await userClient
+  .from("meetings")
+  .select("id")
+  .eq("organization_id", demoOrgId)
+  .limit(1);
+
 const { error: getUserError } = await authClient.auth.getUser(signInData.session.access_token);
 
 console.log("JWT / RLS verification:", {
@@ -76,6 +82,8 @@ console.log("JWT / RLS verification:", {
   ownError: ownError?.message ?? null,
   foreignIssueCount: foreignIssues?.length ?? 0,
   foreignError: foreignError?.message ?? null,
+  meetingCount: meetings?.length ?? 0,
+  meetingsError: meetingsError?.message ?? null,
   getUserOk: !getUserError,
   jwksUrl: env.SUPABASE_JWKS_URL ?? null,
 });
@@ -85,8 +93,18 @@ if (ownError || !ownMembership) {
   process.exit(1);
 }
 
+if (meetingsError) {
+  console.error("User JWT cannot read meetings (missing authenticated grants?):", meetingsError.message);
+  process.exit(1);
+}
+
 if (getUserError) {
   console.error("auth.getUser() failed with session access token:", getUserError.message);
+  process.exit(1);
+}
+
+if (foreignError) {
+  console.error("Cross-tenant issues query errored (expected empty result, not permission denied):", foreignError.message);
   process.exit(1);
 }
 

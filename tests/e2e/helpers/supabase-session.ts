@@ -31,8 +31,14 @@ function getAuthCookieName(supabaseUrl: string): string {
 
 export async function clearSupabaseAuthCookies(context: BrowserContext): Promise<void> {
   const { url } = getSupabaseEnv();
-  const cookieName = getAuthCookieName(url);
-  await context.clearCookies({ name: cookieName, domain: "localhost" });
+  const prefix = getAuthCookieName(url);
+  const cookies = await context.cookies();
+
+  for (const cookie of cookies) {
+    if (cookie.name === prefix || cookie.name.startsWith(`${prefix}.`)) {
+      await context.clearCookies({ name: cookie.name, domain: cookie.domain });
+    }
+  }
 }
 
 export async function injectSupabaseSession(
