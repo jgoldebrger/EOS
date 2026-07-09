@@ -45,7 +45,7 @@ import type { OrgRole, TeamRole } from "@/types/domain";
 import type { Json, TablesUpdate } from "@/types/database";
 import { logAuditEvent } from "@/lib/audit";
 
-import { getCachedActionActor as getActorContext } from "@/lib/auth/get-action-actor";
+import { getCachedActionActor as getActorContext, isActionActorError, requireAdminActor } from "@/lib/auth/get-action-actor";
 
 const getTeamRoleForUser = cache(
   async (teamId: string, userId: string): Promise<TeamRole | null> => {
@@ -1427,16 +1427,9 @@ export async function reorderMetrics(input: unknown): Promise<ScorecardActionRes
     };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
-  if ("error" in actor) {
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
     return { success: false, error: actor.error ?? "Unauthorized" };
-  }
-
-  if (!canManageOrg(actor.orgRole)) {
-    return {
-      success: false,
-      error: "Only organization admins can reorder metrics",
-    };
   }
 
   const updates = parsed.data.orderedMetricIds.map((metricId, index) =>

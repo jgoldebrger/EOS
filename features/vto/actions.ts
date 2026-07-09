@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getActionActor } from "@/lib/auth/get-action-actor";
+import { getActionActor, isActionActorError, requireAdminActor } from "@/lib/auth/get-action-actor";
 import {
   bootstrapVtoSchema,
   createSnapshotSchema,
@@ -17,23 +17,11 @@ import type {
   VtoSnapshotSection,
 } from "@/features/vto/types";
 import { buildSnapshotPayload, DEFAULT_VTO_SECTIONS } from "@/features/vto/utils";
-import { canManageOrg } from "@/lib/permissions/checks";
 import { AUDIT_ACTIONS } from "@/types/domain";
-import type { OrgRole } from "@/types/domain";
 import type { Json, TablesUpdate } from "@/types/database";
 import { logAuditEvent } from "@/lib/audit";
 
 const getActorContext = getActionActor;
-
-function requireAdmin(orgRole: OrgRole): { success: false; error: string } | null {
-  if (!canManageOrg(orgRole)) {
-    return {
-      success: false,
-      error: "Only organization admins can edit the Vision/Traction Organizer",
-    };
-  }
-  return null;
-}
 
 async function writeAudit(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -102,9 +90,9 @@ export async function bootstrapVtoSections(
     return { success: true, seeded: false };
   }
 
-  const denied = requireAdmin(actor.orgRole);
-  if (denied) {
-    return denied;
+  const adminActor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(adminActor)) {
+    return { success: false, error: adminActor.error };
   }
 
   const rows = DEFAULT_VTO_SECTIONS.map((section) => ({
@@ -114,10 +102,10 @@ export async function bootstrapVtoSections(
     content: "",
     display_order: section.display_order,
     visible: true,
-    created_by: actor.user.id,
+    created_by: adminActor.user.id,
   }));
 
-  const { error } = await actor.supabase.from("vto_sections").insert(rows);
+  const { error } = await adminActor.supabase.from("vto_sections").insert(rows);
 
   if (error) {
     return {
@@ -127,9 +115,9 @@ export async function bootstrapVtoSections(
   }
 
   await writeAudit(
-    actor.supabase,
+    adminActor.supabase,
     parsed.data.organizationId,
-    actor.user.id,
+    adminActor.user.id,
     AUDIT_ACTIONS.CREATE,
     parsed.data.organizationId,
     { seeded: true, sectionCount: rows.length } as Json,
@@ -153,14 +141,9 @@ export async function updateSection(input: unknown): Promise<VtoActionResult> {
     };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
-  if ("error" in actor) {
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
     return { success: false, error: actor.error ?? "Unauthorized" };
-  }
-
-  const denied = requireAdmin(actor.orgRole);
-  if (denied) {
-    return denied;
   }
 
   const { data: existing } = await actor.supabase
@@ -240,14 +223,9 @@ export async function createSnapshot(
     };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
-  if ("error" in actor) {
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
     return { success: false, error: actor.error ?? "Unauthorized" };
-  }
-
-  const denied = requireAdmin(actor.orgRole);
-  if (denied) {
-    return denied;
   }
 
   const { data: sections, error: sectionsError } = await actor.supabase
@@ -309,14 +287,9 @@ export async function restoreSnapshot(input: unknown): Promise<VtoActionResult> 
     };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
-  if ("error" in actor) {
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
     return { success: false, error: actor.error ?? "Unauthorized" };
-  }
-
-  const denied = requireAdmin(actor.orgRole);
-  if (denied) {
-    return denied;
   }
 
   const { data: snapshot, error: snapshotError } = await actor.supabase
@@ -402,14 +375,9 @@ export async function pinVtoLink(
     return { success: false, error: "Invalid link" };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
-  if ("error" in actor) {
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
     return { success: false, error: actor.error ?? "Unauthorized" };
-  }
-
-  const denied = requireAdmin(actor.orgRole);
-  if (denied) {
-    return denied;
   }
 
   const { error } = await actor.supabase.from("vto_links" as never).upsert(
@@ -443,14 +411,9 @@ export async function unpinVtoLink(
     return { success: false, error: "Invalid link" };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
-  if ("error" in actor) {
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
     return { success: false, error: actor.error ?? "Unauthorized" };
-  }
-
-  const denied = requireAdmin(actor.orgRole);
-  if (denied) {
-    return denied;
   }
 
   const { error } = await actor.supabase

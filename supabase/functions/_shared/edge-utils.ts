@@ -168,6 +168,23 @@ export function checkEdgeRateLimit(
   return true;
 }
 
+export function requireAiRateLimit(
+  userId: string,
+  functionName: string,
+  limit = 30,
+  windowMs = 60 * 60 * 1000,
+): Response | null {
+  const allowed = checkEdgeRateLimit(
+    `ai:${functionName}:${userId}`,
+    limit,
+    windowMs,
+  );
+  if (!allowed) {
+    return jsonResponse({ error: "rate_limited", success: false }, 429);
+  }
+  return null;
+}
+
 export function requireUserId(userId: string | undefined | null) {
   if (!userId) {
     return jsonResponse({ error: "unauthorized", success: false }, 401);

@@ -100,6 +100,7 @@ export async function getTeamsForOrg(organizationId: string): Promise<TeamWithRo
 
 export async function getTeamMembers(
   teamId: string,
+  organizationId: string,
 ): Promise<TeamMemberPerson[]> {
   const supabase = await createClient();
 
@@ -113,7 +114,9 @@ export async function getTeamMembers(
     return [];
   }
 
-  const profiles = await resolveUserEmails(data.map((row) => row.user_id));
+  const profiles = await resolveUserEmails(data.map((row) => row.user_id), {
+    organizationId,
+  });
 
   return data.map((row) => {
     const profile = profiles.get(row.user_id);
@@ -150,7 +153,9 @@ export async function getOrgMembersAvailableForTeam(
   const onTeam = new Set((teamMembers ?? []).map((row) => row.user_id));
   const available = orgMembers.filter((row) => !onTeam.has(row.user_id));
 
-  const profiles = await resolveUserEmails(available.map((row) => row.user_id));
+  const profiles = await resolveUserEmails(available.map((row) => row.user_id), {
+    organizationId,
+  });
 
   return available.map((row) => {
     const profile = profiles.get(row.user_id);

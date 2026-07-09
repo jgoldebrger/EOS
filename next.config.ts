@@ -8,32 +8,6 @@ const supabasePublishableKey =
   process.env.SUPABASE_PUBLISHABLE_KEY ??
   "";
 
-function buildContentSecurityPolicy(): string {
-  const supabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : "";
-  const connectSrc = ["'self'", supabaseOrigin, "https://api.resend.com"].filter(Boolean);
-
-  if (supabaseOrigin) {
-    const supabaseHost = new URL(supabaseOrigin).host;
-    connectSrc.push(`wss://${supabaseHost}`);
-  }
-
-  return [
-    "default-src 'self'",
-    "object-src 'none'",
-    `connect-src ${connectSrc.join(" ")}`,
-    "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:" + (supabaseOrigin ? ` ${supabaseOrigin}` : ""),
-    "font-src 'self'",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    ...(process.env.NODE_ENV === "production" ? ["upgrade-insecure-requests"] : []),
-  ]
-    .filter(Boolean)
-    .join("; ");
-}
-
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
@@ -50,10 +24,6 @@ const securityHeaders = [
   {
     key: "Cross-Origin-Resource-Policy",
     value: "same-site",
-  },
-  {
-    key: "Content-Security-Policy",
-    value: buildContentSecurityPolicy(),
   },
 ];
 

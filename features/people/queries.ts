@@ -37,7 +37,7 @@ const getOrgPeopleWithManagersCached = cache(
     const userIds = data.flatMap((row) =>
       [row.user_id, row.reports_to_user_id].filter((id): id is string => Boolean(id)),
     );
-    const resolved = await resolveUserEmails(userIds);
+    const resolved = await resolveUserEmails(userIds, { organizationId });
 
     return data.map((row) => {
       const person = resolved.get(row.user_id);
@@ -120,7 +120,7 @@ export async function getPendingOrgInvitations(
   const inviterIds = data
     .map((row) => row.invited_by)
     .filter((id): id is string => Boolean(id));
-  const resolved = await resolveUserEmails(inviterIds);
+  const resolved = await resolveUserEmails(inviterIds, { organizationId });
 
   return data.map((row) => ({
     id: row.id,
@@ -203,7 +203,7 @@ export async function getPeopleReviewsForOrg(
   }
 
   const userIds = rows.flatMap((row) => [row.subject_user_id, row.reviewer_user_id]);
-  const resolved = await resolveUserEmails(userIds);
+  const resolved = await resolveUserEmails(userIds, { organizationId });
 
   return rows.map((row) => ({
     id: row.id,

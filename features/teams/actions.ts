@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient, getServerSessionUser } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import {
   addTeamMemberSchema,
   createTeamSchema,
@@ -12,55 +12,13 @@ import type {
   CreateTeamResult,
   TeamMemberMutationResult,
 } from "@/features/teams/types";
-import { AUDIT_ACTIONS, type OrgRole, type TeamRole } from "@/types/domain";
+import { AUDIT_ACTIONS } from "@/types/domain";
 import { logAuditEvent } from "@/lib/audit";
-import { canManageTeam } from "@/lib/permissions/checks";
-
-async function assertCanManageTeamMembers(
-  organizationId: string,
-  teamId: string,
-): Promise<
-  | { ok: true; userId: string; orgRole: OrgRole; teamRole: TeamRole }
-  | { ok: false; error: string }
-> {
-  const supabase = await createClient();
-  const user = await getServerSessionUser();
-
-  if (!user) {
-    return { ok: false, error: "You must be signed in." };
-  }
-
-  const { data: orgMembership } = await supabase
-    .from("organization_members")
-    .select("org_role")
-    .eq("organization_id", organizationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!orgMembership) {
-    return { ok: false, error: "You are not a member of this organization." };
-  }
-
-  const orgRole = orgMembership.org_role as OrgRole;
-
-  const { data: teamMembership } = await supabase
-    .from("team_members")
-    .select("team_role")
-    .eq("team_id", teamId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const teamRole = (teamMembership?.team_role ?? "viewer") as TeamRole;
-
-  if (!canManageTeam(orgRole, teamRole)) {
-    return {
-      ok: false,
-      error: "You do not have permission to manage team members.",
-    };
-  }
-
-  return { ok: true, userId: user.id, orgRole, teamRole };
-}
+import {
+  isActionActorError,
+  requireAdminActor,
+  requireTeamMutator,
+} from "@/lib/auth/get-action-actor";
 
 async function revalidateTeamPeoplePaths(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -96,40 +54,21 @@ export async function createTeam(input: unknown): Promise<CreateTeamResult> {
     };
   }
 
-  const supabase = await createClient();
-  const user = await getServerSessionUser();
-
-  if (!user) {
-    return { success: false, error: "You must be signed in to create a team" };
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
+    return { success: false, error: actor.error };
   }
 
   const { organizationId, name } = parsed.data;
   const slug = parsed.data.slug ?? teamSlugFromName(name);
 
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("org_role")
-    .eq("organization_id", organizationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (
-    !membership ||
-    (membership.org_role !== "owner" && membership.org_role !== "admin")
-  ) {
-    return {
-      success: false,
-      error: "You do not have permission to create teams in this organization.",
-    };
-  }
-
-  const { data: team, error: teamError } = await supabase
+  const { data: team, error: teamError } = await actor.supabase
     .from("teams")
     .insert({
       organization_id: organizationId,
       name,
       slug,
-      created_by: user.id,
+      created_by: actor.user.id,
     })
     .select("id, slug, organization_id")
     .single();
@@ -153,11 +92,11 @@ export async function createTeam(input: unknown): Promise<CreateTeamResult> {
     };
   }
 
-  const { error: memberError } = await supabase.from("team_members").insert({
+  const { error: memberError } = await actor.supabase.from("team_members").insert({
     team_id: team.id,
-    user_id: user.id,
+    user_id: actor.user.id,
     team_role: "leader",
-    created_by: user.id,
+    created_by: actor.user.id,
   });
 
   if (memberError) {
@@ -167,16 +106,16 @@ export async function createTeam(input: unknown): Promise<CreateTeamResult> {
     };
   }
 
-  await logAuditEvent(supabase, {
+  await logAuditEvent(actor.supabase, {
     organizationId: team.organization_id,
-    actorId: user.id,
+    actorId: actor.user.id,
     action: AUDIT_ACTIONS.CREATE,
     entityType: "teams",
     entityId: team.id,
     metadata: { name, slug },
   });
 
-  const { data: org } = await supabase
+  const { data: org } = await actor.supabase
     .from("organizations")
     .select("slug")
     .eq("id", team.organization_id)
@@ -203,15 +142,13 @@ export async function addTeamMember(
   }
 
   const { teamId, organizationId, userId, teamRole } = parsed.data;
-  const access = await assertCanManageTeamMembers(organizationId, teamId);
+  const actor = await requireTeamMutator(organizationId, teamId);
 
-  if (!access.ok) {
-    return { success: false, error: access.error };
+  if (isActionActorError(actor)) {
+    return { success: false, error: actor.error };
   }
 
-  const supabase = await createClient();
-
-  const { data: orgMember } = await supabase
+  const { data: orgMember } = await actor.supabase
     .from("organization_members")
     .select("user_id")
     .eq("organization_id", organizationId)
@@ -225,11 +162,11 @@ export async function addTeamMember(
     };
   }
 
-  const { error } = await supabase.from("team_members").insert({
+  const { error } = await actor.supabase.from("team_members").insert({
     team_id: teamId,
     user_id: userId,
     team_role: teamRole,
-    created_by: access.userId,
+    created_by: actor.user.id,
   });
 
   if (error) {
@@ -239,16 +176,16 @@ export async function addTeamMember(
     return { success: false, error: "Unable to add team member. Please try again." };
   }
 
-  await logAuditEvent(supabase, {
+  await logAuditEvent(actor.supabase, {
     organizationId,
-    actorId: access.userId,
+    actorId: actor.user.id,
     action: AUDIT_ACTIONS.CREATE,
     entityType: "team_members",
     entityId: teamId,
     metadata: { userId, teamRole },
   });
 
-  await revalidateTeamPeoplePaths(supabase, teamId);
+  await revalidateTeamPeoplePaths(actor.supabase, teamId);
 
   return { success: true };
 }
@@ -267,14 +204,13 @@ export async function updateTeamMemberRole(
   }
 
   const { teamId, organizationId, memberId, teamRole } = parsed.data;
-  const access = await assertCanManageTeamMembers(organizationId, teamId);
+  const actor = await requireTeamMutator(organizationId, teamId);
 
-  if (!access.ok) {
-    return { success: false, error: access.error };
+  if (isActionActorError(actor)) {
+    return { success: false, error: actor.error };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const { error } = await actor.supabase
     .from("team_members")
     .update({ team_role: teamRole })
     .eq("id", memberId)
@@ -284,16 +220,16 @@ export async function updateTeamMemberRole(
     return { success: false, error: "Could not update team role" };
   }
 
-  await logAuditEvent(supabase, {
+  await logAuditEvent(actor.supabase, {
     organizationId,
-    actorId: access.userId,
+    actorId: actor.user.id,
     action: AUDIT_ACTIONS.UPDATE,
     entityType: "team_members",
     entityId: memberId,
     metadata: { teamRole },
   });
 
-  await revalidateTeamPeoplePaths(supabase, teamId);
+  await revalidateTeamPeoplePaths(actor.supabase, teamId);
   return { success: true };
 }
 
@@ -310,15 +246,13 @@ export async function removeTeamMember(
   }
 
   const { teamId, organizationId, memberId } = parsed.data;
-  const access = await assertCanManageTeamMembers(organizationId, teamId);
+  const actor = await requireTeamMutator(organizationId, teamId);
 
-  if (!access.ok) {
-    return { success: false, error: access.error };
+  if (isActionActorError(actor)) {
+    return { success: false, error: actor.error };
   }
 
-  const supabase = await createClient();
-
-  const { data: memberRow } = await supabase
+  const { data: memberRow } = await actor.supabase
     .from("team_members")
     .select("id, user_id, team_role")
     .eq("id", memberId)
@@ -329,11 +263,11 @@ export async function removeTeamMember(
     return { success: false, error: "Team member not found." };
   }
 
-  if (memberRow.user_id === access.userId) {
+  if (memberRow.user_id === actor.user.id) {
     return { success: false, error: "You cannot remove yourself from the team." };
   }
 
-  const { error } = await supabase
+  const { error } = await actor.supabase
     .from("team_members")
     .delete()
     .eq("id", memberId)
@@ -343,16 +277,16 @@ export async function removeTeamMember(
     return { success: false, error: "Unable to remove team member. Please try again." };
   }
 
-  await logAuditEvent(supabase, {
+  await logAuditEvent(actor.supabase, {
     organizationId,
-    actorId: access.userId,
+    actorId: actor.user.id,
     action: AUDIT_ACTIONS.DELETE,
     entityType: "team_members",
     entityId: memberId,
     metadata: { teamId, userId: memberRow.user_id },
   });
 
-  await revalidateTeamPeoplePaths(supabase, teamId);
+  await revalidateTeamPeoplePaths(actor.supabase, teamId);
 
   return { success: true };
 }

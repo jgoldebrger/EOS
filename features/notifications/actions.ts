@@ -1,9 +1,10 @@
 "use server";
 
-import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import { getSupabaseSecretKey, getSupabaseUrl } from "@/lib/supabase/env";
-import { canManageOrg } from "@/lib/permissions/checks";
-import type { OrgRole } from "@/types/domain";
+import {
+  isActionActorError,
+  requireAdminActor,
+} from "@/lib/auth/get-action-actor";
 import { z } from "zod";
 
 const smokeTestSchema = z.object({
@@ -22,22 +23,14 @@ export async function sendNotificationSmokeTest(
     return { success: false, error: "Invalid request" };
   }
 
-  const supabase = await createClient();
-  const user = await getServerSessionUser();
-
-  if (!user?.email) {
-    return { success: false, error: "You must be signed in with an email address" };
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
+    return { success: false, error: actor.error };
   }
 
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("org_role")
-    .eq("organization_id", parsed.data.organizationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!membership || !canManageOrg(membership.org_role as OrgRole)) {
-    return { success: false, error: "Admin access required" };
+  const user = actor.user;
+  if (!user.email) {
+    return { success: false, error: "You must be signed in with an email address" };
   }
 
   const supabaseUrl = getSupabaseUrl();
@@ -83,11 +76,17 @@ export async function sendNotificationSmokeTest(
   };
 }
 
-export async function getNotificationEnvStatus(): Promise<{
-  hasSecretKey: boolean;
-  supabaseUrl: string | null;
-}> {
+export async function getNotificationEnvStatus(organizationId: string): Promise<
+  | { success: true; hasSecretKey: boolean; supabaseUrl: string | null }
+  | { success: false; error: string }
+> {
+  const actor = await requireAdminActor(organizationId);
+  if (isActionActorError(actor)) {
+    return { success: false, error: actor.error };
+  }
+
   return {
+    success: true,
     hasSecretKey: Boolean(getSupabaseSecretKey()),
     supabaseUrl: getSupabaseUrl(),
   };

@@ -211,7 +211,7 @@ export async function approveSuggestion(
     return { success: false, error: actor.error ?? "Unauthorized" };
   }
 
-  const rateLimit = requireActionRateLimit(
+  const rateLimit = await requireActionRateLimit(
     actor.user.id,
     "ai-approve",
     60,
@@ -298,7 +298,7 @@ export async function dismissSuggestion(
     return { success: false, error: actor.error ?? "Unauthorized" };
   }
 
-  const rateLimit = requireActionRateLimit(
+  const rateLimit = await requireActionRateLimit(
     actor.user.id,
     "ai-dismiss",
     60,

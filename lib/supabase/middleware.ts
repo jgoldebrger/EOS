@@ -5,10 +5,10 @@ import {
   getSupabasePublishableKey,
   getSupabaseUrl,
 } from "@/lib/supabase/env";
-import {
-  checkRateLimit,
-  clientIpFromHeaders,
-} from "@/lib/security/rate-limit";
+import { resolveMiddlewareSessionUser } from "@/lib/auth/session-policy";
+import { buildContentSecurityPolicy } from "@/lib/security/csp";
+import { checkDistributedRateLimit } from "@/lib/security/distributed-rate-limit";
+import { clientIpFromHeaders } from "@/lib/security/rate-limit";
 
 function isProtectedRoute(pathname: string): boolean {
   return (
@@ -22,18 +22,18 @@ function isRateLimitedRoute(pathname: string): boolean {
   return pathname.startsWith("/auth") || pathname.startsWith("/request-access");
 }
 
-function applyRouteRateLimit(
+async function applyRouteRateLimit(
   request: NextRequest,
   bucket: string,
   limit: number,
   windowMs: number,
-): NextResponse | null {
+): Promise<NextResponse | null> {
   if (process.env.CI) {
     return null;
   }
 
   const ip = clientIpFromHeaders(request.headers);
-  const result = checkRateLimit(`${bucket}:${ip}`, limit, windowMs);
+  const result = await checkDistributedRateLimit(`${bucket}:${ip}`, limit, windowMs);
   if (!result.allowed) {
     return new NextResponse("Too many requests", {
       status: 429,
@@ -46,23 +46,37 @@ function applyRouteRateLimit(
   return null;
 }
 
+function applySecurityHeaders(response: NextResponse, nonce: string) {
+  response.headers.set("Content-Security-Policy", buildContentSecurityPolicy(nonce));
+  response.headers.set("x-nonce", nonce);
+}
+
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
+
+  let response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
   const { pathname } = request.nextUrl;
 
   if (isRateLimitedRoute(pathname)) {
-    const rateLimited = applyRouteRateLimit(request, "auth", 30, 5 * 60 * 1000);
+    const rateLimited = await applyRouteRateLimit(request, "auth", 30, 5 * 60 * 1000);
     if (rateLimited) {
+      applySecurityHeaders(rateLimited, nonce);
       return rateLimited;
     }
 
-    const sensitive = applyRouteRateLimit(
+    const sensitive = await applyRouteRateLimit(
       request,
       "auth-sensitive",
       10,
       15 * 60 * 1000,
     );
     if (sensitive) {
+      applySecurityHeaders(sensitive, nonce);
       return sensitive;
     }
   }
@@ -71,6 +85,7 @@ export async function updateSession(request: NextRequest) {
   const publishableKey = getSupabasePublishableKey();
 
   if (!supabaseUrl || !publishableKey) {
+    applySecurityHeaders(response, nonce);
     return response;
   }
 
@@ -81,7 +96,9 @@ export async function updateSession(request: NextRequest) {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
+        response = NextResponse.next({
+          request: { headers: requestHeaders },
+        });
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options),
         );
@@ -89,11 +106,7 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  let user = (await supabase.auth.getUser()).data.user;
-
-  if (!user && process.env.CI === "1") {
-    user = (await supabase.auth.getSession()).data.session?.user ?? null;
-  }
+  const user = await resolveMiddlewareSessionUser(supabase);
 
   if (isProtectedRoute(pathname) && !user) {
     const redirectUrl = request.nextUrl.clone();
@@ -101,8 +114,11 @@ export async function updateSession(request: NextRequest) {
     redirectUrl.search = "";
     redirectUrl.searchParams.set("next", pathname);
 
-    return NextResponse.redirect(redirectUrl);
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    applySecurityHeaders(redirectResponse, nonce);
+    return redirectResponse;
   }
 
+  applySecurityHeaders(response, nonce);
   return response;
 }

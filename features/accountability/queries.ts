@@ -29,6 +29,7 @@ export async function getSeatsForOrg(
 
   const assigneeProfiles = await resolveOwnerProfiles(
     seats.map((seat) => seat.assigned_user_id),
+    organizationId,
   );
 
   return seats.map((seat) => {

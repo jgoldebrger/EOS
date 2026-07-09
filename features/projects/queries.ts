@@ -46,7 +46,7 @@ export async function getProjectsForOrg(
   }
 
   const leadIds = projects.map((p) => p.lead_id).filter(Boolean) as string[];
-  const leadProfiles = await resolveOwnerProfiles(leadIds);
+  const leadProfiles = await resolveOwnerProfiles(leadIds, organizationId);
 
   const projectIds = projects.map((p) => p.id);
   const { data: workItems } = await supabase
@@ -174,9 +174,11 @@ export async function getProjectBySlug(
 async function mapWorkItems(
   items: ProjectWorkItem[],
   identifierPrefix: string,
+  organizationId: string,
 ): Promise<WorkItemWithMeta[]> {
   const assigneeProfiles = await resolveOwnerProfiles(
     items.map((item) => item.assignee_id),
+    organizationId,
   );
 
   const moduleIds = [...new Set(items.map((i) => i.module_id).filter(Boolean))];
@@ -342,10 +344,11 @@ export async function getProjectDetail(
       : Promise.resolve({ data: [] }),
   ]);
 
-  const leadProfiles = await resolveOwnerProfiles([project.lead_id]);
+  const leadProfiles = await resolveOwnerProfiles([project.lead_id], organizationId);
   const mappedWorkItems = await mapWorkItems(
     workItems ?? [],
     project.identifier_prefix,
+    organizationId,
   );
 
   return {
@@ -432,6 +435,7 @@ export async function getProjectAnalytics(
 
   const assigneeProfiles = await resolveOwnerProfiles(
     (workItems ?? []).map((w) => w.assignee_id),
+    organizationId,
   );
   const workloadMap = new Map<string, number>();
   for (const item of workItems ?? []) {

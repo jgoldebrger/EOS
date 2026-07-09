@@ -32,6 +32,7 @@ export async function getTransportMembers(
 }
 
 async function mapLoads(
+  organizationId: string,
   loads: TransportLoad[],
   stops: TransportStop[],
   carriers: { id: string; name: string }[],
@@ -49,7 +50,7 @@ async function mapLoads(
   const carrierMap = new Map(carriers.map((c) => [c.id, c.name]));
   const depotMap = new Map(depots.map((d) => [d.id, d.name]));
   const driverIds = loads.map((l) => l.driver_id).filter(Boolean) as string[];
-  const driverProfiles = await resolveOwnerProfiles(driverIds);
+  const driverProfiles = await resolveOwnerProfiles(driverIds, organizationId);
 
   const stopsByLoad = new Map<string, TransportStop[]>();
   for (const stop of stops) {
@@ -161,6 +162,7 @@ export async function getTransportWorkspace(
   }
 
   const mappedLoads = await mapLoads(
+    organizationId,
     loadList,
     stops ?? [],
     (carriers ?? []).map((c) => ({ id: c.id, name: c.name })),
@@ -218,6 +220,7 @@ export async function getTransportLoadDetail(
   const linksByLoad = new Map([[loadId, links]]);
 
   const mapped = await mapLoads(
+    organizationId,
     [load],
     stops ?? [],
     carriers ?? [],

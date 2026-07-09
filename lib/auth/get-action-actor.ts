@@ -1,11 +1,13 @@
 import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import { cache } from "react";
+import { requireMandatoryAdminMfa } from "@/lib/auth/mfa-requirements";
+import { requirePrivilegedSession } from "@/lib/auth/privileged-session";
 import {
   canEditResource,
   canManageOrg,
   canManageTeam,
 } from "@/lib/permissions/checks";
-import type { OrgRole } from "@/types/domain";
+import type { OrgRole, TeamRole } from "@/types/domain";
 
 export type ActionActor = {
   supabase: Awaited<ReturnType<typeof createClient>>;
@@ -13,7 +15,42 @@ export type ActionActor = {
   orgRole: OrgRole;
 };
 
+export type TeamMutatorActor = ActionActor & {
+  teamRole: TeamRole;
+};
+
 export type ActionActorError = { error: string };
+
+/** MFA enrollment + step-up when the actor is an org admin/owner. */
+export async function enforceAdminPrivilegedSession(
+  orgRole: OrgRole,
+): Promise<{ ok: true } | ActionActorError> {
+  if (!canManageOrg(orgRole)) {
+    return { ok: true };
+  }
+
+  const mfaEnrollment = await requireMandatoryAdminMfa(orgRole);
+  if ("error" in mfaEnrollment) {
+    return { error: mfaEnrollment.error };
+  }
+
+  const privileged = await requirePrivilegedSession();
+  if ("error" in privileged) {
+    return { error: privileged.error };
+  }
+
+  return { ok: true };
+}
+
+async function applyAdminPrivilegedChecks(
+  orgRole: OrgRole,
+): Promise<ActionActorError | null> {
+  const result = await enforceAdminPrivilegedSession(orgRole);
+  if ("error" in result) {
+    return result;
+  }
+  return null;
+}
 
 /** Resolve the signed-in user for server actions (cookie session, not GoTrue round-trip). */
 export async function getActionActor(
@@ -71,6 +108,11 @@ export async function requireAdminActor(
     return { error: "Only organization admins can perform this action" };
   }
 
+  const privilegedError = await applyAdminPrivilegedChecks(actor.orgRole);
+  if (privilegedError) {
+    return privilegedError;
+  }
+
   return actor;
 }
 
@@ -85,6 +127,10 @@ export async function requireProcessMutator(
   }
 
   if (canManageOrg(actor.orgRole)) {
+    const privilegedError = await applyAdminPrivilegedChecks(actor.orgRole);
+    if (privilegedError) {
+      return privilegedError;
+    }
     return actor;
   }
 
@@ -107,6 +153,41 @@ export async function requireProcessMutator(
   }
 
   return actor;
+}
+
+/** Org admin (with MFA step-up) or team leader for member-management mutations. */
+export async function requireTeamMutator(
+  organizationId: string,
+  teamId: string,
+): Promise<TeamMutatorActor | ActionActorError> {
+  const actor = await getActionActor(organizationId);
+  if ("error" in actor) {
+    return actor;
+  }
+
+  if (canManageOrg(actor.orgRole)) {
+    const privileged = await enforceAdminPrivilegedSession(actor.orgRole);
+    if ("error" in privileged) {
+      return privileged;
+    }
+
+    return { ...actor, teamRole: "leader" };
+  }
+
+  const { data: teamMember } = await actor.supabase
+    .from("team_members")
+    .select("team_role")
+    .eq("team_id", teamId)
+    .eq("user_id", actor.user.id)
+    .maybeSingle();
+
+  const teamRole = (teamMember?.team_role ?? "viewer") as TeamRole;
+
+  if (!teamMember || !canManageTeam(actor.orgRole, teamRole)) {
+    return { error: "You do not have permission to manage team members." };
+  }
+
+  return { ...actor, teamRole };
 }
 
 /** Per-request cached org actor lookup (for hot paths like scorecard). */

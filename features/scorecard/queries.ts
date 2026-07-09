@@ -117,6 +117,7 @@ const getMetricsForOrgCached = cache(
     const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
     const ownerProfiles = await resolveOwnerProfiles(
       metrics.map((row) => row.owner_id),
+      organizationId,
     );
 
     return metrics.map((row) => {

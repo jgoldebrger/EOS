@@ -210,11 +210,12 @@ token_verifications = 30
 # Number of Web3 logins that can be made in a 5 minute interval per IP address.
 web3 = 30
 
-# Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
+# Configure captcha in production via Supabase Dashboard → Bot and Abuse Protection.
+# For local testing, set HCAPTCHA_SECRET and enable this block.
 # [auth.captcha]
 # enabled = true
 # provider = "hcaptcha"
-# secret = ""
+# secret = "env(HCAPTCHA_SECRET)"
 
 [auth.email]
 # Keep true so existing users can sign in; global [auth].enable_signup blocks new registrations.

@@ -12,7 +12,12 @@ import { buildFullName } from "@/lib/users/display-name";
 import { canManageOrg } from "@/lib/permissions/checks";
 import { logAuditEvent } from "@/lib/audit";
 import { toSafeAuthError } from "@/lib/auth/errors";
-import { requirePrivilegedSession } from "@/lib/auth/privileged-session";
+import {
+  enforceAdminPrivilegedSession,
+  getActionActor,
+  isActionActorError,
+  requireAdminActor,
+} from "@/lib/auth/get-action-actor";
 import { requireActionRateLimit } from "@/lib/security/action-rate-limit";
 import {
   addOrgMemberSchema,
@@ -56,30 +61,15 @@ async function assertCanManageOrgMembers(
   | { ok: true; userId: string; orgRole: OrgRole }
   | { ok: false; error: string }
 > {
-  const user = await getServerSessionUser();
-  if (!user) {
-    return { ok: false, error: "You must be signed in." };
-  }
-
-  const supabase = await createClient();
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("org_role")
-    .eq("organization_id", organizationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!membership || !canManageOrg(membership.org_role as OrgRole)) {
-    return {
-      ok: false,
-      error: "Only organization admins can manage people.",
-    };
+  const actor = await requireAdminActor(organizationId);
+  if (isActionActorError(actor)) {
+    return { ok: false, error: actor.error };
   }
 
   return {
     ok: true,
-    userId: user.id,
-    orgRole: membership.org_role as OrgRole,
+    userId: actor.user.id,
+    orgRole: actor.orgRole,
   };
 }
 
@@ -235,13 +225,8 @@ export async function createOrgUserAccount(
     return { success: false, error: access.error };
   }
 
-  const privileged = await requirePrivilegedSession();
-  if ("error" in privileged) {
-    return { success: false, error: privileged.error };
-  }
-
-  const rateLimit = requireActionRateLimit(
-    privileged.userId,
+  const rateLimit = await requireActionRateLimit(
+    access.userId,
     "create-org-user",
     10,
     60 * 60 * 1000,
@@ -325,13 +310,8 @@ export async function inviteOrgMember(
     return { success: false, error: access.error };
   }
 
-  const privileged = await requirePrivilegedSession();
-  if ("error" in privileged) {
-    return { success: false, error: privileged.error };
-  }
-
-  const rateLimit = requireActionRateLimit(
-    privileged.userId,
+  const rateLimit = await requireActionRateLimit(
+    access.userId,
     "invite-org-member",
     20,
     60 * 60 * 1000,
@@ -464,31 +444,16 @@ export async function updateReportsTo(input: unknown): Promise<PeopleActionResul
     };
   }
 
-  const supabase = await createClient();
-  const user = await getServerSessionUser();
-  if (!user) {
-    return { success: false, error: "You must be signed in" };
-  }
-
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("org_role")
-    .eq("organization_id", parsed.data.organizationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!membership || !canManageOrg(membership.org_role as OrgRole)) {
-    return {
-      success: false,
-      error: "Only organization admins can set reporting lines",
-    };
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
+    return { success: false, error: actor.error };
   }
 
   if (parsed.data.reportsToUserId === parsed.data.userId) {
     return { success: false, error: "A person cannot report to themselves" };
   }
 
-  const { error } = await supabase
+  const { error } = await actor.supabase
     .from("organization_members")
     .update({ reports_to_user_id: parsed.data.reportsToUserId })
     .eq("organization_id", parsed.data.organizationId)
@@ -516,31 +481,25 @@ export async function upsertPeopleReview(input: unknown): Promise<PeopleActionRe
     return { success: false, error: "Invalid review" };
   }
 
-  const user = await getServerSessionUser();
-  if (!user) {
-    return { success: false, error: "Unauthorized" };
+  const actor = await getActionActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
+    return { success: false, error: actor.error };
   }
 
-  const supabase = await createClient();
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("org_role")
-    .eq("organization_id", parsed.data.organizationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const reviewerUserId = parsed.data.reviewerUserId ?? actor.user.id;
 
-  if (!membership) {
-    return { success: false, error: "No access" };
-  }
-
-  const orgRole = membership.org_role as OrgRole;
-  const reviewerUserId = parsed.data.reviewerUserId ?? user.id;
-
-  if (!canManageOrg(orgRole) && reviewerUserId !== user.id) {
+  if (!canManageOrg(actor.orgRole) && reviewerUserId !== actor.user.id) {
     return { success: false, error: "Permission denied" };
   }
 
-  const { error } = await supabase.from("people_reviews" as never).upsert(
+  if (canManageOrg(actor.orgRole) && reviewerUserId !== actor.user.id) {
+    const privileged = await enforceAdminPrivilegedSession(actor.orgRole);
+    if ("error" in privileged) {
+      return { success: false, error: privileged.error };
+    }
+  }
+
+  const { error } = await actor.supabase.from("people_reviews" as never).upsert(
     {
       organization_id: parsed.data.organizationId,
       subject_user_id: parsed.data.subjectUserId,

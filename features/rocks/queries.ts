@@ -47,7 +47,7 @@ export async function getRocksForOrg(
     return [];
   }
 
-  const ownerProfiles = await resolveOwnerProfiles(rocks.map((row) => row.owner_id));
+  const ownerProfiles = await resolveOwnerProfiles(rocks.map((row) => row.owner_id), organizationId);
 
   const mapped = rocks.map((row) => {
     const { teams: teamJoin, ...rock } = row;
@@ -86,7 +86,7 @@ export async function getRockById(
     return null;
   }
 
-  const ownerProfiles = await resolveOwnerProfiles([row.owner_id]);
+  const ownerProfiles = await resolveOwnerProfiles([row.owner_id], organizationId);
   const ownerId = row.owner_id;
   const ownerProfile = ownerProfiles.get(ownerId);
   const { teams: teamJoin, ...rock } = row;

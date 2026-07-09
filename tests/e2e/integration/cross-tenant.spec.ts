@@ -20,4 +20,11 @@ test.describe("cross-tenant access denial (@auth)", () => {
 
     await expect(page.getByRole("heading", { name: "Demo Company" })).not.toBeVisible();
   });
+
+  test("admin cannot invoke notification smoke test for another org", async ({ page }) => {
+    await signInAsAdmin(page);
+    await page.goto(`/org/${E2E_VIEWER_ORG_SLUG}/settings/notifications`);
+
+    await expect(page.getByRole("heading", { name: "Demo Viewer Org" })).not.toBeVisible();
+  });
 });

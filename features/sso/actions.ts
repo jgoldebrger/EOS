@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireMandatoryAdminMfa } from "@/lib/auth/mfa-requirements";
 import { requirePrivilegedSession } from "@/lib/auth/privileged-session";
 import { getOrganizationBySlug } from "@/features/organizations/queries";
 import {
@@ -54,6 +55,11 @@ async function requireOwnerActor(orgSlug: string) {
   const ownerCheck = await requireOwner(orgSlug);
   if ("error" in ownerCheck) {
     return { error: ownerCheck.error } as const;
+  }
+
+  const mfaEnrollment = await requireMandatoryAdminMfa("owner");
+  if ("error" in mfaEnrollment) {
+    return { error: mfaEnrollment.error } as const;
   }
 
   const session = await requirePrivilegedSession();

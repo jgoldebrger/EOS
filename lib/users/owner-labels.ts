@@ -16,9 +16,10 @@ export function ownerLabelFromProfiles(
 
 export async function resolveOwnerProfiles(
   userIds: Array<string | null | undefined>,
+  organizationId?: string,
 ): Promise<Map<string, ResolvedUser>> {
   const unique = [
     ...new Set(userIds.filter((id): id is string => Boolean(id))),
   ];
-  return resolveUserEmails(unique);
+  return resolveUserEmails(unique, organizationId ? { organizationId } : undefined);
 }

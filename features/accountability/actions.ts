@@ -13,23 +13,10 @@ import type {
   CreateSeatResult,
   SeatActionResult,
 } from "@/features/accountability/types";
-import { canManageOrg } from "@/lib/permissions/checks";
+import { isActionActorError, requireAdminActor } from "@/lib/auth/get-action-actor";
 import { AUDIT_ACTIONS } from "@/types/domain";
-import type { OrgRole } from "@/types/domain";
 import type { Json, TablesUpdate } from "@/types/database";
 import { logAuditEvent } from "@/lib/audit";
-
-import { getActionActor as getActorContext } from "@/lib/auth/get-action-actor";
-
-function requireAdmin(orgRole: OrgRole): { success: false; error: string } | null {
-  if (!canManageOrg(orgRole)) {
-    return {
-      success: false,
-      error: "Only organization admins can manage the accountability chart",
-    };
-  }
-  return null;
-}
 
 async function writeAudit(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -122,14 +109,9 @@ export async function createSeat(input: unknown): Promise<CreateSeatResult> {
     };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
-  if ("error" in actor) {
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
     return { success: false, error: actor.error ?? "Unauthorized" };
-  }
-
-  const denied = requireAdmin(actor.orgRole);
-  if (denied) {
-    return denied;
   }
 
   const parentError = await validateParentSeat(
@@ -188,14 +170,9 @@ export async function updateSeat(input: unknown): Promise<SeatActionResult> {
     };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
-  if ("error" in actor) {
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
     return { success: false, error: actor.error ?? "Unauthorized" };
-  }
-
-  const denied = requireAdmin(actor.orgRole);
-  if (denied) {
-    return denied;
   }
 
   const { data: existing } = await actor.supabase
@@ -271,14 +248,9 @@ export async function deleteSeat(input: unknown): Promise<SeatActionResult> {
     };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
-  if ("error" in actor) {
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
     return { success: false, error: actor.error ?? "Unauthorized" };
-  }
-
-  const denied = requireAdmin(actor.orgRole);
-  if (denied) {
-    return denied;
   }
 
   const { count, error: countError } = await actor.supabase
@@ -341,14 +313,9 @@ export async function assignUser(input: unknown): Promise<SeatActionResult> {
     };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
-  if ("error" in actor) {
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
     return { success: false, error: actor.error ?? "Unauthorized" };
-  }
-
-  const denied = requireAdmin(actor.orgRole);
-  if (denied) {
-    return denied;
   }
 
   if (parsed.data.userId) {
@@ -404,14 +371,9 @@ export async function reorderSeats(input: unknown): Promise<SeatActionResult> {
     };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
-  if ("error" in actor) {
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
     return { success: false, error: actor.error ?? "Unauthorized" };
-  }
-
-  const denied = requireAdmin(actor.orgRole);
-  if (denied) {
-    return denied;
   }
 
   for (const item of parsed.data.orders) {

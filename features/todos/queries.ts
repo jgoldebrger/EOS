@@ -83,6 +83,7 @@ export async function getTodosForOrg(
 
   const ownerProfiles = await resolveOwnerProfiles(
     todos.map((row) => row.owner_id),
+    organizationId,
   );
 
   return todos.map((row) => mapTodoRow(row, ownerProfiles));

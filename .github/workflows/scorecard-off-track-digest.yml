@@ -16,11 +16,15 @@ jobs:
       - name: Trigger scorecard-off-track-digest edge function
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
           SCORECARD_CRON_SECRET: ${{ secrets.SCORECARD_CRON_SECRET }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: |
+          if [ -z "$SUPABASE_URL" ] && [ -n "$SUPABASE_PROJECT_REF" ]; then
+            SUPABASE_URL="https://${SUPABASE_PROJECT_REF}.supabase.co"
+          fi
           if [ -z "$SUPABASE_URL" ]; then
-            echo "Add SUPABASE_URL to GitHub repository secrets."
+            echo "Add SUPABASE_URL or SUPABASE_PROJECT_REF (repository variable) to GitHub."
             exit 1
           fi
           SECRET="${SCORECARD_CRON_SECRET:-$SUPABASE_SECRET_KEY}"

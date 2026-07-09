@@ -118,6 +118,7 @@ export async function getMeetingById(
 
   const deciderProfiles = await resolveOwnerProfiles(
     (decisions ?? []).map((decision) => decision.decided_by),
+    organizationId,
   );
 
   const { teams: teamJoin, ...meetingRow } = meeting as {

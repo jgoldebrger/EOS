@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { ChevronRight, KeyRound, ShieldCheck } from "lucide-react";
+import { requireOrgAccess } from "@/lib/auth/require-org-access";
+import { getOrgSecuritySettings } from "@/features/organizations/security-actions";
+import { canManageOrg } from "@/lib/permissions/checks";
+import { OrgMfaPolicyPanel } from "@/components/security/org-mfa-policy-panel";
 import {
   Card,
   CardContent,
@@ -15,6 +19,8 @@ export default async function SecurityPage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = await params;
+  const access = await requireOrgAccess(orgSlug);
+  const securitySettings = await getOrgSecuritySettings(access.orgId);
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 p-8">
@@ -45,6 +51,13 @@ export default async function SecurityPage({
           </Button>
         </CardContent>
       </Card>
+
+      <OrgMfaPolicyPanel
+        organizationId={access.orgId}
+        orgSlug={orgSlug}
+        initialMfaRequired={securitySettings.mfaRequired}
+        canManage={canManageOrg(access.role)}
+      />
 
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-4">

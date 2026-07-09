@@ -3,6 +3,7 @@ import { withSupabase } from "npm:@supabase/server";
 import { z } from "https://esm.sh/zod@3.24.2";
 import {
   jsonResponse,
+  requireAiRateLimit,
   requireUserId,
   verifyOrgAccess,
 } from "../_shared/edge-utils.ts";
@@ -33,15 +34,21 @@ const handler = {
       return jsonResponse({ error: "invalid_input", success: false }, 400);
     }
 
-    const userId = requireUserId(ctx);
-    if (!userId) {
-      return jsonResponse({ error: "unauthorized", success: false }, 401);
+    const userId = ctx.userClaims?.id;
+    const unauthorized = requireUserId(userId);
+    if (unauthorized) {
+      return unauthorized;
+    }
+
+    const rateLimited = requireAiRateLimit(userId!, "run-transport-analysis");
+    if (rateLimited) {
+      return rateLimited;
     }
 
     const allowed = await verifyOrgAccess(
       ctx.supabase,
       parsed.data.organizationId,
-      userId,
+      userId!,
     );
     if (!allowed) {
       return jsonResponse({ error: "forbidden", success: false }, 403);

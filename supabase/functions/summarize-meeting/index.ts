@@ -6,6 +6,7 @@ import {
   jsonResponse,
   logAiRun,
   persistSuggestions,
+  requireAiRateLimit,
   requireUserId,
   verifyOrgAccess,
 } from "../_shared/edge-utils.ts";
@@ -63,6 +64,11 @@ const handler = {
     const unauthorized = requireUserId(userId);
     if (unauthorized) {
       return unauthorized;
+    }
+
+    const rateLimited = requireAiRateLimit(userId!, "summarize-meeting");
+    if (rateLimited) {
+      return rateLimited;
     }
 
     const { organizationId, meetingId, notes } = parsed.data;

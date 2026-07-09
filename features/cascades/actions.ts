@@ -1,12 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient, getServerSessionUser } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { insertInboxItem } from "@/features/inbox/internal";
 import { acknowledgeCascadeSchema, sendCascadesSchema } from "@/features/cascades/schema";
 import { queueNotification } from "@/lib/notifications/send";
-import { canEditResource } from "@/lib/permissions/checks";
-import type { OrgRole } from "@/types/domain";
+import {
+  enforceAdminPrivilegedSession,
+  getActionActor,
+  isActionActorError,
+  requireEditableActor,
+} from "@/lib/auth/get-action-actor";
+import { canManageOrg } from "@/lib/permissions/checks";
 
 export type CascadeActionResult =
   | { success: true; deliveredCount?: number }
@@ -34,25 +39,12 @@ export async function sendCascades(input: unknown): Promise<CascadeActionResult>
     };
   }
 
-  const supabase = await createClient();
-  const user = await getServerSessionUser();
-
-  if (!user) {
-    return { success: false, error: "Unauthorized" };
+  const actor = await requireEditableActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
+    return { success: false, error: actor.error };
   }
 
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("org_role")
-    .eq("organization_id", parsed.data.organizationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!membership || !canEditResource(membership.org_role as OrgRole, "meetings")) {
-    return { success: false, error: "Permission denied" };
-  }
-
-  const { data: teams } = await supabase
+  const { data: teams } = await actor.supabase
     .from("teams")
     .select("id, slug, name")
     .eq("organization_id", parsed.data.organizationId)
@@ -65,7 +57,7 @@ export async function sendCascades(input: unknown): Promise<CascadeActionResult>
   let deliveredCount = 0;
 
   for (const team of teams) {
-    const { data: delivery, error } = await supabase
+    const { data: delivery, error } = await actor.supabase
       .from("cascade_deliveries")
       .insert({
         organization_id: parsed.data.organizationId,
@@ -73,7 +65,7 @@ export async function sendCascades(input: unknown): Promise<CascadeActionResult>
         source_id: parsed.data.sourceId ?? null,
         source_label: parsed.data.sourceLabel,
         target_team_id: team.id,
-        created_by: user.id,
+        created_by: actor.user.id,
       })
       .select("id")
       .single();
@@ -84,21 +76,21 @@ export async function sendCascades(input: unknown): Promise<CascadeActionResult>
 
     deliveredCount += 1;
 
-    await supabase.from("headlines" as never).insert({
+    await actor.supabase.from("headlines" as never).insert({
       organization_id: parsed.data.organizationId,
       team_id: team.id,
       title: `[Cascade] ${parsed.data.sourceLabel}`,
       body: `Cascaded from team message. Acknowledge when shared with your team.`,
       headline_type: "employee",
       is_cascading: false,
-      created_by: user.id,
+      created_by: actor.user.id,
     } as never);
 
-    const leaderIds = await getTeamLeaderIds(supabase, team.id);
+    const leaderIds = await getTeamLeaderIds(actor.supabase, team.id);
     const actionUrl = `/org/${parsed.data.orgSlug}/teams/${team.slug}/headlines`;
 
     for (const leaderId of leaderIds) {
-      await insertInboxItem(supabase, {
+      await insertInboxItem(actor.supabase, {
         organizationId: parsed.data.organizationId,
         assigneeId: leaderId,
         title: `Cascade to acknowledge: ${parsed.data.sourceLabel}`,
@@ -130,14 +122,12 @@ export async function acknowledgeCascade(input: unknown): Promise<CascadeActionR
     return { success: false, error: "Invalid acknowledge request" };
   }
 
-  const supabase = await createClient();
-  const user = await getServerSessionUser();
-
-  if (!user) {
-    return { success: false, error: "Unauthorized" };
+  const actor = await getActionActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
+    return { success: false, error: actor.error };
   }
 
-  const { data: cascade } = await supabase
+  const { data: cascade } = await actor.supabase
     .from("cascade_deliveries")
     .select("id, status, target_team_id")
     .eq("id", parsed.data.cascadeId)
@@ -152,33 +142,33 @@ export async function acknowledgeCascade(input: unknown): Promise<CascadeActionR
     return { success: true };
   }
 
-  const { data: leadership } = await supabase
+  const { data: leadership } = await actor.supabase
     .from("team_members")
     .select("team_role")
     .eq("team_id", cascade.target_team_id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("org_role")
-    .eq("organization_id", parsed.data.organizationId)
-    .eq("user_id", user.id)
+    .eq("user_id", actor.user.id)
     .maybeSingle();
 
   const isLeader = leadership?.team_role === "leader";
-  const isAdmin = membership?.org_role === "owner" || membership?.org_role === "admin";
+  const isAdmin = canManageOrg(actor.orgRole);
 
   if (!isLeader && !isAdmin) {
     return { success: false, error: "Only team leaders can acknowledge cascades" };
   }
 
-  const { error } = await supabase
+  if (isAdmin) {
+    const privileged = await enforceAdminPrivilegedSession(actor.orgRole);
+    if ("error" in privileged) {
+      return { success: false, error: privileged.error };
+    }
+  }
+
+  const { error } = await actor.supabase
     .from("cascade_deliveries")
     .update({
       status: "acknowledged",
       acknowledged_at: new Date().toISOString(),
-      acknowledged_by: user.id,
+      acknowledged_by: actor.user.id,
     })
     .eq("id", parsed.data.cascadeId)
     .eq("organization_id", parsed.data.organizationId);
@@ -188,11 +178,11 @@ export async function acknowledgeCascade(input: unknown): Promise<CascadeActionR
   }
 
   if (parsed.data.inboxItemId) {
-    await supabase
+    await actor.supabase
       .from("inbox_items" as never)
       .update({ read_at: new Date().toISOString() } as never)
       .eq("id", parsed.data.inboxItemId)
-      .eq("assignee_id", user.id);
+      .eq("assignee_id", actor.user.id);
   }
 
   revalidatePath(`/org/${parsed.data.orgSlug}/inbox`);

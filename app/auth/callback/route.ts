@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, getServerSessionUser } from "@/lib/supabase/server";
 import { acceptPendingInvitations } from "@/lib/people/accept-invitations";
 import { toSafeRelativePath } from "@/lib/auth/safe-redirect";
+import { getOAuthCallbackMfaRedirect } from "@/lib/auth/oauth-mfa";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -29,11 +30,19 @@ export async function GET(request: Request) {
 
         if (accepted.length > 0) {
           const safeNext = `/org/${accepted[0].orgSlug}/home`;
+          const mfaRedirect = await getOAuthCallbackMfaRedirect(origin, safeNext);
+          if (mfaRedirect) {
+            return NextResponse.redirect(mfaRedirect);
+          }
           return NextResponse.redirect(`${origin}${safeNext}`);
         }
       }
 
       const safeNext = toSafeRelativePath(next, "/onboarding");
+      const mfaRedirect = await getOAuthCallbackMfaRedirect(origin, safeNext);
+      if (mfaRedirect) {
+        return NextResponse.redirect(mfaRedirect);
+      }
       return NextResponse.redirect(`${origin}${safeNext}`);
     }
   }

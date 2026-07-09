@@ -21,7 +21,7 @@ export default async function NotificationSettingsPage({
   const { orgSlug } = await params;
   const access = await requireOrgAccess(orgSlug);
   const canEdit = canManageOrg(access.role);
-  const envStatus = await getNotificationEnvStatus();
+  const envStatus = await getNotificationEnvStatus(access.orgId);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-8">
@@ -54,6 +54,10 @@ export default async function NotificationSettingsPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
+          {!envStatus.success ? (
+            <p className="text-destructive">{envStatus.error}</p>
+          ) : (
+            <>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-muted-foreground">SUPABASE_SECRET_KEY on this deployment</span>
             <span className="font-medium">{envStatus.hasSecretKey ? "Configured" : "Missing"}</span>
@@ -64,6 +68,8 @@ export default async function NotificationSettingsPage({
               {envStatus.supabaseUrl ?? "Not set"}
             </code>
           </div>
+            </>
+          )}
           {canEdit ? (
             <NotificationSmokeTestButton organizationId={access.orgId} />
           ) : (

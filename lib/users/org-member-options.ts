@@ -25,7 +25,10 @@ export async function getOrgMemberOptions(
     return [];
   }
 
-  const profiles = await resolveUserEmails(data.map((member) => member.user_id));
+  const profiles = await resolveUserEmails(
+    data.map((member) => member.user_id),
+    { organizationId },
+  );
 
   return data.map((member) => ({
     userId: member.user_id,

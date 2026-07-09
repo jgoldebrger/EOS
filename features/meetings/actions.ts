@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getActionActor } from "@/lib/auth/get-action-actor";
+import { getActionActor, isActionActorError, requireAdminActor } from "@/lib/auth/get-action-actor";
 import {
   createDecisionSchema,
   createMeetingSchema,
@@ -25,7 +25,7 @@ import type {
 } from "@/features/meetings/types";
 import { getDefaultL10Agenda, getFirstSectionKey } from "@/features/meetings/utils";
 import { getOrgL10AgendaTemplate } from "@/features/meetings/queries";
-import { canEditResource, canManageOrg } from "@/lib/permissions/checks";
+import { canEditResource } from "@/lib/permissions/checks";
 import { AUDIT_ACTIONS } from "@/types/domain";
 import type { OrgRole } from "@/types/domain";
 import type { Json } from "@/types/database";
@@ -97,16 +97,9 @@ export async function updateOrgL10Agenda(
     };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
-  if ("error" in actor) {
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
     return { success: false, error: actor.error ?? "Unauthorized" };
-  }
-
-  if (!canManageOrg(actor.orgRole)) {
-    return {
-      success: false,
-      error: "Only organization admins can change L10 agenda timings",
-    };
   }
 
   const { data: org, error: orgError } = await actor.supabase
@@ -1032,13 +1025,9 @@ export async function updateSeguePrompts(input: unknown): Promise<MeetingActionR
     return { success: false, error: "Invalid prompts" };
   }
 
-  const actor = await getActorContext(parsed.data.organizationId);
-  if ("error" in actor) {
+  const actor = await requireAdminActor(parsed.data.organizationId);
+  if (isActionActorError(actor)) {
     return { success: false, error: actor.error ?? "Unauthorized" };
-  }
-
-  if (!canManageOrg(actor.orgRole)) {
-    return { success: false, error: "Only admins can edit segue prompts" };
   }
 
   const { data: org } = await actor.supabase

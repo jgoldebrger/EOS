@@ -85,6 +85,7 @@ async function fetchIssues(
 
   const ownerProfiles = await resolveOwnerProfiles(
     issues.map((row) => row.owner_id),
+    organizationId,
   );
 
   return issues.map((row, index) =>
@@ -138,6 +139,7 @@ export async function getOpenIssues(
 
   const ownerProfiles = await resolveOwnerProfiles(
     issues.map((row) => row.owner_id),
+    organizationId,
   );
 
   return issues.map((row, index) =>

@@ -12,6 +12,7 @@ import { toSafeAuthError } from "@/lib/auth/errors";
 import { toSafeRelativePath } from "@/lib/auth/safe-redirect";
 import { oauthProviders } from "@/app/auth/oauth-config";
 import { MfaVerifyForm } from "@/components/auth/mfa-verify-form";
+import { HcaptchaField, isAuthCaptchaEnabled } from "@/components/auth/hcaptcha-field";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -56,6 +57,8 @@ export function AuthForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaFactorId, setMfaFactorId] = useState<string | undefined>();
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaEnabled = isAuthCaptchaEnabled();
 
   const form = useForm<AuthFormValues>({
     resolver: zodResolver(authSchema),
@@ -64,12 +67,19 @@ export function AuthForm() {
 
   async function onSubmit(values: AuthFormValues) {
     setFormError(null);
+
+    if (captchaEnabled && !captchaToken) {
+      setFormError("Complete the CAPTCHA challenge before signing in.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
       email: values.email,
       password: values.password,
+      options: captchaToken ? { captchaToken } : undefined,
     });
 
     setIsSubmitting(false);
@@ -247,6 +257,8 @@ export function AuthForm() {
                 </FormItem>
               )}
             />
+
+            <HcaptchaField onTokenChange={setCaptchaToken} />
 
             {formError && (
               <p className="text-sm text-destructive" role="alert">

@@ -64,7 +64,7 @@ export async function getActivityForOrg(
   const actorIds = rows
     .map((row) => row.actor_id)
     .filter((id): id is string => Boolean(id));
-  const resolved = await resolveUserEmails(actorIds);
+  const resolved = await resolveUserEmails(actorIds, { organizationId });
 
   return rows.map((row) => ({
     ...row,

@@ -23,7 +23,7 @@ export default async function TeamPeoplePage({
   const quarter = getCurrentQuarter();
 
   const [members, availablePeople, reviews, coreValues, seats] = await Promise.all([
-    getTeamMembers(access.teamId),
+    getTeamMembers(access.teamId, access.orgId),
     getOrgMembersAvailableForTeam(access.orgId, access.teamId),
     getPeopleReviewsForTeam(access.orgId, access.teamId, quarter),
     getCoreValuesForOrg(access.orgId),
