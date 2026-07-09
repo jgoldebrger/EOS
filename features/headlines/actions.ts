@@ -25,7 +25,7 @@ export async function createHeadline(input: unknown) {
   }
 
   const { data, error } = await actor.supabase
-    .from("headlines" as never)
+    .from("headlines")
     .insert({
       organization_id: parsed.data.organizationId,
       team_id: parsed.data.teamId ?? null,
@@ -35,7 +35,7 @@ export async function createHeadline(input: unknown) {
       meeting_id: parsed.data.meetingId ?? null,
       is_cascading: parsed.data.isCascading ?? false,
       created_by: actor.user.id,
-    } as never)
+    })
     .select("id")
     .single();
 
@@ -47,13 +47,12 @@ export async function createHeadline(input: unknown) {
     organizationId: parsed.data.organizationId,
     actorId: actor.user.id,
     action: AUDIT_ACTIONS.CREATE,
-    entityType: "issues",
-    entityId: (data as { id: string }).id,
-    metadata: { type: "headline" },
+    entityType: "headlines",
+    entityId: data.id,
   });
 
   revalidatePath("/");
-  return { success: true as const, headlineId: (data as { id: string }).id };
+  return { success: true as const, headlineId: data.id };
 }
 
 export async function updateHeadline(input: unknown) {
@@ -67,7 +66,12 @@ export async function updateHeadline(input: unknown) {
     return { success: false as const, error: actor.error };
   }
 
-  const updates: Record<string, unknown> = {};
+  const updates: {
+    title?: string;
+    body?: string;
+    headline_type?: "customer" | "employee";
+    is_cascading?: boolean;
+  } = {};
   if (parsed.data.title !== undefined) updates.title = parsed.data.title;
   if (parsed.data.body !== undefined) updates.body = parsed.data.body;
   if (parsed.data.headlineType !== undefined) {
@@ -78,8 +82,8 @@ export async function updateHeadline(input: unknown) {
   }
 
   const { error } = await actor.supabase
-    .from("headlines" as never)
-    .update(updates as never)
+    .from("headlines")
+    .update(updates)
     .eq("id", parsed.data.headlineId)
     .eq("organization_id", parsed.data.organizationId);
 
@@ -91,9 +95,8 @@ export async function updateHeadline(input: unknown) {
     organizationId: parsed.data.organizationId,
     actorId: actor.user.id,
     action: AUDIT_ACTIONS.UPDATE,
-    entityType: "issues",
+    entityType: "headlines",
     entityId: parsed.data.headlineId,
-    metadata: { type: "headline" },
   });
 
   revalidatePath("/");
@@ -112,8 +115,8 @@ export async function archiveHeadline(input: unknown) {
   }
 
   const { error } = await actor.supabase
-    .from("headlines" as never)
-    .update({ archived_at: new Date().toISOString() } as never)
+    .from("headlines")
+    .update({ archived_at: new Date().toISOString() })
     .eq("id", parsed.data.headlineId)
     .eq("organization_id", parsed.data.organizationId);
 
@@ -124,10 +127,9 @@ export async function archiveHeadline(input: unknown) {
   await logAuditEvent(actor.supabase, {
     organizationId: parsed.data.organizationId,
     actorId: actor.user.id,
-    action: AUDIT_ACTIONS.UPDATE,
-    entityType: "issues",
+    action: AUDIT_ACTIONS.ARCHIVE,
+    entityType: "headlines",
     entityId: parsed.data.headlineId,
-    metadata: { type: "headline", archived: true },
   });
 
   revalidatePath("/");
@@ -141,7 +143,7 @@ export async function getHeadlinesForTeam(organizationId: string, teamId: string
   }
 
   const { data } = await actor.supabase
-    .from("headlines" as never)
+    .from("headlines")
     .select("*")
     .eq("organization_id", organizationId)
     .eq("team_id", teamId)

@@ -18,7 +18,7 @@ export async function insertInboxItem(
     return;
   }
 
-  await supabase.from("inbox_items" as never).insert({
+  await supabase.from("inbox_items").insert({
     organization_id: input.organizationId,
     assignee_id: input.assigneeId,
     title: input.title,
@@ -26,5 +26,5 @@ export async function insertInboxItem(
     source_type: input.sourceType ?? null,
     source_id: input.sourceId ?? null,
     action_url: input.actionUrl ?? null,
-  } as never);
+  });
 }

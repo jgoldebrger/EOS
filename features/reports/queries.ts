@@ -108,7 +108,7 @@ async function fetchRockMilestoneHealth(
   const supabase = await createClient();
 
   const { data: milestones } = await supabase
-    .from("rock_milestones" as never)
+    .from("rock_milestones")
     .select("completed_at, due_date, rocks!inner(team_id, quarter, archived_at)")
     .eq("organization_id", organizationId)
     .eq("rocks.quarter", quarter)
@@ -213,7 +213,7 @@ export async function getExecutiveReportsData(
         .eq("status", "solved")
         .gte("updated_at", quarterStartIso(quarter)),
       supabase
-        .from("people_reviews" as never)
+        .from("people_reviews")
         .select("get_it, want_it, capacity, core_values_scores")
         .eq("organization_id", organizationId)
         .eq("quarter", quarter),

@@ -19,7 +19,7 @@ export async function getInboxForUser(
 ) {
   const supabase = await createClient();
   let query = supabase
-    .from("inbox_items" as never)
+    .from("inbox_items")
     .select("*")
     .eq("organization_id", organizationId)
     .eq("assignee_id", userId)
@@ -40,7 +40,7 @@ export async function getUnreadInboxCount(
 ): Promise<number> {
   const supabase = await createClient();
   const { count } = await supabase
-    .from("inbox_items" as never)
+    .from("inbox_items")
     .select("id", { count: "exact", head: true })
     .eq("organization_id", organizationId)
     .eq("assignee_id", userId)

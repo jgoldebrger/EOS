@@ -499,7 +499,7 @@ export async function upsertPeopleReview(input: unknown): Promise<PeopleActionRe
     }
   }
 
-  const { error } = await actor.supabase.from("people_reviews" as never).upsert(
+  const { error } = await actor.supabase.from("people_reviews").upsert(
     {
       organization_id: parsed.data.organizationId,
       subject_user_id: parsed.data.subjectUserId,
@@ -511,7 +511,7 @@ export async function upsertPeopleReview(input: unknown): Promise<PeopleActionRe
       core_values_scores: parsed.data.coreValuesScores ?? {},
       notes: parsed.data.notes ?? "",
       quarter: parsed.data.quarter,
-    } as never,
+    },
     { onConflict: "organization_id,subject_user_id,reviewer_user_id,quarter" },
   );
 
@@ -608,7 +608,7 @@ export async function sendPeopleReviewReminders(input: {
     .in("org_role", ["owner", "admin", "member"]);
 
   const { data: reviews } = await supabase
-    .from("people_reviews" as never)
+    .from("people_reviews")
     .select("reviewer_user_id, subject_user_id")
     .eq("organization_id", input.organizationId)
     .eq("quarter", input.quarter);

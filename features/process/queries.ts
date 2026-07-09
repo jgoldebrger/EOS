@@ -259,7 +259,7 @@ export async function getProcessHealthMetrics(
       .select("id", { count: "exact", head: true })
       .eq("organization_id", organizationId),
     supabase
-      .from("process_pages" as never)
+      .from("process_pages")
       .select("accountability_seat_id, updated_at, archived_at")
       .eq("organization_id", organizationId)
       .is("archived_at", null),

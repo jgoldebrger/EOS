@@ -288,7 +288,7 @@ export async function getMeetingRecapData(
   const [headlinesResult, todosResult, issuesResult, pendingSuggestions] =
     await Promise.all([
       supabase
-        .from("headlines" as never)
+        .from("headlines")
         .select("id, title, body, headline_type")
         .eq("organization_id", organizationId)
         .eq("meeting_id", meetingId)

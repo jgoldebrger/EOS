@@ -13,16 +13,21 @@ export type AuditEntityType =
   | "scorecard_entries"
   | "rocks"
   | "issues"
+  | "headlines"
+  | "inbox"
   | "todos"
   | "meetings"
   | "meeting_notes"
+  | "meeting_schedules"
   | "accountability_charts"
   | "vto_sections"
   | "vto_snapshots"
+  | "people_reviews"
   | "ai_suggestions"
   | "sso_connections"
   | "users"
-  | "projects";
+  | "projects"
+  | "transport";
 
 export const AUDIT_ACTIONS = {
   CREATE: "create",

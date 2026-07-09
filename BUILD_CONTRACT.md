@@ -70,7 +70,13 @@ Stubs: `lib/permissions/checks.ts`
 | done | 032 | Cascade deliveries |
 | done | 033 | Issue parking lot (L10 IDS) |
 | done | 034 | Recurring L10 schedules + inbox reminders |
-| **Next available** | **035** | — |
+| done | 035 | Storage bucket policies (SOP images) |
+| done | 036 | FORCE RLS on all tenant tables |
+| done | 037 | SOP images member select policy |
+| done | 038 | Narrowed authenticated table grants |
+| done | 039 | Anon role lockdown |
+| done | 040 | Storage bucket audit |
+| **Next available** | **041** | — |
 
 Team workspace routes: `/org/[orgSlug]/teams/[teamSlug]/{overview,l10,rocks,scorecard,todos,headlines,issues,process,people}`
 

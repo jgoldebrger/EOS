@@ -76,7 +76,7 @@ export async function sendCascades(input: unknown): Promise<CascadeActionResult>
 
     deliveredCount += 1;
 
-    await actor.supabase.from("headlines" as never).insert({
+    await actor.supabase.from("headlines").insert({
       organization_id: parsed.data.organizationId,
       team_id: team.id,
       title: `[Cascade] ${parsed.data.sourceLabel}`,
@@ -84,7 +84,7 @@ export async function sendCascades(input: unknown): Promise<CascadeActionResult>
       headline_type: "employee",
       is_cascading: false,
       created_by: actor.user.id,
-    } as never);
+    });
 
     const leaderIds = await getTeamLeaderIds(actor.supabase, team.id);
     const actionUrl = `/org/${parsed.data.orgSlug}/teams/${team.slug}/headlines`;
@@ -179,8 +179,8 @@ export async function acknowledgeCascade(input: unknown): Promise<CascadeActionR
 
   if (parsed.data.inboxItemId) {
     await actor.supabase
-      .from("inbox_items" as never)
-      .update({ read_at: new Date().toISOString() } as never)
+      .from("inbox_items")
+      .update({ read_at: new Date().toISOString() })
       .eq("id", parsed.data.inboxItemId)
       .eq("assignee_id", actor.user.id);
   }

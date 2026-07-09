@@ -1,4 +1,4 @@
-/** Hand-written Supabase Database types — matches migrations 001–011. */
+/** Hand-written Supabase Database types — matches migrations 001–040. */
 
 export type Json =
   | string
@@ -88,6 +88,8 @@ export type TransportAnalysisStatusDb =
   | "running"
   | "completed"
   | "failed";
+export type HeadlineTypeDb = "customer" | "employee";
+export type VtoLinkEntityTypeDb = "rock" | "issue" | "metric";
 
 export interface Database {
   public: {
@@ -239,6 +241,56 @@ export interface Database {
           },
         ];
       };
+      inbox_items: {
+        Row: {
+          id: string;
+          organization_id: string;
+          assignee_id: string;
+          title: string;
+          body: string | null;
+          source_type: string | null;
+          source_id: string | null;
+          action_url: string | null;
+          read_at: string | null;
+          archived_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          assignee_id: string;
+          title: string;
+          body?: string | null;
+          source_type?: string | null;
+          source_id?: string | null;
+          action_url?: string | null;
+          read_at?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          assignee_id?: string;
+          title?: string;
+          body?: string | null;
+          source_type?: string | null;
+          source_id?: string | null;
+          action_url?: string | null;
+          read_at?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "inbox_items_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       invitations: {
         Row: {
           id: string;
@@ -386,6 +438,73 @@ export interface Database {
             columns: ["target_team_id"];
             isOneToOne: false;
             referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      headlines: {
+        Row: {
+          id: string;
+          organization_id: string;
+          team_id: string | null;
+          title: string;
+          body: string;
+          headline_type: HeadlineTypeDb;
+          meeting_id: string | null;
+          is_cascading: boolean;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+          archived_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          team_id?: string | null;
+          title: string;
+          body?: string;
+          headline_type?: HeadlineTypeDb;
+          meeting_id?: string | null;
+          is_cascading?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          archived_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          team_id?: string | null;
+          title?: string;
+          body?: string;
+          headline_type?: HeadlineTypeDb;
+          meeting_id?: string | null;
+          is_cascading?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          archived_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "headlines_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "headlines_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "headlines_meeting_id_fkey";
+            columns: ["meeting_id"];
+            isOneToOne: false;
+            referencedRelation: "meetings";
             referencedColumns: ["id"];
           },
         ];
@@ -658,6 +777,57 @@ export interface Database {
             columns: ["organization_id"];
             isOneToOne: false;
             referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      saved_scorecard_views: {
+        Row: {
+          id: string;
+          organization_id: string;
+          user_id: string;
+          team_id: string | null;
+          name: string;
+          filters: Json;
+          is_bookmarked: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          user_id: string;
+          team_id?: string | null;
+          name: string;
+          filters?: Json;
+          is_bookmarked?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          user_id?: string;
+          team_id?: string | null;
+          name?: string;
+          filters?: Json;
+          is_bookmarked?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saved_scorecard_views_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "saved_scorecard_views_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
             referencedColumns: ["id"];
           },
         ];
@@ -1184,6 +1354,66 @@ export interface Database {
           },
         ];
       };
+      meeting_schedules: {
+        Row: {
+          id: string;
+          organization_id: string;
+          team_id: string;
+          day_of_week: number;
+          time_local: string;
+          timezone: string;
+          reminder_hours_before: number;
+          enabled: boolean;
+          last_reminder_at: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          team_id: string;
+          day_of_week: number;
+          time_local: string;
+          timezone?: string;
+          reminder_hours_before?: number;
+          enabled?: boolean;
+          last_reminder_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          team_id?: string;
+          day_of_week?: number;
+          time_local?: string;
+          timezone?: string;
+          reminder_hours_before?: number;
+          enabled?: boolean;
+          last_reminder_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "meeting_schedules_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "meeting_schedules_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       meeting_notes: {
         Row: {
           id: string;
@@ -1499,6 +1729,69 @@ export interface Database {
             columns: ["tag_id"];
             isOneToOne: false;
             referencedRelation: "tags";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      people_reviews: {
+        Row: {
+          id: string;
+          organization_id: string;
+          subject_user_id: string;
+          reviewer_user_id: string;
+          seat_id: string | null;
+          get_it: number | null;
+          want_it: number | null;
+          capacity: number | null;
+          core_values_scores: Json;
+          notes: string;
+          quarter: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          subject_user_id: string;
+          reviewer_user_id: string;
+          seat_id?: string | null;
+          get_it?: number | null;
+          want_it?: number | null;
+          capacity?: number | null;
+          core_values_scores?: Json;
+          notes?: string;
+          quarter: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          subject_user_id?: string;
+          reviewer_user_id?: string;
+          seat_id?: string | null;
+          get_it?: number | null;
+          want_it?: number | null;
+          capacity?: number | null;
+          core_values_scores?: Json;
+          notes?: string;
+          quarter?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "people_reviews_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "people_reviews_seat_id_fkey";
+            columns: ["seat_id"];
+            isOneToOne: false;
+            referencedRelation: "accountability_seats";
             referencedColumns: ["id"];
           },
         ];
@@ -2245,6 +2538,41 @@ export interface Database {
           created_by?: string | null;
         };
         Relationships: [];
+      };
+      vto_links: {
+        Row: {
+          id: string;
+          organization_id: string;
+          entity_type: VtoLinkEntityTypeDb;
+          entity_id: string;
+          section_key: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          entity_type: VtoLinkEntityTypeDb;
+          entity_id: string;
+          section_key: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          entity_type?: VtoLinkEntityTypeDb;
+          entity_id?: string;
+          section_key?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "vto_links_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       vto_sections: {
         Row: {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useOrgContext } from "@/features/organizations/components/org-context";
 import { searchProjectsForNav } from "@/features/projects/actions";
 import { searchTransportForNav } from "@/features/transport/actions";
+import { searchNavigationEntities } from "@/lib/search/nav-search";
 import { formatLoadLabel } from "@/features/transport/utils";
 import {
   Dialog,
@@ -37,6 +38,9 @@ export function GlobalSearch() {
   const [transportResults, setTransportResults] = useState<
     Awaited<ReturnType<typeof searchTransportForNav>>
   >([]);
+  const [navResults, setNavResults] = useState<
+    Awaited<ReturnType<typeof searchNavigationEntities>>
+  >({ rocks: [], issues: [], meetings: [], people: [] });
   const [, startTransition] = useTransition();
   const router = useRouter();
   const { orgSlug, orgId } = useOrgContext();
@@ -60,23 +64,28 @@ export function GlobalSearch() {
     const handle = window.setTimeout(() => {
       startTransition(async () => {
         const q = query.trim();
-        const [projects, loads] = await Promise.all([
+        const [projects, loads, nav] = await Promise.all([
           searchProjectsForNav(orgId, q),
           searchTransportForNav(orgId, q),
+          searchNavigationEntities(orgId, orgSlug, q),
         ]);
         setProjectResults(projects);
         setTransportResults(loads);
+        setNavResults(nav);
       });
     }, 200);
 
     return () => window.clearTimeout(handle);
-  }, [open, query, orgId]);
+  }, [open, query, orgId, orgSlug]);
 
   const shouldSearch = open && query.trim().length >= 2;
   const displayedProjectResults = shouldSearch
     ? projectResults
     : { projects: [], workItems: [] };
   const displayedTransportResults = shouldSearch ? transportResults : [];
+  const displayedNavResults = shouldSearch
+    ? navResults
+    : { rocks: [], issues: [], meetings: [], people: [] };
 
   const filtered = QUICK_LINKS.filter((link) =>
     link.label.toLowerCase().includes(query.toLowerCase()),
@@ -89,13 +98,105 @@ export function GlobalSearch() {
           <DialogTitle>Search</DialogTitle>
         </DialogHeader>
         <Input
-          placeholder="Search navigation, projects, and loads…"
+          placeholder="Search navigation, rocks, issues, people, projects, and loads…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Global search"
           autoFocus
         />
         <div className="max-h-64 space-y-3 overflow-y-auto pt-2">
+          {displayedNavResults.rocks.length > 0 && (
+            <div>
+              <p className="mb-1 px-3 text-xs font-medium text-muted-foreground">
+                Rocks
+              </p>
+              <ul className="space-y-1">
+                {displayedNavResults.rocks.map((rock) => (
+                  <li key={rock.id}>
+                    <button
+                      type="button"
+                      className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
+                      onClick={() => {
+                        router.push(rock.href);
+                        setOpen(false);
+                      }}
+                    >
+                      {rock.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {displayedNavResults.issues.length > 0 && (
+            <div>
+              <p className="mb-1 px-3 text-xs font-medium text-muted-foreground">
+                Issues
+              </p>
+              <ul className="space-y-1">
+                {displayedNavResults.issues.map((issue) => (
+                  <li key={issue.id}>
+                    <button
+                      type="button"
+                      className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
+                      onClick={() => {
+                        router.push(issue.href);
+                        setOpen(false);
+                      }}
+                    >
+                      {issue.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {displayedNavResults.meetings.length > 0 && (
+            <div>
+              <p className="mb-1 px-3 text-xs font-medium text-muted-foreground">
+                Meetings
+              </p>
+              <ul className="space-y-1">
+                {displayedNavResults.meetings.map((meeting) => (
+                  <li key={meeting.id}>
+                    <button
+                      type="button"
+                      className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
+                      onClick={() => {
+                        router.push(meeting.href);
+                        setOpen(false);
+                      }}
+                    >
+                      {meeting.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {displayedNavResults.people.length > 0 && (
+            <div>
+              <p className="mb-1 px-3 text-xs font-medium text-muted-foreground">
+                People
+              </p>
+              <ul className="space-y-1">
+                {displayedNavResults.people.map((person) => (
+                  <li key={person.userId}>
+                    <button
+                      type="button"
+                      className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
+                      onClick={() => {
+                        router.push(person.href);
+                        setOpen(false);
+                      }}
+                    >
+                      {person.displayName}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {displayedProjectResults.projects.length > 0 && (
             <div>
               <p className="mb-1 px-3 text-xs font-medium text-muted-foreground">

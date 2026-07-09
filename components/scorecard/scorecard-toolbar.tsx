@@ -1,9 +1,12 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useTransition } from "react";
 import { Download, Bookmark } from "lucide-react";
+import { toast } from "sonner";
 import type { PeriodType } from "@/features/scorecard/utils";
 import type { ScorecardCategory } from "@/features/scorecard/types";
+import { toggleScorecardBookmark } from "@/features/scorecard/saved-views";
 import { CreateCategoryDialog } from "@/components/scorecard/create-category-dialog";
 import { CreateTagDialog } from "@/components/scorecard/create-tag-dialog";
 import { Button } from "@/components/ui/button";
@@ -40,6 +43,8 @@ export function ScorecardToolbar({
 }: ScorecardToolbarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [bookmarkPending, startBookmarkTransition] = useTransition();
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const periodType = (searchParams.get("period") ?? "weekly") as PeriodType;
   const groupBy = searchParams.get("groupBy") ?? "owner";
   const state = searchParams.get("state") ?? "active";
@@ -76,6 +81,35 @@ export function ScorecardToolbar({
       a.click();
       URL.revokeObjectURL(url);
     }
+  }
+
+  function handleBookmark() {
+    startBookmarkTransition(async () => {
+      const result = await toggleScorecardBookmark({
+        organizationId,
+        orgSlug,
+        teamSlug,
+        teamId,
+        filters: {
+          period: periodType,
+          groupBy,
+          state,
+          category: categoryId,
+          range,
+          q: searchParams.get("q") ?? "",
+        },
+      });
+
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      setIsBookmarked(result.bookmarked);
+      toast.success(
+        result.bookmarked ? "Scorecard view bookmarked" : "Bookmark removed",
+      );
+    });
   }
 
   return (
@@ -178,8 +212,15 @@ export function ScorecardToolbar({
         <span className="text-sm text-muted-foreground">View as Table</span>
 
         <div className="ml-auto flex gap-1">
-          <Button variant="outline" size="icon" aria-label="Bookmark view">
-            <Bookmark className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label={isBookmarked ? "Remove bookmark" : "Bookmark view"}
+            aria-pressed={isBookmarked}
+            disabled={bookmarkPending}
+            onClick={handleBookmark}
+          >
+            <Bookmark className={cn("h-4 w-4", isBookmarked && "fill-current")} />
           </Button>
           <Button variant="outline" size="icon" aria-label="Download CSV" onClick={handleExport}>
             <Download className="h-4 w-4" />

@@ -86,6 +86,8 @@ export function getActivityDeepLink(
       return `${base}/rocks`;
     case "issues":
       return `${base}/issues`;
+    case "headlines":
+      return `${base}/activity`;
     case "todos":
       return `${base}/todos`;
     case "meetings":

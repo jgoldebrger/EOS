@@ -89,9 +89,7 @@ export async function queueNotification(input: QueueNotificationInput): Promise<
     }
 
     const supabaseUrl = getSupabaseUrl();
-    const serviceKey =
-      process.env.NOTIFICATIONS_CRON_SECRET ??
-      getSupabaseSecretKey();
+    const serviceKey = getSupabaseSecretKey();
 
     if (!supabaseUrl || !serviceKey) {
       console.info("[notification] log only", {
@@ -107,6 +105,7 @@ export async function queueNotification(input: QueueNotificationInput): Promise<
     const response = await fetch(`${supabaseUrl}/functions/v1/send-notifications`, {
       method: "POST",
       headers: {
+        apikey: serviceKey,
         Authorization: `Bearer ${serviceKey}`,
         "Content-Type": "application/json",
       },

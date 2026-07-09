@@ -40,8 +40,11 @@ supabase functions deploy extract-todos
 supabase functions deploy summarize-meeting
 supabase functions deploy discover-sso-provider
 supabase functions deploy validate-sso-membership
+supabase functions deploy send-notifications
 supabase functions deploy l10-schedule-reminders
 supabase functions deploy scorecard-off-track-digest
+supabase functions deploy optimize-routes
+supabase functions deploy run-transport-analysis
 ```
 
 Or run `scripts/deploy-edge-functions.ps1`.
@@ -52,7 +55,7 @@ Or run `scripts/deploy-edge-functions.ps1`.
 ## 5. L10 recurring reminders
 
 - [ ] `SUPABASE_URL` and `SUPABASE_SECRET_KEY` added to GitHub repository secrets
-- [ ] Cron secrets rotated (`scripts/rotate-cron-secrets.ps1`) — see [Secret rotation runbook](./secret-rotation-runbook.md)
+- [ ] Cron jobs authenticate with `SUPABASE_SECRET_KEY` via the edge function `apikey` header (see `.github/workflows/l10-schedule-reminders.yml`)
 - [ ] `.github/workflows/l10-schedule-reminders.yml` runs hourly (check Actions tab)
 - [ ] `.github/workflows/scorecard-off-track-digest.yml` runs weekly on Mondays (check Actions tab)
 - [ ] Team recurring schedules configured on each team L10 hub

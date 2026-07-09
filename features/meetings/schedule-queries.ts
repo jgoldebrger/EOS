@@ -21,7 +21,7 @@ export async function getMeetingScheduleForTeam(
 ): Promise<MeetingSchedule | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("meeting_schedules" as never)
+    .from("meeting_schedules")
     .select("*")
     .eq("organization_id", organizationId)
     .eq("team_id", teamId)

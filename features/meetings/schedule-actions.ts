@@ -28,7 +28,7 @@ export async function upsertMeetingSchedule(input: unknown): Promise<MeetingActi
     return { success: false, error: "You do not have permission to manage L10 schedules" };
   }
 
-  const { error } = await actor.supabase.from("meeting_schedules" as never).upsert(
+  const { error } = await actor.supabase.from("meeting_schedules").upsert(
     {
       organization_id: parsed.data.organizationId,
       team_id: parsed.data.teamId,
@@ -38,7 +38,7 @@ export async function upsertMeetingSchedule(input: unknown): Promise<MeetingActi
       reminder_hours_before: parsed.data.reminderHoursBefore,
       enabled: parsed.data.enabled,
       created_by: actor.user.id,
-    } as never,
+    },
     { onConflict: "team_id" },
   );
 
@@ -69,7 +69,7 @@ export async function deleteMeetingSchedule(input: unknown): Promise<MeetingActi
   }
 
   const { error } = await actor.supabase
-    .from("meeting_schedules" as never)
+    .from("meeting_schedules")
     .delete()
     .eq("organization_id", parsed.data.organizationId)
     .eq("team_id", parsed.data.teamId);

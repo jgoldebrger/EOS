@@ -380,13 +380,13 @@ export async function pinVtoLink(
     return { success: false, error: actor.error ?? "Unauthorized" };
   }
 
-  const { error } = await actor.supabase.from("vto_links" as never).upsert(
+  const { error } = await actor.supabase.from("vto_links").upsert(
     {
       organization_id: parsed.data.organizationId,
       entity_type: parsed.data.entityType,
       entity_id: parsed.data.entityId,
       section_key: parsed.data.sectionKey,
-    } as never,
+    },
     { onConflict: "organization_id,entity_type,entity_id,section_key" },
   );
 
@@ -417,7 +417,7 @@ export async function unpinVtoLink(
   }
 
   const { error } = await actor.supabase
-    .from("vto_links" as never)
+    .from("vto_links")
     .delete()
     .eq("id", parsed.data.linkId)
     .eq("organization_id", parsed.data.organizationId);

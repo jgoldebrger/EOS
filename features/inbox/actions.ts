@@ -30,8 +30,8 @@ export async function markInboxRead(input: unknown): Promise<InboxActionResult> 
   }
 
   const { error } = await actor.supabase
-    .from("inbox_items" as never)
-    .update({ read_at: new Date().toISOString() } as never)
+    .from("inbox_items")
+    .update({ read_at: new Date().toISOString() })
     .eq("id", parsed.data.itemId)
     .eq("organization_id", parsed.data.organizationId)
     .eq("assignee_id", actor.user.id);
@@ -56,8 +56,8 @@ export async function markAllInboxRead(input: unknown): Promise<InboxActionResul
   }
 
   const { error } = await actor.supabase
-    .from("inbox_items" as never)
-    .update({ read_at: new Date().toISOString() } as never)
+    .from("inbox_items")
+    .update({ read_at: new Date().toISOString() })
     .eq("organization_id", parsed.data.organizationId)
     .eq("assignee_id", actor.user.id)
     .is("read_at", null)
@@ -83,8 +83,8 @@ export async function archiveInboxItem(input: unknown): Promise<InboxActionResul
   }
 
   const { error } = await actor.supabase
-    .from("inbox_items" as never)
-    .update({ archived_at: new Date().toISOString() } as never)
+    .from("inbox_items")
+    .update({ archived_at: new Date().toISOString() })
     .eq("id", parsed.data.itemId)
     .eq("organization_id", parsed.data.organizationId)
     .eq("assignee_id", actor.user.id);

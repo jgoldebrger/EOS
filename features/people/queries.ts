@@ -168,7 +168,7 @@ export async function getPeopleReviewsForOrg(
 ): Promise<PeopleReviewRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("people_reviews" as never)
+    .from("people_reviews")
     .select("*")
     .eq("organization_id", organizationId)
     .eq("quarter", quarter);

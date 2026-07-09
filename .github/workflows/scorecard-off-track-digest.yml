@@ -17,7 +17,6 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
-          SCORECARD_CRON_SECRET: ${{ secrets.SCORECARD_CRON_SECRET }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: |
           if [ -z "$SUPABASE_URL" ] && [ -n "$SUPABASE_PROJECT_REF" ]; then
@@ -27,12 +26,12 @@ jobs:
             echo "Add SUPABASE_URL or SUPABASE_PROJECT_REF (repository variable) to GitHub."
             exit 1
           fi
-          SECRET="${SCORECARD_CRON_SECRET:-$SUPABASE_SECRET_KEY}"
-          if [ -z "$SECRET" ]; then
-            echo "Add SCORECARD_CRON_SECRET or SUPABASE_SECRET_KEY to GitHub repository secrets."
+          if [ -z "$SUPABASE_SECRET_KEY" ]; then
+            echo "Add SUPABASE_SECRET_KEY to GitHub repository secrets."
             exit 1
           fi
           curl -sS -X POST "$SUPABASE_URL/functions/v1/scorecard-off-track-digest" \
-            -H "Authorization: Bearer $SECRET" \
+            -H "apikey: $SUPABASE_SECRET_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SECRET_KEY" \
             -H "Content-Type: application/json" \
             -d '{}'

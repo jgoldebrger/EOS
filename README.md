@@ -16,7 +16,7 @@ Topics covered: getting started, navigation, roles, L10 meetings, every traction
 - **Company hub:** V/TO, Accountability, Process/SOPs, Company Rocks, Meetings, People Analyzer
 - **Team workspace:** `/org/[slug]/teams/[teamSlug]/` with Overview (L10 rating trend), L10, Rocks, Scorecards, To-Dos, Headlines, Issues, Process, People
 - **Settings:** Members (role admin), Audit log, L10 agenda + segue prompts, Security
-- **Global search:** `Ctrl+K` / `Cmd+K`
+- **Global search:** `Ctrl+K` / `Cmd+K` — navigation, rocks, issues, people, meetings, projects, and loads
 - Legacy routes (`/scorecard`, `/rocks`, etc.) redirect to your first team workspace
 
 ### Permissions (coarse)
@@ -52,13 +52,18 @@ supabase start
 # 4. Apply migrations and seed E2E fixtures (first run or after schema changes)
 supabase db reset
 
-# 5. Deploy edge functions (AI + SSO helpers)
+# 5. Deploy edge functions (AI + SSO + notifications + cron)
 supabase functions deploy analyze-scorecard
 supabase functions deploy dedupe-issues
 supabase functions deploy extract-todos
 supabase functions deploy summarize-meeting
 supabase functions deploy discover-sso-provider
 supabase functions deploy validate-sso-membership
+supabase functions deploy send-notifications
+supabase functions deploy l10-schedule-reminders
+supabase functions deploy scorecard-off-track-digest
+supabase functions deploy optimize-routes
+supabase functions deploy run-transport-analysis
 
 # 6. Playwright (one-time)
 npx playwright install chromium

@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { z } from "https://esm.sh/zod@3.24.2";
+import { withSupabase } from "npm:@supabase/server";
+import { z } from "npm:zod";
 import { buildNotificationHtml } from "./templates.ts";
 
 const notificationPayloadSchema = z.object({
@@ -28,22 +29,6 @@ const notificationPayloadSchema = z.object({
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return Response.json(body, { status });
-}
-
-function verifySecret(req: Request): boolean {
-  const auth = req.headers.get("Authorization");
-  const scopedSecret = Deno.env.get("NOTIFICATIONS_CRON_SECRET");
-  const fallbackSecret =
-    Deno.env.get("SUPABASE_SECRET_KEY") ??
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-  const expected = scopedSecret ?? fallbackSecret;
-
-  if (!auth || !expected) {
-    return false;
-  }
-
-  return auth === `Bearer ${expected}`;
 }
 
 async function sendViaResend(
@@ -84,11 +69,7 @@ async function sendViaResend(
 }
 
 const handler = {
-  async fetch(req: Request): Promise<Response> {
-    if (!verifySecret(req)) {
-      return jsonResponse({ error: "unauthorized" }, 401);
-    }
-
+  fetch: withSupabase({ auth: "secret" }, async (req) => {
     if (req.method !== "POST") {
       return jsonResponse({ error: "method_not_allowed" }, 405);
     }
@@ -113,7 +94,7 @@ const handler = {
     }
 
     return jsonResponse({ success: true, sent, messageId });
-  },
+  }),
 };
 
 export default handler;

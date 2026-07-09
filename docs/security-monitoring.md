@@ -33,3 +33,11 @@ The app uses distributed rate limiting when these env vars are set:
 - `UPSTASH_REDIS_REST_TOKEN`
 
 Without Upstash, limits are best-effort per server instance.
+
+## Error monitoring (Sentry)
+
+Set `NEXT_PUBLIC_SENTRY_DSN` in production to enable [`instrumentation.ts`](../instrumentation.ts) error capture. Configure alerts in Sentry for:
+
+- Unhandled server exceptions (`error` level)
+- Auth callback failures (tag `auth`)
+- Edge function invocation failures reported by the Next.js app

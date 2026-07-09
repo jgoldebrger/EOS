@@ -70,7 +70,7 @@ export interface VtoLinkRow {
 export async function getVtoLinks(organizationId: string): Promise<VtoLinkRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("vto_links" as never)
+    .from("vto_links")
     .select("*")
     .eq("organization_id", organizationId);
 

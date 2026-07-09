@@ -34,8 +34,7 @@ export async function sendNotificationSmokeTest(
   }
 
   const supabaseUrl = getSupabaseUrl();
-  const bearerToken =
-    process.env.NOTIFICATIONS_CRON_SECRET ?? getSupabaseSecretKey();
+  const bearerToken = getSupabaseSecretKey();
 
   if (!supabaseUrl || !bearerToken) {
     return {
@@ -47,6 +46,7 @@ export async function sendNotificationSmokeTest(
   const response = await fetch(`${supabaseUrl}/functions/v1/send-notifications`, {
     method: "POST",
     headers: {
+      apikey: bearerToken,
       Authorization: `Bearer ${bearerToken}`,
       "Content-Type": "application/json",
     },

@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createAdminClient } from "npm:@supabase/server/core";
+import { withSupabase } from "npm:@supabase/server";
 
 interface ScheduleRow {
   id: string;
@@ -19,22 +19,6 @@ const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return Response.json(body, { status });
-}
-
-function verifySecret(req: Request): boolean {
-  const auth = req.headers.get("Authorization");
-  const scopedSecret = Deno.env.get("L10_CRON_SECRET");
-  const fallbackSecret =
-    Deno.env.get("SUPABASE_SECRET_KEY") ??
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-  const expected = scopedSecret ?? fallbackSecret;
-
-  if (!auth || !expected) {
-    return false;
-  }
-
-  return auth === `Bearer ${expected}`;
 }
 
 function getNextOccurrenceUtc(schedule: ScheduleRow, fromDate: Date): Date {
@@ -86,47 +70,13 @@ function shouldSendReminder(schedule: ScheduleRow, now: Date): { due: boolean; n
   return { due: true, nextOccurrence };
 }
 
-async function sendNotification(payload: {
-  to: string;
-  subject: string;
-  body: string;
-  actionUrl?: string;
-  type?: string;
-}) {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const secretKey =
-    Deno.env.get("NOTIFICATIONS_CRON_SECRET") ??
-    Deno.env.get("SUPABASE_SECRET_KEY") ??
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !secretKey) {
-    return false;
-  }
-  const response = await fetch(`${supabaseUrl}/functions/v1/send-notifications`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secretKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) {
-    return false;
-  }
-  const result = await response.json().catch(() => ({}));
-  return result.sent === true;
-}
-
 const handler = {
-  async fetch(req: Request): Promise<Response> {
-    if (!verifySecret(req)) {
-      return jsonResponse({ error: "unauthorized" }, 401);
-    }
-
+  fetch: withSupabase({ auth: "secret" }, async (req, ctx) => {
     if (req.method !== "POST") {
       return jsonResponse({ error: "method_not_allowed" }, 405);
     }
 
-    const admin = createAdminClient();
+    const admin = ctx.supabaseAdmin;
     const now = new Date();
     const { data, error } = await admin
       .from("meeting_schedules")
@@ -179,13 +129,18 @@ const handler = {
         const { data: userData } = await admin.auth.admin.getUserById(userId);
         const email = userData.user?.email;
         if (email) {
-          await sendNotification({
-            to: email,
-            subject: `L10 reminder: ${row.teams.name}`,
-            body: `Your recurring L10 is coming up on ${whenLabel}.`,
-            actionUrl: l10Url,
-            type: "l10_reminder",
+          const { error: notifyError } = await admin.functions.invoke("send-notifications", {
+            body: {
+              to: email,
+              subject: `L10 reminder: ${row.teams.name}`,
+              body: `Your recurring L10 is coming up on ${whenLabel}.`,
+              actionUrl: l10Url,
+              type: "l10_reminder",
+            },
           });
+          if (notifyError) {
+            console.error("[l10-schedule-reminders] notification failed", notifyError.message);
+          }
         }
       }
 
@@ -202,7 +157,7 @@ const handler = {
       processed: data?.length ?? 0,
       reminded,
     });
-  },
+  }),
 };
 
 export default handler;

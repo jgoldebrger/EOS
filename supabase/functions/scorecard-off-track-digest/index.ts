@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createAdminClient } from "npm:@supabase/server/core";
+import { withSupabase } from "npm:@supabase/server";
 
 interface MetricRow {
   id: string;
@@ -32,22 +32,6 @@ interface OffTrackMetric {
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return Response.json(body, { status });
-}
-
-function verifySecret(req: Request): boolean {
-  const auth = req.headers.get("Authorization");
-  const scopedSecret = Deno.env.get("SCORECARD_CRON_SECRET");
-  const fallbackSecret =
-    Deno.env.get("SUPABASE_SECRET_KEY") ??
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-  const expected = scopedSecret ?? fallbackSecret;
-
-  if (!auth || !expected) {
-    return false;
-  }
-
-  return auth === `Bearer ${expected}`;
 }
 
 function getWeekStartIso(date: Date = new Date()): string {
@@ -112,50 +96,13 @@ function resolveStatus(metric: MetricRow, stored: ValueRow | undefined): string 
   }
 }
 
-async function sendNotification(payload: {
-  to: string;
-  subject: string;
-  body: string;
-  actionUrl?: string;
-  type?: string;
-}) {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const secretKey =
-    Deno.env.get("NOTIFICATIONS_CRON_SECRET") ??
-    Deno.env.get("SUPABASE_SECRET_KEY") ??
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !secretKey) {
-    return false;
-  }
-
-  const response = await fetch(`${supabaseUrl}/functions/v1/send-notifications`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secretKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    return false;
-  }
-
-  const result = await response.json().catch(() => ({}));
-  return result.sent === true;
-}
-
 const handler = {
-  async fetch(req: Request): Promise<Response> {
-    if (!verifySecret(req)) {
-      return jsonResponse({ error: "unauthorized" }, 401);
-    }
-
+  fetch: withSupabase({ auth: "secret" }, async (req, ctx) => {
     if (req.method !== "POST") {
       return jsonResponse({ error: "method_not_allowed" }, 405);
     }
 
-    const admin = createAdminClient();
+    const admin = ctx.supabaseAdmin;
     const weekStart = getWeekStartIso();
     let organizationsProcessed = 0;
     let digestsSent = 0;
@@ -242,13 +189,18 @@ const handler = {
         const { data: userData } = await admin.auth.admin.getUserById(ownerId);
         const email = userData.user?.email;
         if (email) {
-          await sendNotification({
-            to: email,
-            subject: title,
-            body,
-            actionUrl,
-            type: "scorecard_digest",
+          const { error: notifyError } = await admin.functions.invoke("send-notifications", {
+            body: {
+              to: email,
+              subject: title,
+              body,
+              actionUrl,
+              type: "scorecard_digest",
+            },
           });
+          if (notifyError) {
+            console.error("[scorecard-off-track-digest] notification failed", notifyError.message);
+          }
         }
 
         digestsSent += 1;
@@ -260,7 +212,7 @@ const handler = {
       organizationsProcessed,
       digestsSent,
     });
-  },
+  }),
 };
 
 export default handler;
