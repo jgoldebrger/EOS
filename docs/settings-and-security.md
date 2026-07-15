@@ -83,10 +83,12 @@ Enterprise SSO setup:
 
 1. Choose provider type (SAML/OIDC).
 2. Enter IdP metadata and domains.
-3. Map IdP groups to org roles.
-4. Test with a pilot user before enforcing.
+3. Add a company domain, publish the DNS TXT token, then confirm verification.
+4. Map IdP groups to org roles (groups are read from IdP `app_metadata` only).
+5. Enable auto-join only after the domain is verified; users must sign in via SSO to auto-join.
+6. Test with a pilot user before enforcing.
 
-Domain verification may be required before SSO is enforced.
+Invitations always require an invite link token (`/auth/invite?token=…`). Onboarding never bulk-accepts invites by email alone.
 
 ---
 

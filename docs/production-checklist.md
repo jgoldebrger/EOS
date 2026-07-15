@@ -49,6 +49,13 @@ supabase functions deploy run-transport-analysis
 
 Or run `scripts/deploy-edge-functions.ps1`.
 
+After auth migrations, redeploy cron functions only:
+
+```powershell
+.\scripts\deploy-cron-functions.ps1
+.\scripts\verify-cron-deploy.ps1
+```
+
 - [ ] All edge functions deployed to production Supabase project
 - [ ] GitHub Actions **Deploy Edge Functions** workflow run after deploys (manual trigger)
 

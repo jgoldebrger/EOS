@@ -13,9 +13,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  sast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Semgrep SAST
+        run: |
+          semgrep scan \
+            --config p/security-audit \
+            --config p/owasp-top-ten \
+            --config p/typescript \
+            --error \
+            --exclude-rule javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp \
+            --metrics=off
+
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: sast
     steps:
       - uses: actions/checkout@v4
 

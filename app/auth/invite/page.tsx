@@ -19,7 +19,28 @@ export default async function InviteAcceptPage({
   const { token } = await searchParams;
   await requireUser();
 
-  const result = await acceptPendingInvitationsForCurrentUser(token ?? null);
+  if (!token?.trim()) {
+    return (
+      <div className="flex min-h-full flex-1 items-center justify-center p-6">
+        <Card className="w-full max-w-md" data-testid="invite-accept-page">
+          <CardHeader>
+            <CardTitle>Organization invitation</CardTitle>
+            <CardDescription>
+              This invite link is missing a token. Open the link from your invitation
+              email, or ask an admin to resend the invite.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link href="/request-access">Continue</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const result = await acceptPendingInvitationsForCurrentUser(token);
 
   if (result.success && result.redirectSlug) {
     redirect(`/org/${result.redirectSlug}/home`);

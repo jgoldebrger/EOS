@@ -32,10 +32,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 After security deploys, rotate in order:
 
-1. `SUPABASE_SECRET_KEY` (Supabase Dashboard → API)
-2. `NOTIFICATIONS_CRON_SECRET`, `L10_CRON_SECRET`, `SCORECARD_CRON_SECRET` (GitHub + Supabase Edge secrets)
-3. `RESEND_API_KEY`
-4. Update GitHub repository secrets: `SUPABASE_URL`, `SUPABASE_PROJECT_REF`, scoped cron secrets
+1. `SUPABASE_SECRET_KEY` (Supabase Dashboard → API) — also used by GitHub cron workflows (`l10-schedule-reminders`, `scorecard-off-track-digest`) and server-to-edge calls (`send-notifications`)
+2. `RESEND_API_KEY`
+3. Update GitHub repository secrets: `SUPABASE_URL`, `SUPABASE_PROJECT_REF`, `SUPABASE_SECRET_KEY`
 
 ## JWT / JWKS
 

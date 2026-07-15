@@ -5,6 +5,9 @@ import { getAllDocSlugs } from "@/lib/docs/manifest";
 const DOCS_DIR = join(process.cwd(), "docs");
 
 export function loadDocMarkdown(slug: string): string | null {
+  if (!isValidDocSlug(slug) || slug.includes("..") || slug.includes("/") || slug.includes("\\")) {
+    return null;
+  }
   const filePath = join(DOCS_DIR, `${slug}.md`);
   if (!existsSync(filePath)) {
     return null;

@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "npm:@supabase/server";
-import { z } from "https://esm.sh/zod@3.24.2";
+import { z } from "npm:zod";
 import { jsonResponse } from "../_shared/edge-utils.ts";
 
 const PUBLIC_DOMAINS = new Set([
@@ -13,19 +13,19 @@ const PUBLIC_DOMAINS = new Set([
   "protonmail.com",
 ]);
 
+const PASSWORD_PROVIDERS = new Set(["email", "phone"]);
+
 const validateInputSchema = z.object({
   organizationId: z.string().uuid(),
 });
 
+/** Only IdP-controlled app_metadata — never user_metadata (user-writable). */
 function extractVerifiedProviderGroups(
-  userMetadata: Record<string, unknown> | undefined,
   appMetadata: Record<string, unknown> | undefined,
 ): string[] {
   const candidates: unknown[] = [
     appMetadata?.provider_groups,
     appMetadata?.groups,
-    userMetadata?.provider_groups,
-    userMetadata?.groups,
   ];
 
   for (const value of candidates) {
@@ -35,6 +35,27 @@ function extractVerifiedProviderGroups(
   }
 
   return [];
+}
+
+function hasEnterpriseSsoIdentity(user: {
+  identities?: Array<{ provider: string }> | null;
+  app_metadata?: Record<string, unknown> | null;
+}): boolean {
+  const identities = user.identities ?? [];
+  if (identities.some((identity) => !PASSWORD_PROVIDERS.has(identity.provider))) {
+    return true;
+  }
+
+  const provider = user.app_metadata?.provider;
+  if (typeof provider === "string" && !PASSWORD_PROVIDERS.has(provider)) {
+    return true;
+  }
+
+  if (user.app_metadata?.sso === true || user.app_metadata?.is_sso === true) {
+    return true;
+  }
+
+  return false;
 }
 
 function normalizeDomain(input: string): string {
@@ -122,8 +143,11 @@ const handler = {
       return jsonResponse({ error: "unauthorized", success: false }, 401);
     }
 
+    if (!hasEnterpriseSsoIdentity(authUser.user)) {
+      return jsonResponse({ error: "sso_required", success: false }, 403);
+    }
+
     const providerGroups = extractVerifiedProviderGroups(
-      authUser.user.user_metadata as Record<string, unknown>,
       authUser.user.app_metadata as Record<string, unknown>,
     );
 
@@ -165,6 +189,7 @@ const handler = {
           .select("id")
           .eq("organization_id", organizationId)
           .eq("domain", emailDomain)
+          .not("verified_at", "is", null)
           .maybeSingle(),
         adminClient
           .from("organization_sso_role_mappings")

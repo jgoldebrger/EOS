@@ -6,7 +6,13 @@ import { Download, Bookmark } from "lucide-react";
 import { toast } from "sonner";
 import type { PeriodType } from "@/features/scorecard/utils";
 import type { ScorecardCategory } from "@/features/scorecard/types";
-import { toggleScorecardBookmark } from "@/features/scorecard/saved-views";
+import {
+  scorecardFiltersFromSearchParams,
+  scorecardFiltersMatch,
+  scorecardFiltersToSearchParams,
+  toggleScorecardBookmark,
+  type ScorecardViewFilters,
+} from "@/features/scorecard/saved-views";
 import { CreateCategoryDialog } from "@/components/scorecard/create-category-dialog";
 import { CreateTagDialog } from "@/components/scorecard/create-tag-dialog";
 import { Button } from "@/components/ui/button";
@@ -31,6 +37,7 @@ interface ScorecardToolbarProps {
   teamId?: string;
   categories: ScorecardCategory[];
   canManageMetrics?: boolean;
+  savedBookmark?: ScorecardViewFilters | null;
 }
 
 export function ScorecardToolbar({
@@ -40,16 +47,22 @@ export function ScorecardToolbar({
   teamId,
   categories,
   canManageMetrics = false,
+  savedBookmark = null,
 }: ScorecardToolbarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [bookmarkPending, startBookmarkTransition] = useTransition();
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(savedBookmark !== null);
   const periodType = (searchParams.get("period") ?? "weekly") as PeriodType;
   const groupBy = searchParams.get("groupBy") ?? "owner";
   const state = searchParams.get("state") ?? "active";
   const categoryId = searchParams.get("category") ?? "all";
   const range = searchParams.get("range") ?? "13";
+  const currentFilters = scorecardFiltersFromSearchParams(searchParams);
+  const canRestoreBookmark =
+    isBookmarked &&
+    savedBookmark !== null &&
+    !scorecardFiltersMatch(savedBookmark, currentFilters);
 
   function updateParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -81,6 +94,15 @@ export function ScorecardToolbar({
       a.click();
       URL.revokeObjectURL(url);
     }
+  }
+
+  function handleRestoreBookmark() {
+    if (!savedBookmark) {
+      return;
+    }
+    const params = scorecardFiltersToSearchParams(savedBookmark);
+    router.push(`/org/${orgSlug}/teams/${teamSlug}/scorecard?${params.toString()}`);
+    toast.success("Restored bookmarked view");
   }
 
   function handleBookmark() {
@@ -211,7 +233,17 @@ export function ScorecardToolbar({
 
         <span className="text-sm text-muted-foreground">View as Table</span>
 
-        <div className="ml-auto flex gap-1">
+        <div className="ml-auto flex items-center gap-1">
+          {canRestoreBookmark ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRestoreBookmark}
+              aria-label="Restore bookmarked view"
+            >
+              Restore bookmark
+            </Button>
+          ) : null}
           <Button
             variant="outline"
             size="icon"

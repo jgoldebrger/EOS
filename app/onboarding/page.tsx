@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/require-user";
 import { isSelfServiceOrgCreationEnabled } from "@/lib/auth/platform-access";
 import { getUserOrganizations } from "@/features/organizations/queries";
-import { acceptPendingInvitationsForCurrentUser } from "@/features/people/actions";
 import { OnboardingWizard } from "@/features/organizations/components/onboarding-wizard";
 import { RequestAccessPanel } from "@/features/organizations/components/request-access-panel";
 import { signOut } from "@/app/auth/actions";
@@ -11,11 +10,7 @@ import { Button } from "@/components/ui/button";
 export default async function OnboardingPage() {
   const user = await requireUser();
 
-  const acceptResult = await acceptPendingInvitationsForCurrentUser();
-  if (acceptResult.success && acceptResult.redirectSlug) {
-    redirect(`/org/${acceptResult.redirectSlug}/home`);
-  }
-
+  // Invites require an explicit token (/auth/invite?token=…); never bulk-accept by email.
   const orgs = await getUserOrganizations();
 
   if (orgs.length > 0) {

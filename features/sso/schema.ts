@@ -47,7 +47,11 @@ export const addVerifiedDomainSchema = z.object({
     .min(3)
     .max(253)
     .regex(/^[a-z0-9]+([.-][a-z0-9]+)*\.[a-z]{2,}$/i, "Enter a valid domain"),
-  verificationMethod: z.string().trim().min(1).max(100),
+});
+
+export const confirmVerifiedDomainSchema = z.object({
+  orgSlug: z.string().min(1),
+  domainId: z.string().uuid(),
 });
 
 export const removeVerifiedDomainSchema = z.object({
@@ -63,3 +67,4 @@ export type DiscoverSsoInput = z.infer<typeof discoverSsoInputSchema>;
 export type UpdateSsoSettingsInput = z.infer<typeof updateSsoSettingsSchema>;
 export type AddRoleMappingInput = z.infer<typeof addRoleMappingSchema>;
 export type AddVerifiedDomainInput = z.infer<typeof addVerifiedDomainSchema>;
+export type ConfirmVerifiedDomainInput = z.infer<typeof confirmVerifiedDomainSchema>;

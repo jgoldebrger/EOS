@@ -8,8 +8,33 @@ function escapeHtml(value: string): string {
     .replaceAll('"', "&quot;");
 }
 
+function sanitizeMarkdownHref(href: string): string | null {
+  const trimmed = href.trim();
+  if (!trimmed || /[\u0000-\u001F\u007F]/.test(trimmed)) {
+    return null;
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//") && !trimmed.includes("\\")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("#") && !trimmed.includes(":")) {
+    return trimmed;
+  }
+  return null;
+}
+
 function formatInline(text: string): string {
-  let result = escapeHtml(text);
+  const withSafeLinks = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label: string, href: string) => {
+    const safeHref = sanitizeMarkdownHref(href);
+    if (!safeHref) {
+      return label;
+    }
+    return `[${label}](${safeHref})`;
+  });
+
+  let result = escapeHtml(withSafeLinks);
   result = result.replace(/`([^`]+)`/g, "<code>$1</code>");
   result = result.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,

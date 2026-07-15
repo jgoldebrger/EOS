@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
+    "db:types": "supabase gen types typescript --local > types/database.ts",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test"

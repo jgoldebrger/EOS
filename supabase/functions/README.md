@@ -28,6 +28,8 @@ Cursor agents can also use Resend's hosted MCP (`https://mcp.resend.com`) — se
 
 Shared helpers: [`_shared/edge-utils.ts`](./_shared/edge-utils.ts)
 
+All functions import Zod via `npm:zod` (not `esm.sh`).
+
 All `auth: 'user'` functions set `verify_jwt = false` in `config.toml` so Supabase platform JWT (legacy HS256) does not block `@supabase/server` JWKS verification for publishable-key sessions.
 
 Deploy:

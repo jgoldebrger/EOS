@@ -118,6 +118,7 @@ Requires Docker + `supabase db reset` so `supabase/seed.sql` creates test users 
 | `npm run start` | Start production server |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript check |
+| `npm run db:types` | Regenerate `types/database.ts` from local Supabase (`supabase db reset` first) |
 | `npm run test` | Unit tests (Vitest) |
 | `npm run test:e2e` | E2E tests (Playwright) |
 | `npm run test:e2e:ci` | E2E with retries (CI-friendly) |

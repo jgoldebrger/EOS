@@ -11,9 +11,14 @@ const notificationPayloadSchema = z.object({
     .string()
     .trim()
     .max(500)
-    .refine((value) => value.startsWith("/") || /^https?:\/\//.test(value), {
-      message: "actionUrl must be a relative or absolute URL",
-    })
+    .refine(
+      (value) =>
+        /^https:\/\//.test(value) ||
+        (value.startsWith("/") && !value.startsWith("//")),
+      {
+        message: "actionUrl must be a same-origin relative path or https URL",
+      },
+    )
     .optional(),
   type: z
     .enum([

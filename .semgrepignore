@@ -1,0 +1,9 @@
+# Generated / vendor paths — keep Semgrep focused on app code
+node_modules/
+.next/
+coverage/
+playwright-report/
+test-results/
+dist/
+build/
+*.min.js

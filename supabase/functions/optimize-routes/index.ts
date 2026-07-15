@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "npm:@supabase/server";
-import { z } from "https://esm.sh/zod@3.24.2";
+import { z } from "npm:zod";
 import {
   jsonResponse,
   requireAiRateLimit,
@@ -79,23 +79,18 @@ const handler = {
 
       if (!response.ok) {
         const text = await response.text();
-        return jsonResponse(
-          { success: false, error: "vroom_error", detail: text },
-          502,
-        );
+        console.error("[optimize-routes] VROOM error", response.status, text);
+        return jsonResponse({ success: false, error: "vroom_error" }, 502);
       }
 
       const solution = await response.json();
       return jsonResponse({ success: true, solution });
     } catch (error) {
-      return jsonResponse(
-        {
-          success: false,
-          error: "vroom_unreachable",
-          detail: error instanceof Error ? error.message : "unknown",
-        },
-        502,
+      console.error(
+        "[optimize-routes] VROOM unreachable",
+        error instanceof Error ? error.message : "unknown",
       );
+      return jsonResponse({ success: false, error: "vroom_unreachable" }, 502);
     }
   }),
 };

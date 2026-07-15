@@ -43,6 +43,7 @@ export function formatSsoError(code: string): string {
     access_denied: "You do not have access to this organization.",
     auto_join_disabled: "Automatic access is not enabled for your organization.",
     domain_unverified: "Your email domain has not been verified for this organization.",
+    sso_required: "Sign in with your organization SSO provider to join automatically.",
     configuration_error: "SSO is not fully configured. Contact your administrator.",
   };
 

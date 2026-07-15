@@ -22,6 +22,7 @@ import { SsoLoginOption } from "@/components/sso/sso-login-option";
 import {
   addRoleMapping,
   addVerifiedDomain,
+  confirmVerifiedDomain,
   removeRoleMapping,
   removeVerifiedDomain,
   updateSsoSettings,
@@ -69,7 +70,6 @@ export function SsoSettingsPanel({
   const [allowEmailPassword, setAllowEmailPassword] = useState(
     settings?.allow_email_password_login ?? true,
   );
-  const [verificationMethod, setVerificationMethod] = useState("dns");
   const [newDomain, setNewDomain] = useState("");
 
   if (!canView) {
@@ -148,14 +148,24 @@ export function SsoSettingsPanel({
       const result = await addVerifiedDomain({
         orgSlug,
         domain: newDomain,
-        verificationMethod,
       });
 
       if (result.success) {
-        toast.success("Domain verified");
+        toast.success("Domain added — add the DNS TXT record, then confirm");
         setNewDomain("");
       } else {
-        toast.error(result.error ?? "Unable to verify domain");
+        toast.error(result.error ?? "Unable to add domain");
+      }
+    });
+  }
+
+  function handleConfirmDomain(domainId: string) {
+    startTransition(async () => {
+      const result = await confirmVerifiedDomain({ orgSlug, domainId });
+      if (result.success) {
+        toast.success("Domain verified via DNS");
+      } else {
+        toast.error(result.error ?? "Unable to confirm domain");
       }
     });
   }
@@ -343,8 +353,8 @@ export function SsoSettingsPanel({
         <CardHeader>
           <CardTitle>Verified domains</CardTitle>
           <CardDescription>
-            Auto-join requires a verified domain. SSO proves identity only — domain
-            verification and org configuration control access.
+            Auto-join requires a DNS-verified domain. Add a TXT record, then confirm
+            verification before enabling auto-join.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -352,30 +362,58 @@ export function SsoSettingsPanel({
             <p className="text-sm text-muted-foreground">No verified domains yet.</p>
           ) : (
             <ul className="space-y-2">
-              {verifiedDomains.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2"
-                >
-                  <div>
-                    <p className="font-mono text-sm">{item.domain}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Verified via {item.verification_method}
-                    </p>
-                  </div>
-                  {isOwner && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveDomain(item.id)}
-                      disabled={isPending}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </li>
-              ))}
+              {verifiedDomains.map((item) => {
+                const isVerified = Boolean(item.verified_at);
+                return (
+                  <li
+                    key={item.id}
+                    className="flex flex-col gap-2 rounded-lg border px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-mono text-sm">{item.domain}</p>
+                        <Badge variant={isVerified ? "default" : "secondary"}>
+                          {isVerified ? "Verified" : "Pending DNS"}
+                        </Badge>
+                      </div>
+                      {isVerified ? (
+                        <p className="text-xs text-muted-foreground">
+                          Verified via {item.verification_method}
+                        </p>
+                      ) : item.verification_token ? (
+                        <p className="break-all text-xs text-muted-foreground">
+                          Add TXT record:{" "}
+                          <span className="font-mono">{item.verification_token}</span>
+                        </p>
+                      ) : null}
+                    </div>
+                    {isOwner && (
+                      <div className="flex shrink-0 gap-2">
+                        {!isVerified ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleConfirmDomain(item.id)}
+                            disabled={isPending}
+                          >
+                            Confirm DNS
+                          </Button>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveDomain(item.id)}
+                          disabled={isPending}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
 
@@ -392,18 +430,8 @@ export function SsoSettingsPanel({
                   placeholder="company.com"
                 />
               </div>
-              <div className="space-y-1">
-                <label htmlFor="verify-method" className="text-sm font-medium">
-                  Method
-                </label>
-                <Input
-                  id="verify-method"
-                  value={verificationMethod}
-                  onChange={(event) => setVerificationMethod(event.target.value)}
-                />
-              </div>
               <Button type="submit" disabled={isPending || !newDomain.trim()}>
-                Verify domain
+                Add domain
               </Button>
             </form>
           )}

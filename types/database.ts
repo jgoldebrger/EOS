@@ -748,8 +748,9 @@ export interface Database {
           id: string;
           organization_id: string;
           domain: string;
-          verified_at: string;
+          verified_at: string | null;
           verification_method: string;
+          verification_token: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -757,8 +758,9 @@ export interface Database {
           id?: string;
           organization_id: string;
           domain: string;
-          verified_at?: string;
+          verified_at?: string | null;
           verification_method: string;
+          verification_token?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -766,8 +768,9 @@ export interface Database {
           id?: string;
           organization_id?: string;
           domain?: string;
-          verified_at?: string;
+          verified_at?: string | null;
           verification_method?: string;
+          verification_token?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -777,6 +780,57 @@ export interface Database {
             columns: ["organization_id"];
             isOneToOne: false;
             referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      scorecard_categories: {
+        Row: {
+          id: string;
+          organization_id: string;
+          team_id: string | null;
+          name: string;
+          color: string;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          team_id?: string | null;
+          name: string;
+          color?: string;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          team_id?: string | null;
+          name?: string;
+          color?: string;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "scorecard_categories_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "scorecard_categories_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
             referencedColumns: ["id"];
           },
         ];

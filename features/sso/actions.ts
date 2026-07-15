@@ -8,6 +8,7 @@ import { getOrganizationBySlug } from "@/features/organizations/queries";
 import {
   addRoleMappingSchema,
   addVerifiedDomainSchema,
+  confirmVerifiedDomainSchema,
   removeRoleMappingSchema,
   removeVerifiedDomainSchema,
   updateSsoSettingsSchema,
@@ -17,6 +18,23 @@ import { isPublicEmailDomain, normalizeDomain } from "@/features/sso/utils";
 import { AUDIT_ACTIONS } from "@/types/domain";
 import type { Json } from "@/types/database";
 import { logAuditEvent } from "@/lib/audit";
+import { randomBytes } from "node:crypto";
+import { resolveTxt } from "node:dns/promises";
+
+const DNS_TXT_PREFIX = "eos-domain-verification=";
+
+function buildDomainVerificationToken(): string {
+  return `${DNS_TXT_PREFIX}${randomBytes(16).toString("hex")}`;
+}
+
+async function domainHasTxtRecord(domain: string, expected: string): Promise<boolean> {
+  try {
+    const records = await resolveTxt(domain);
+    return records.some((chunks) => chunks.join("").includes(expected));
+  } catch {
+    return false;
+  }
+}
 
 async function requireOwner(orgSlug: string) {
   const org = await getOrganizationBySlug(orgSlug);
@@ -237,27 +255,105 @@ export async function addVerifiedDomain(input: unknown): Promise<SsoActionResult
   }
 
   const { org, userId, supabase } = ownerActor;
+  const verificationToken = buildDomainVerificationToken();
 
   const { data, error } = await supabase
     .from("organization_verified_domains")
     .insert({
       organization_id: org.id,
       domain,
-      verification_method: parsed.data.verificationMethod,
+      verification_method: "dns_txt",
+      verification_token: verificationToken,
+      verified_at: null,
     })
     .select("id")
     .single();
 
   if (error) {
     if (error.code === "23505") {
-      return { success: false, error: "This domain is already verified" };
+      return {
+        success: false,
+        error: "This domain is already claimed by an organization",
+      };
     }
-    return { success: false, error: "Unable to verify domain. Please try again." };
+    return { success: false, error: "Unable to start domain verification. Please try again." };
   }
 
   await writeSsoAudit(org.id, userId, AUDIT_ACTIONS.CREATE, data.id, {
     domain,
-    verification_method: parsed.data.verificationMethod,
+    verification_method: "dns_txt",
+    pending: true,
+  });
+
+  revalidatePath(`/org/${parsed.data.orgSlug}/settings/security/sso`);
+  return { success: true };
+}
+
+export async function confirmVerifiedDomain(input: unknown): Promise<SsoActionResult> {
+  const parsed = confirmVerifiedDomainSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid domain",
+    };
+  }
+
+  const ownerActor = await requireOwnerActor(parsed.data.orgSlug);
+  if ("error" in ownerActor) {
+    return { success: false, error: ownerActor.error };
+  }
+
+  const { org, userId, supabase } = ownerActor;
+
+  const { data: domainRow, error: loadError } = await supabase
+    .from("organization_verified_domains")
+    .select("id, domain, verification_token, verified_at")
+    .eq("id", parsed.data.domainId)
+    .eq("organization_id", org.id)
+    .maybeSingle();
+
+  if (loadError || !domainRow) {
+    return { success: false, error: "Domain not found" };
+  }
+
+  if (domainRow.verified_at) {
+    return { success: true };
+  }
+
+  if (!domainRow.verification_token) {
+    return {
+      success: false,
+      error: "This domain has no verification token. Remove it and add it again.",
+    };
+  }
+
+  const txtOk = await domainHasTxtRecord(domainRow.domain, domainRow.verification_token);
+  if (!txtOk) {
+    return {
+      success: false,
+      error: `DNS TXT record not found. Add a TXT record with value "${domainRow.verification_token}" then try again.`,
+    };
+  }
+
+  const { error } = await supabase
+    .from("organization_verified_domains")
+    .update({
+      verified_at: new Date().toISOString(),
+      verification_token: null,
+      verification_method: "dns_txt",
+    })
+    .eq("id", domainRow.id)
+    .eq("organization_id", org.id);
+
+  if (error) {
+    return { success: false, error: "Unable to confirm domain verification. Please try again." };
+  }
+
+  await writeSsoAudit(org.id, userId, AUDIT_ACTIONS.UPDATE, domainRow.id, {
+    domain: domainRow.domain,
+    verification_method: "dns_txt",
+    verified: true,
   });
 
   revalidatePath(`/org/${parsed.data.orgSlug}/settings/security/sso`);

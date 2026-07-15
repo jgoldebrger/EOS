@@ -19,22 +19,24 @@ export async function GET(request: Request) {
       if (user?.email) {
         const token =
           typeof user.user_metadata?.invitation_token === "string"
-            ? user.user_metadata.invitation_token
-            : null;
+            ? user.user_metadata.invitation_token.trim()
+            : "";
 
-        const { accepted } = await acceptPendingInvitations({
-          userId: user.id,
-          email: user.email,
-          token,
-        });
+        if (token) {
+          const { accepted } = await acceptPendingInvitations({
+            userId: user.id,
+            email: user.email,
+            token,
+          });
 
-        if (accepted.length > 0) {
-          const safeNext = `/org/${accepted[0].orgSlug}/home`;
-          const mfaRedirect = await getOAuthCallbackMfaRedirect(origin, safeNext);
-          if (mfaRedirect) {
-            return NextResponse.redirect(mfaRedirect);
+          if (accepted.length > 0) {
+            const safeNext = `/org/${accepted[0].orgSlug}/home`;
+            const mfaRedirect = await getOAuthCallbackMfaRedirect(origin, safeNext);
+            if (mfaRedirect) {
+              return NextResponse.redirect(mfaRedirect);
+            }
+            return NextResponse.redirect(`${origin}${safeNext}`);
           }
-          return NextResponse.redirect(`${origin}${safeNext}`);
         }
       }
 

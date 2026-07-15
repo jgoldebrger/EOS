@@ -86,10 +86,63 @@ export async function toggleScorecardBookmark(
   return { success: true, bookmarked: true };
 }
 
+export type ScorecardViewFilters = {
+  period: string;
+  groupBy: string;
+  state: string;
+  category: string;
+  range: string;
+  q?: string;
+};
+
+export function scorecardFiltersToSearchParams(
+  filters: ScorecardViewFilters,
+): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set("period", filters.period || "weekly");
+  params.set("groupBy", filters.groupBy || "owner");
+  params.set("state", filters.state || "active");
+  params.set("range", filters.range || "13");
+  if (filters.category && filters.category !== "all") {
+    params.set("category", filters.category);
+  }
+  if (filters.q?.trim()) {
+    params.set("q", filters.q.trim());
+  }
+  return params;
+}
+
+export function scorecardFiltersFromSearchParams(
+  searchParams: URLSearchParams,
+): ScorecardViewFilters {
+  return {
+    period: searchParams.get("period") ?? "weekly",
+    groupBy: searchParams.get("groupBy") ?? "owner",
+    state: searchParams.get("state") ?? "active",
+    category: searchParams.get("category") ?? "all",
+    range: searchParams.get("range") ?? "13",
+    q: searchParams.get("q") ?? "",
+  };
+}
+
+export function scorecardFiltersMatch(
+  saved: ScorecardViewFilters,
+  current: ScorecardViewFilters,
+): boolean {
+  return (
+    saved.period === current.period &&
+    saved.groupBy === current.groupBy &&
+    saved.state === current.state &&
+    saved.category === current.category &&
+    saved.range === current.range &&
+    (saved.q ?? "") === (current.q ?? "")
+  );
+}
+
 export async function getScorecardBookmark(
   organizationId: string,
   teamId: string | undefined,
-): Promise<{ filters: Record<string, string> } | null> {
+): Promise<ScorecardViewFilters | null> {
   const actor = await getActionActor(organizationId);
   if ("error" in actor) {
     return null;
@@ -113,6 +166,13 @@ export async function getScorecardBookmark(
     return null;
   }
 
-  const filters = data.filters as Record<string, string>;
-  return { filters };
+  const raw = data.filters as Record<string, unknown>;
+  return {
+    period: typeof raw.period === "string" ? raw.period : "weekly",
+    groupBy: typeof raw.groupBy === "string" ? raw.groupBy : "owner",
+    state: typeof raw.state === "string" ? raw.state : "active",
+    category: typeof raw.category === "string" ? raw.category : "all",
+    range: typeof raw.range === "string" ? raw.range : "13",
+    q: typeof raw.q === "string" ? raw.q : "",
+  };
 }

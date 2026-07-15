@@ -672,11 +672,15 @@ export type AcceptInvitationsActionResult =
   | { success: false; error: string };
 
 export async function acceptPendingInvitationsForCurrentUser(
-  token?: string | null,
+  token: string,
 ): Promise<AcceptInvitationsActionResult> {
   const user = await getServerSessionUser();
   if (!user?.email) {
     return { success: false, error: "You must be signed in with an email address." };
+  }
+
+  if (!token.trim()) {
+    return { success: false, error: "An invitation token is required." };
   }
 
   const { accepted } = await acceptPendingInvitations({

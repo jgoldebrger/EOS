@@ -15,24 +15,26 @@ export interface AcceptInvitationsResult {
 export async function acceptPendingInvitations(options: {
   userId: string;
   email: string;
-  token?: string | null;
+  /** Required — bulk accept-by-email alone enables invite phishing. */
+  token: string;
 }): Promise<AcceptInvitationsResult> {
+  const token = options.token.trim();
+  if (!token) {
+    return { accepted: [] };
+  }
+
   const admin = createAdminClient();
   const normalizedEmail = options.email.trim().toLowerCase();
   const now = new Date().toISOString();
 
-  let query = admin
+  const { data: invitations, error } = await admin
     .from("invitations")
     .select("id, organization_id, email, org_role, invited_by, organizations(slug)")
     .eq("email", normalizedEmail)
+    .eq("token", token)
     .is("accepted_at", null)
     .gt("expires_at", now);
 
-  if (options.token) {
-    query = query.eq("token", options.token);
-  }
-
-  const { data: invitations, error } = await query;
   if (error || !invitations?.length) {
     return { accepted: [] };
   }
@@ -83,7 +85,7 @@ export async function acceptPendingInvitations(options: {
       metadata: {
         email: normalizedEmail,
         orgRole: invite.org_role,
-        via: options.token ? "invite_token" : "invite_email",
+        via: "invite_token",
       },
     });
 

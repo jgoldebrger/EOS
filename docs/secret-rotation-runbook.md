@@ -5,26 +5,15 @@ Rotate credentials after security incidents, staff changes, or on a quarterly sc
 ## Order of rotation
 
 1. `SUPABASE_SECRET_KEY` (Supabase Dashboard → Settings → API)
-2. `NOTIFICATIONS_CRON_SECRET`, `L10_CRON_SECRET`, `SCORECARD_CRON_SECRET`
-3. `RESEND_API_KEY`
+2. `RESEND_API_KEY`
 
-## Generate new cron secrets
+Cron edge functions (`l10-schedule-reminders`, `scorecard-off-track-digest`, `send-notifications`) authenticate with **`SUPABASE_SECRET_KEY`** via `@supabase/server` `auth: 'secret'`. GitHub Actions cron workflows send this key in the `apikey` and `Authorization` headers — no separate `L10_CRON_SECRET` / `SCORECARD_CRON_SECRET` / `NOTIFICATIONS_CRON_SECRET` is required.
 
-```powershell
-.\scripts\rotate-cron-secrets.ps1
-```
-
-Update values in:
-
-- GitHub repository secrets (Actions workflows)
-- Supabase Edge Function secrets (`supabase secrets set ...`)
-- Vercel environment variables where referenced
-
-## Supabase service key
+## Supabase secret key
 
 1. Create a new secret key in Supabase Dashboard.
-2. Update `SUPABASE_SECRET_KEY` on Vercel and in GitHub secrets.
-3. Redeploy the Next.js app.
+2. Update `SUPABASE_SECRET_KEY` on Vercel and in GitHub repository secrets.
+3. Redeploy the Next.js app and cron edge functions (`scripts/deploy-cron-functions.ps1` or **Deploy Edge Functions** workflow).
 4. Revoke the previous key after smoke tests pass.
 
 ## Resend API key
@@ -37,6 +26,7 @@ Update values in:
 
 ```powershell
 .\scripts\verify-security-ops.ps1
+.\scripts\verify-cron-deploy.ps1
 node scripts/verify-jwt-rls.mjs
 ```
 

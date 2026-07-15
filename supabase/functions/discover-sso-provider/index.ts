@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "npm:@supabase/server";
-import { z } from "https://esm.sh/zod@3.24.2";
+import { z } from "npm:zod";
 import { checkEdgeRateLimit, clientIpFromRequest, jsonResponse } from "../_shared/edge-utils.ts";
 
 const PUBLIC_DOMAINS = new Set([
@@ -70,6 +70,7 @@ const handler = {
       .from("organization_verified_domains")
       .select("organization_id")
       .eq("domain", domain)
+      .not("verified_at", "is", null)
       .maybeSingle();
 
     let organizationId = verifiedMatch?.organization_id ?? null;
@@ -99,7 +100,8 @@ const handler = {
     }
 
     return jsonResponse({
-      providerName: settings.provider_name,
+      // Coarse discovery only — avoid leaking custom IdP display names to anonymous clients.
+      providerName: "SSO",
       providerType: settings.provider_type,
     });
   }),
